@@ -10,7 +10,7 @@ import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
-# Initialize Sentry (only if SENTRY_DSN is configured)
+# Initialize Sentry (v2) (only if SENTRY_DSN is configured)
 if getattr(settings, 'SENTRY_DSN', None):
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
