@@ -16,6 +16,7 @@ if TYPE_CHECKING:
    
 
 
+# NOTE: lowercase enum values required for Supabase compatibility
 class UserRole(str, enum.Enum):
     STUDENT = "student"
     ADMIN = "admin"

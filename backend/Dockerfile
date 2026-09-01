@@ -1,3 +1,4 @@
+# Build v2 - lowercase enums
 ﻿FROM python:3.12-slim
 
 WORKDIR /app
