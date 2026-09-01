@@ -49,6 +49,26 @@ from app.api.routes import (
 )
 
 
+
+
+@app.get("/api/debug-enums")
+def debug_enums():
+    from app.models.user import UserRole, SubscriptionTier
+    from sqlalchemy import text
+    from app.core.database import engine
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT enum_range(NULL::user_role)"))
+        db_user_role = str(result.scalar())
+        result = conn.execute(text("SELECT enum_range(NULL::subscription_tier)"))
+        db_sub_tier = str(result.scalar())
+    return {
+        "code_user_role": [e.value for e in UserRole],
+        "db_user_role": db_user_role,
+        "code_subscription_tier": [e.value for e in SubscriptionTier],
+        "db_subscription_tier": db_sub_tier,
+    }
+
+
 def _validate_production_config() -> None:
     """Refuses to start with known-insecure defaults in production, rather than
     silently running with a forgeable JWT secret or an open Host header. This turns a
