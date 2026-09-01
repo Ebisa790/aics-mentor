@@ -100,6 +100,8 @@ def debug_enums():
         "db_user_role": db_user_role,
         "code_subscription_tier": [e.value for e in SubscriptionTier],
         "db_subscription_tier": db_sub_tier,
+        "frontend_origin_setting": settings.FRONTEND_ORIGIN,
+        "cors_origins": settings.cors_origins,
     }
 
 app.state.limiter = limiter
