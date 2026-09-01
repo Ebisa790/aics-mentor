@@ -16,7 +16,6 @@ if getattr(settings, 'SENTRY_DSN', None):
         dsn=settings.SENTRY_DSN,
         environment=settings.ENVIRONMENT,
         send_default_pii=True,
-        enable_logs=True,
         traces_sample_rate=1.0,
         profile_session_sample_rate=1.0,
         profile_lifecycle="trace",
