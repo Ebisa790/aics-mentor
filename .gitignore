@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+*.db
+
+# Node
+node_modules/
+dist/
+
+# Env
+.env
+.env.production
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Temporary scripts
+backend/add_column.py
+backend/create_support_table.py
+backend/parse_exam_pdf.py
+backend/seed_blueprint.py
+backend/backup.py
+backend/restore_backup.py
+
+# Large data files
+backend/*.pdf
+backend/*.csv
+
+# Student submissions (privacy)
+backend/submissions/*.json
+
+# Build artifacts
+frontend/*.tsbuildinfo
+
+# Temporary scripts
+backend/add_column.py
+backend/create_support_table.py
+backend/parse_exam_pdf.py
+backend/seed_blueprint.py
+backend/backup.py
+backend/restore_backup.py
+
+# Large data files
+backend/*.pdf
+backend/*.csv
+
+# Student submissions (privacy)
+backend/submissions/*.json
+
+# Build artifacts
+frontend/*.tsbuildinfo
+frontend/*.tsbuildinfo
