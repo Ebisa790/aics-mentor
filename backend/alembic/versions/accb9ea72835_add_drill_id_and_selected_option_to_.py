@@ -18,12 +18,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Create drill_attempts table if it doesn't exist
+    op.create_table(
+        'drill_attempts',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('student_id', sa.UUID(), nullable=False),
+        sa.Column('subject_slug', sa.String(), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()')),
+        sa.ForeignKeyConstraint(['student_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id')
+    )
     # Add missing columns to drill_attempts table
     op.add_column('drill_attempts', sa.Column('drill_id', sa.String(), nullable=True))
     op.add_column('drill_attempts', sa.Column('selected_option', sa.Integer(), nullable=True))
+    op.add_column('drill_attempts', sa.Column('is_correct', sa.Boolean(), nullable=True))
 
 
 def downgrade() -> None:
-    # Revert column changes
-    op.drop_column('drill_attempts', 'selected_option')
-    op.drop_column('drill_attempts', 'drill_id')
+    # Drop the table entirely
+    op.drop_table('drill_attempts')

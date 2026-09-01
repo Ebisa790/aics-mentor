@@ -10,5 +10,9 @@ from app.models.exam_question import ExamQuestion, ExamDifficulty, ReviewStatus 
 from app.models.quiz import Question, QuestionType, DifficultyLevel, Quiz, QuizType, QuizQuestion, GeneratedExamMode  # noqa: F401
 from app.models.attempt import Attempt, AttemptStatus, AttemptAnswer  # noqa: F401
 from app.models.conversation import AIConversation, AIMessage, MessageRole, TutorMode  # noqa: F401
+from app.models.code_trace_drill import CodeTraceDrill  # noqa: F401
+from app.models.flashcard import Flashcard  # noqa: F401
+from app.models.payment import Payment, PaymentStatus, PricingPlan, Subscription, PlanDurationType, SubscriptionStatus  # noqa: F401
+from app.models.attempt import DrillAttempt  # noqa: F401
 
 from app.core.database import Base
