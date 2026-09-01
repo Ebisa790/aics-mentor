@@ -17,9 +17,14 @@ if TYPE_CHECKING:
 
 
 # NOTE: lowercase enum values required for Supabase compatibility
+ENUM_VERSION = "v2-lowercase"
+
 class UserRole(str, enum.Enum):
     STUDENT = "student"
     ADMIN = "admin"
+
+    def __str__(self):
+        return self.value
 
 
 class SubscriptionTier(str, enum.Enum):
