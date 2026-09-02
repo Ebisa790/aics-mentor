@@ -117,7 +117,7 @@ class Quiz(Base):
     )
     time_limit_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True) 
     generated_mode: Mapped[GeneratedExamMode | None] = mapped_column(
-        Enum(GeneratedExamMode, name="generated_exam_mode"), nullable=True
+        Enum(GeneratedExamMode, name="generated_exam_mode", values_callable=lambda x: [e.value for e in x]), nullable=True
     )
     generated_for_user_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
