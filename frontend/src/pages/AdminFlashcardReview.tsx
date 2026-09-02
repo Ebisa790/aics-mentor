@@ -4,6 +4,7 @@ import { ArrowLeft, Edit3,  Trash2 } from 'lucide-react'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
+
 interface Flashcard {
   id: string
   front: string
@@ -32,7 +33,7 @@ export function AdminFlashcardReview() {
     try {
       setLoading(true)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/flashcards', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/flashcards`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       if (!response.ok) throw new Error('Failed to load flashcards')
@@ -54,7 +55,7 @@ export function AdminFlashcardReview() {
   const handleSave = async (cardId: string) => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/flashcards/' + cardId, {
+      const response = await fetch(`${API_BASE_URL}/api/courses/flashcards/${cardId}`, {
         method: 'PUT',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -78,7 +79,7 @@ export function AdminFlashcardReview() {
   const handleApproveAll = async () => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/flashcards/approve-all', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/flashcards/approve-all`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token }
       })
@@ -96,7 +97,7 @@ export function AdminFlashcardReview() {
     if (!confirm('Delete this flashcard?')) return
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/flashcards/' + cardId, {
+      const response = await fetch(`${API_BASE_URL}/api/courses/flashcards/${cardId}`, {
         method: 'DELETE',
         headers: { 'Authorization': 'Bearer ' + token }
       })

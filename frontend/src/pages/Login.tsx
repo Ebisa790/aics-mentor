@@ -18,11 +18,11 @@ import {
   Target,
 } from 'lucide-react'
 import {
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   GoogleLogin,
   type CredentialResponse,
 } from '@react-oauth/google'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 export function LoginPage() {
   const { login, loginWithGoogle } = useAuth()
@@ -54,7 +54,7 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/auth/2fa/login-verify', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/2fa/login-verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/auth/2fa/email/send', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/2fa/email/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +123,7 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/auth/2fa/email/verify', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/2fa/email/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

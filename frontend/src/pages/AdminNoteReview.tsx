@@ -7,23 +7,22 @@ import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
 import {
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   ArrowLeft,
   Check,
   X,
   Edit3,
   Save,
-    AlertCircle,
+  AlertCircle,
   ChevronLeft,
   ChevronRight,
   FileText,
   CheckCircle2,
   XCircle,
   History,
-  RefreshCw,
-
+  RefreshCw
 } from 'lucide-react'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 interface CourseModule {
   title: string
@@ -84,7 +83,7 @@ export function AdminNoteReview() {
       setLoading(true)
       setError(null)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/notes/review', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/review`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       if (!response.ok) throw new Error('Failed to load notes for review')
@@ -110,7 +109,7 @@ export function AdminNoteReview() {
       setExporting(true)
       setShowExportModal(true)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/notes/export-prompt', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/export-prompt`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -138,14 +137,12 @@ export function AdminNoteReview() {
     }
     try {
       setPasting(true)
-      // Preserve markdown formatting
       let cleanContent = pastedContent
-      // Preserve markdown line breaks
       cleanContent = cleanContent.replace(/\r\n/g, '\n')
       cleanContent = cleanContent.replace(/\r/g, '\n')
       
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/notes/manual', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/manual`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -172,7 +169,7 @@ export function AdminNoteReview() {
   const handleGenerateFlashcards = async () => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/flashcards/generate', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/flashcards/generate`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token }
       })
@@ -188,7 +185,7 @@ export function AdminNoteReview() {
   const handleReopenNotes = async () => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/notes/reopen', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/reopen`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token }
       })
@@ -209,7 +206,7 @@ export function AdminNoteReview() {
     
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/notes/' + currentVersion.id, {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/${currentVersion.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': 'Bearer ' + token }
       })
@@ -228,7 +225,7 @@ export function AdminNoteReview() {
       setError(null)
       setSuccessMessage(null)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/notes?regenerate=true', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes?regenerate=true`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       if (!response.ok) throw new Error('Failed to generate notes')
@@ -253,7 +250,7 @@ export function AdminNoteReview() {
     try {
       setApproving(true)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/notes/approve', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/approve`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -277,7 +274,7 @@ export function AdminNoteReview() {
     try {
       setRejecting(true)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/notes/reject', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/reject`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -311,7 +308,7 @@ export function AdminNoteReview() {
     try {
       setSaving(true)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/notes/' + version.id + '/module/' + currentModule, {
+      const response = await fetch(`${API_BASE_URL}/api/courses/notes/${version.id}/module/${currentModule}`, {
         method: 'PUT',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -373,26 +370,23 @@ export function AdminNoteReview() {
           {/* Action Buttons */}
           {version && (
             <div className="flex items-center gap-2">
-              {/* Regenerate button - always available */}              {/* Export Prompt Button */}
               <button
                 onClick={handleExportPrompt}
                 disabled={exporting}
                 className="inline-flex items-center px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 transition-colors disabled:opacity-50 shadow-md"
                 title="Export prompt for Claude/ChatGPT"
               >
-                 Export
+                📋 Export
               </button>
 
-              {/* Paste Notes Button */}
               <button
                 onClick={() => setShowPasteModal(true)}
                 className="inline-flex items-center px-4 py-2 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-500 transition-colors shadow-md"
                 title="Paste notes from Claude/ChatGPT"
               >
-                 Paste
+                📝 Paste
               </button>
 
-              {/* Generate Flashcards Button - only for APPROVED */}
               {version.status === 'APPROVED' && (
                 <button
                   onClick={handleGenerateFlashcards}
@@ -402,7 +396,6 @@ export function AdminNoteReview() {
                 </button>
               )}
 
-              {/* Review Flashcards Button */}
               <button
                 onClick={() => navigate('/admin/courses/' + courseId + '/flashcards')}
                 className="inline-flex items-center px-4 py-2 rounded-xl bg-orange-600 text-white text-sm font-semibold hover:bg-orange-500 transition-colors shadow-md"
@@ -411,16 +404,14 @@ export function AdminNoteReview() {
                 Review Flashcards
               </button>
 
-              {/* Delete Button */}
               <button
                 onClick={handleDeleteNotes}
                 className="inline-flex items-center px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-colors shadow-md"
                 title="Delete this note version"
               >
-                ️ Delete
+                🗑️ Delete
               </button>
 
-              {/* Regenerate button - always available */}
               <button
                 onClick={handleGenerateNotes}
                 disabled={generating}
@@ -430,18 +421,16 @@ export function AdminNoteReview() {
                 {generating ? 'Generating...' : 'Regenerate'}
               </button>
 
-              {/* Reopen button for REJECTED notes */}
               {version.status === 'REJECTED' && (
                 <button
                   onClick={handleReopenNotes}
                   className="inline-flex items-center px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-500 transition-colors shadow-md"
                   title="Reopen for re-approval"
                 >
-                   Reopen
+                  🔄 Reopen
                 </button>
               )}
 
-              {/* Approve/Reject only for DRAFT */}
               {version.status === 'DRAFT' && (
                 <>
                   <button
@@ -608,50 +597,50 @@ export function AdminNoteReview() {
                   ) : (
                     <div className="prose max-w-none text-slate-800 text-sm leading-relaxed">
                       <div className="prose prose-slate max-w-none dark:prose-invert">
-  <ReactMarkdown
-    remarkPlugins={[remarkGfm, remarkMath]}
-    rehypePlugins={[rehypeKatex]}
-    components={{
-      table: ({node, ...props}) => (
-        <div className="overflow-x-auto my-4">
-          <table className="min-w-full border-collapse border border-slate-300 dark:border-slate-700" {...props} />
-        </div>
-      ),
-      th: ({node, ...props}) => (
-        <th className="border border-slate-300 dark:border-slate-700 px-3 py-2 bg-slate-100 dark:bg-slate-800 font-semibold text-left" {...props} />
-      ),
-      td: ({node, ...props}) => (
-        <td className="border border-slate-300 dark:border-slate-700 px-3 py-2 align-top" {...props} />
-      ),
-      ol: ({node, ...props}) => (
-        <ol className="list-decimal ml-6 space-y-1 my-3" {...props} />
-      ),
-      ul: ({node, ...props}) => (
-        <ul className="list-disc ml-6 space-y-1 my-3" {...props} />
-      ),
-      li: ({node, ...props}) => (
-        <li className="pl-1 leading-relaxed" {...props} />
-      ),
-      h1: ({node, ...props}) => (
-        <h1 className="text-2xl font-bold mt-6 mb-3 text-slate-900 dark:text-white" {...props} />
-      ),
-      h2: ({node, ...props}) => (
-        <h2 className="text-xl font-bold mt-5 mb-2 text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2" {...props} />
-      ),
-      h3: ({node, ...props}) => (
-        <h3 className="text-lg font-semibold mt-4 mb-2 text-slate-900 dark:text-white" {...props} />
-      ),
-      p: ({node, ...props}) => (
-        <p className="my-2 leading-relaxed" {...props} />
-      ),
-      strong: ({node, ...props}) => (
-        <strong className="font-bold text-slate-900 dark:text-white" {...props} />
-      ),
-    }}
-  >
-    {version.modules[currentModule]?.content || ''}
-  </ReactMarkdown>
-</div>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                          components={{
+                            table: ({node, ...props}) => (
+                              <div className="overflow-x-auto my-4">
+                                <table className="min-w-full border-collapse border border-slate-300 dark:border-slate-700" {...props} />
+                              </div>
+                            ),
+                            th: ({node, ...props}) => (
+                              <th className="border border-slate-300 dark:border-slate-700 px-3 py-2 bg-slate-100 dark:bg-slate-800 font-semibold text-left" {...props} />
+                            ),
+                            td: ({node, ...props}) => (
+                              <td className="border border-slate-300 dark:border-slate-700 px-3 py-2 align-top" {...props} />
+                            ),
+                            ol: ({node, ...props}) => (
+                              <ol className="list-decimal ml-6 space-y-1 my-3" {...props} />
+                            ),
+                            ul: ({node, ...props}) => (
+                              <ul className="list-disc ml-6 space-y-1 my-3" {...props} />
+                            ),
+                            li: ({node, ...props}) => (
+                              <li className="pl-1 leading-relaxed" {...props} />
+                            ),
+                            h1: ({node, ...props}) => (
+                              <h1 className="text-2xl font-bold mt-6 mb-3 text-slate-900 dark:text-white" {...props} />
+                            ),
+                            h2: ({node, ...props}) => (
+                              <h2 className="text-xl font-bold mt-5 mb-2 text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2" {...props} />
+                            ),
+                            h3: ({node, ...props}) => (
+                              <h3 className="text-lg font-semibold mt-4 mb-2 text-slate-900 dark:text-white" {...props} />
+                            ),
+                            p: ({node, ...props}) => (
+                              <p className="my-2 leading-relaxed" {...props} />
+                            ),
+                            strong: ({node, ...props}) => (
+                              <strong className="font-bold text-slate-900 dark:text-white" {...props} />
+                            ),
+                          }}
+                        >
+                          {version.modules[currentModule]?.content || ''}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -749,10 +738,6 @@ export function AdminNoteReview() {
               <textarea
                 value={pastedContent}
                 onChange={(e) => setPastedContent(e.target.value)}
-                onPaste={() => {
-                  // Let the browser paste normally - textarea preserves text
-                  // No special handling needed as textarea keeps raw text
-                }}
                 placeholder="Paste your notes here... (Markdown formatting will be preserved)"
                 className="w-full h-96 p-3 rounded-xl bg-slate-50 border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 whitespace-pre-wrap"
               />

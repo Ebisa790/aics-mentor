@@ -4,6 +4,7 @@ import { ArrowLeft, Trash2, CheckCircle2, XCircle, FileText, Upload, Download } 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
+
 interface Drill {
   id: string
   subject: string
@@ -39,7 +40,7 @@ export function AdminDrillManagement() {
     try {
       setLoading(true)
       const token = localStorage.getItem('access_token')
-     const response = await fetch(`/api/drills/admin/list?subject=${subjectFilter}&status_filter=${statusFilter}`, {
+     const response = await fetch(`${API_BASE_URL}/api/drills/admin/list?subject=${subjectFilter}&status_filter=${statusFilter}`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       if (!response.ok) throw new Error('Failed to load drills')
@@ -55,7 +56,7 @@ export function AdminDrillManagement() {
   const handleApproveAll = async () => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/drills/admin/approve-all', {
+      const response = await fetch(`${API_BASE_URL}/api/drills/admin/approve-all`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token }
       })
@@ -124,7 +125,7 @@ export function AdminDrillManagement() {
       const drillsArray = Array.isArray(drillsData) ? drillsData : [drillsData]
       
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/drills/admin/generate', {
+      const response = await fetch(`${API_BASE_URL}/api/drills/admin/generate`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -148,7 +149,7 @@ export function AdminDrillManagement() {
   const handleExportPrompt = async () => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/drills/admin/export-prompt', {
+      const response = await fetch(`${API_BASE_URL}/api/drills/admin/export-prompt`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   ArrowLeft, 
   ChevronLeft, 
   ChevronRight,
@@ -12,6 +11,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   Sparkles,
   Award,
 } from 'lucide-react'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 interface Flashcard {
   id: string
@@ -111,7 +112,7 @@ export function FlashcardPage() {
     try {
       setLoading(true)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/courses/' + courseId + '/flashcards', {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/flashcards`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       if (!response.ok) throw new Error('Failed to load flashcards')

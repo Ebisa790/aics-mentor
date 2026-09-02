@@ -153,8 +153,8 @@ export function CourseNotesPage() {
         setError(null)
         const token = localStorage.getItem('access_token')
         const endpoint = forceRegenerate
-          ? `/api/courses/${courseId}/notes?regenerate=true`
-          : `/api/courses/${courseId}/notes`
+       ? `${API_BASE_URL}/api/courses/${courseId}/notes?regenerate=true`
+       : `${API_BASE_URL}/api/courses/${courseId}/notes`
         const response = await fetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -234,7 +234,7 @@ export function CourseNotesPage() {
       
       setAiAnswer('')
       const token = localStorage.getItem('access_token')
-      const response = await fetch(`/api/courses/${courseId}/notes/ask`, {
+      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/ask`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

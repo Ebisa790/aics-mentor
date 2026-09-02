@@ -49,7 +49,7 @@ export function AdminQuestionCoverage() {
 
   const fetchCourses = async () => {
     const token = localStorage.getItem('access_token')
-    fetch('/api/courses', { headers: { 'Authorization': 'Bearer ' + token } })
+    fetch(`${API_BASE_URL}/api/courses`, { headers: { 'Authorization': 'Bearer ' + token } })
       .then(r => r.json())
       .then(d => setCourses(d))
       .catch(() => {})
@@ -59,7 +59,7 @@ export function AdminQuestionCoverage() {
     try {
       setLoading(true)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/admin/questions/coverage', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/questions/coverage`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       if (!response.ok) throw new Error('Failed to load coverage')
@@ -75,7 +75,7 @@ export function AdminQuestionCoverage() {
   const handleExportPrompt = async () => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/admin/questions/export-prompt', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/questions/export-prompt`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -102,7 +102,7 @@ export function AdminQuestionCoverage() {
       const questionsArray = Array.isArray(questionsData) ? questionsData : [questionsData]
       
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/admin/questions/bulk-import', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/questions/bulk-import`, {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -138,7 +138,7 @@ export function AdminQuestionCoverage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'CRITICAL': return ' CRITICAL'
-      case 'WARNING': return '️ WARNING'
+      case 'WARNING': return '⚠️ WARNING'
       case 'NEAR_TARGET': return ' NEAR TARGET'
       case 'GOOD': return ' GOOD'
       default: return status
@@ -302,7 +302,7 @@ export function AdminQuestionCoverage() {
           <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-bold">Export Question Prompt</h3>
-              <button onClick={() => setShowExportModal(false)} className="p-1 rounded-lg hover:bg-slate-100"></button>
+              <button onClick={() => setShowExportModal(false)} className="p-1 rounded-lg hover:bg-slate-100">×</button>
             </div>
             <div className="p-4 overflow-y-auto flex-1 space-y-3">
               {!exportPrompt ? (
@@ -343,7 +343,7 @@ export function AdminQuestionCoverage() {
           <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-bold">Paste Questions</h3>
-              <button onClick={() => setShowPasteModal(false)} className="p-1 rounded-lg hover:bg-slate-100"></button>
+              <button onClick={() => setShowPasteModal(false)} className="p-1 rounded-lg hover:bg-slate-100">×</button>
             </div>
             <div className="p-4 overflow-y-auto flex-1 space-y-3">
               <select value={pasteCourseId} onChange={(e) => setPasteCourseId(e.target.value)} className="w-full px-3 py-2 rounded-xl border text-sm">

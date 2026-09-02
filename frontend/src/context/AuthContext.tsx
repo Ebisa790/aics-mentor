@@ -5,6 +5,7 @@ import type { User } from '../api/types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
+
 interface AuthContextValue {
   user: User | null
   isLoading: boolean
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const loginWithGoogle = async (idToken: string) => {
-    const response = await fetch('/api/auth/google', {
+    const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

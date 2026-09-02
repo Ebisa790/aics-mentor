@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   ArrowLeft, 
   RefreshCw, 
   CheckCircle, 
@@ -14,6 +13,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   ChevronUp,
   Filter
 } from 'lucide-react'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 interface SupportTicket {
   id: string
@@ -49,7 +50,7 @@ export function AdminSupportDashboard() {
     setError(null)
     try {
       const token = localStorage.getItem('access_token')
-      let url = '/api/support/admin/tickets'
+      let url = `${API_BASE_URL}/api/support/admin/tickets`
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.append('status', statusFilter)
       if (issueFilter !== 'all') params.append('issue_type', issueFilter)
@@ -71,7 +72,7 @@ export function AdminSupportDashboard() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/support/admin/tickets/stats', {
+      const response = await fetch(`${API_BASE_URL}/api/support/admin/tickets/stats`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       if (response.ok) {
@@ -89,7 +90,7 @@ export function AdminSupportDashboard() {
       const payload: any = { status }
       if (response) payload.response = response
 
-      const res = await fetch(`/api/support/admin/tickets/${ticketId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/api/support/admin/tickets/${ticketId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

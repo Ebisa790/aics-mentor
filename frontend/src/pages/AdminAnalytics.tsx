@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { 
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   Users, 
   DollarSign, 
   BookOpen, 
@@ -14,6 +13,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || ''
     Activity,
   Crown
 } from 'lucide-react'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 
 interface AnalyticsData {
@@ -68,7 +69,7 @@ export function AdminAnalytics() {
     try {
       setLoading(true)
       const token = localStorage.getItem('access_token')
-      const response = await fetch('/api/admin/analytics', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/analytics`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       if (!response.ok) throw new Error('Failed to load analytics')

@@ -3,8 +3,6 @@ import { userApi, deviceApi, supportApi, type Device } from '../api'
 import { Crown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
-
 // Helper to format ISO date strings into relative time (e.g., "5m ago", "Just now")
 function formatLastActive(isoString: string): string {
   if (!isoString) return 'Unknown'
@@ -399,7 +397,7 @@ export function ProfilePage() {
               : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
         >
-           Profile Details
+          👤 Profile Details
         </button>
 
         <button
@@ -413,7 +411,7 @@ export function ProfilePage() {
               : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
         >
-           Security & Devices
+          🔒 Security & Devices
         </button>
 
         <button
@@ -427,14 +425,14 @@ export function ProfilePage() {
               : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
           }`}
         >
-           Help & Support
+          🎧 Help & Support
         </button>
       </div>
 
       {/* Shared Alerts */}
       {saved && (
         <div className="text-sm font-medium text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 flex items-center justify-between">
-          <span> Changes updated successfully.</span>
+          <span>✅ Changes updated successfully.</span>
         </div>
       )}
 
@@ -450,7 +448,7 @@ export function ProfilePage() {
           {/* Avatar Section */}
           <div className="card p-6 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4">
             <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <span>️</span> Profile Picture
+              <span>🖼️</span> Profile Picture
             </h2>
 
             <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -542,7 +540,7 @@ export function ProfilePage() {
           {/* Password Change Form */}
           <form onSubmit={handlePasswordSubmit} className="card p-6 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4">
             <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <span></span> Change Password
+              <span>🔑</span> Change Password
             </h2>
 
             <div className="space-y-3">
@@ -593,7 +591,7 @@ export function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span></span> Two-Factor Authentication
+                  <span>🔐</span> Two-Factor Authentication
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Add an extra layer of security using Google Authenticator.
@@ -601,7 +599,7 @@ export function ProfilePage() {
               </div>
               {is2FAEnabled ? (
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                   Enabled
+                  ✓ Enabled
                 </span>
               ) : (
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-500">
@@ -679,7 +677,7 @@ export function ProfilePage() {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span></span> Active Devices & Logged-In Sessions
+                  <span>📱</span> Active Devices & Logged-In Sessions
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Manage devices and browser sessions currently authenticated with your account.
@@ -712,7 +710,7 @@ export function ProfilePage() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="p-2.5 rounded-lg bg-slate-200/70 dark:bg-slate-800 text-lg">
-                        {device.device_type === 'mobile' ? '' : device.device_type === 'tablet' ? '' : ''}
+                        {device.device_type === 'mobile' ? '📱' : device.device_type === 'tablet' ? '📑' : '💻'}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -779,13 +777,13 @@ export function ProfilePage() {
         <div className="space-y-6">
           {supportSuccess && (
             <div className="text-sm font-medium text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
-               Your message has been sent! Our support team will get back to you shortly.
+              🎉 Your message has been sent! Our support team will get back to you shortly.
             </div>
           )}
 
           <form onSubmit={handleSupportSubmit} className="card p-6 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4">
             <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <span></span> Contact Platform Support
+              <span>💬</span> Contact Platform Support
             </h2>
 
             <div className="space-y-3">
@@ -854,4 +852,5 @@ export function ProfilePage() {
       )}
     </div>
   )
+
 }
