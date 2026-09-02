@@ -47,6 +47,8 @@ import {
 
 import { useAuth } from '../context/AuthContext'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+
 interface CourseModule {
   title: string
   content: string
