@@ -28,7 +28,7 @@ class SecurityHeadersMiddleware:
                     (b"x-frame-options", b"DENY"),
                     (b"referrer-policy", b"strict-origin-when-cross-origin"),
                     (b"permissions-policy", b"geolocation=(), microphone=(), camera=()"),
-                    (b"cross-origin-opener-policy", b"same-origin"),
+                    (b"cross-origin-opener-policy", b"same-origin-allow-popups"),
                     (b"x-xss-protection", b"0"),
                 ]
 
