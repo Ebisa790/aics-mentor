@@ -46,7 +46,7 @@ class CourseMaterial(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)  # Markdown text
     material_type: Mapped[MaterialContentType] = mapped_column(
-        Enum(MaterialContentType, name="material_content_type"),
+        Enum(MaterialContentType, name="material_content_type", values_callable=lambda x: [e.value for e in x]),
         default=MaterialContentType.NOTE,
         nullable=False,
     )

@@ -50,10 +50,10 @@ class Question(Base):
     )
 
     question_type: Mapped[QuestionType] = mapped_column(
-        Enum(QuestionType, name="question_type"), nullable=False
+        Enum(QuestionType, name="question_type", values_callable=lambda x: [e.value for e in x]), nullable=False
     )
     difficulty: Mapped[DifficultyLevel] = mapped_column(
-        Enum(DifficultyLevel, name="difficulty_level"),
+        Enum(DifficultyLevel, name="difficulty_level", values_callable=lambda x: [e.value for e in x]),
         default=DifficultyLevel.INTERMEDIATE,
         nullable=False,
     )
@@ -111,7 +111,7 @@ class Quiz(Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     quiz_type: Mapped[QuizType] = mapped_column(
-        Enum(QuizType, name="quiz_type"),
+        Enum(QuizType, name="quiz_type", values_callable=lambda x: [e.value for e in x]),
         default=QuizType.DAILY_QUIZ,
         nullable=False,
     )

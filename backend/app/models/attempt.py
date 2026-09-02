@@ -72,7 +72,7 @@ class Attempt(Base):
     )
 
     status: Mapped[AttemptStatus] = mapped_column(
-        Enum(AttemptStatus, name="attempt_status"),
+        Enum(AttemptStatus, name="attempt_status", values_callable=lambda x: [e.value for e in x]),
         default=AttemptStatus.IN_PROGRESS,
         nullable=False,
     )

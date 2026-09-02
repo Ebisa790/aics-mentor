@@ -64,7 +64,7 @@ class ExamQuestion(Base):
     correct_option: Mapped[str] = mapped_column(String(1), nullable=False)  # 'A' | 'B' | 'C' | 'D'
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
     difficulty: Mapped[ExamDifficulty] = mapped_column(
-        Enum(ExamDifficulty, name="exam_difficulty"),
+        Enum(ExamDifficulty, name="exam_difficulty", values_callable=lambda x: [e.value for e in x]),
         default=ExamDifficulty.MEDIUM,
         nullable=False,
     )
@@ -74,7 +74,7 @@ class ExamQuestion(Base):
 
     # --- QA workflow & Audit Trail ---
     review_status: Mapped[ReviewStatus] = mapped_column(
-        Enum(ReviewStatus, name="review_status"),
+        Enum(ReviewStatus, name="review_status", values_callable=lambda x: [e.value for e in x]),
         default=ReviewStatus.APPROVED,
         nullable=False,
         index=True,
