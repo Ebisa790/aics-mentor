@@ -1,3 +1,4 @@
+# Build v3 - lowercase enum fix
 FROM python:3.12-slim
 
 WORKDIR /app
