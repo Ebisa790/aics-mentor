@@ -68,8 +68,8 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, name="user_role"), 
-        default=UserRole.STUDENT, 
+        Enum(UserRole, name="user_role", values_callable=lambda x: [e.value for e in x]),
+        default=UserRole.STUDENT,
         nullable=False,
         index=True,
     )
@@ -92,8 +92,8 @@ class User(Base):
 
     # Subscription & Usage Limits
     subscription_tier: Mapped[SubscriptionTier] = mapped_column(
-        Enum(SubscriptionTier, name="subscription_tier"), 
-        default=SubscriptionTier.FREE, 
+        Enum(SubscriptionTier, name="subscription_tier", values_callable=lambda x: [e.value for e in x]),
+        default=SubscriptionTier.FREE,
         nullable=False,
         index=True,
     )
