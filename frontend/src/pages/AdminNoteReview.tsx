@@ -7,6 +7,8 @@ import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
 import {
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   ArrowLeft,
   Check,
   X,

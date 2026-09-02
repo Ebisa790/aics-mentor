@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   ArrowLeft, 
   ChevronLeft, 
   ChevronRight,

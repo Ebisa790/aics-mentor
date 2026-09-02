@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Trash2, CheckCircle2, XCircle, FileText, Upload, Download } from 'lucide-react'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+
 interface Drill {
   id: string
   subject: string

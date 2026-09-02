@@ -18,6 +18,8 @@ import {
   Target,
 } from 'lucide-react'
 import {
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
   GoogleLogin,
   type CredentialResponse,
 } from '@react-oauth/google'

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, AlertTriangle, CheckCircle2, Download, Upload, Database } from 'lucide-react'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+
 interface CourseCoverage {
   id: string
   name: string

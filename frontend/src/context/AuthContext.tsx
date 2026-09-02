@@ -3,6 +3,8 @@ import { authApi } from '../api'
 import { clearTokens, getAccessToken, setTokens } from '../api/client'
 import type { User } from '../api/types'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+
 interface AuthContextValue {
   user: User | null
   isLoading: boolean

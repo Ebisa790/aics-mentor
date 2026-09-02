@@ -3,6 +3,8 @@ import { userApi, deviceApi, supportApi, type Device } from '../api'
 import { Crown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+
 // Helper to format ISO date strings into relative time (e.g., "5m ago", "Just now")
 function formatLastActive(isoString: string): string {
   if (!isoString) return 'Unknown'

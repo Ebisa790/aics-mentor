@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit3,  Trash2 } from 'lucide-react'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+
 interface Flashcard {
   id: string
   front: string
