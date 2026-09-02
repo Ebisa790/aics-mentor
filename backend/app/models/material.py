@@ -59,10 +59,10 @@ class LearningMaterial(Base):
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     file_type: Mapped[str] = mapped_column(String(20), nullable=False)  # pdf, docx, txt
     source: Mapped[MaterialSource] = mapped_column(
-        Enum(MaterialSource, name="material_source"), nullable=False
+        Enum(MaterialSource, name="material_source", values_callable=lambda x: [e.value for e in x]), nullable=False
     )
     status: Mapped[MaterialStatus] = mapped_column(
-        Enum(MaterialStatus, name="material_status"),
+        Enum(MaterialStatus, name="material_status", values_callable=lambda x: [e.value for e in x]),
         default=MaterialStatus.UPLOADED,
         nullable=False,
         index=True,

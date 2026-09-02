@@ -40,8 +40,9 @@ class SupportTicket(Base):
     issue_type = Column(String(50), nullable=False)  # account_reactivation, payment, technical, etc.
     
     # Status & Priority
-    status = Column(Enum(TicketStatus), default=TicketStatus.OPEN, nullable=False)
-    priority = Column(Enum(TicketPriority), default=TicketPriority.MEDIUM, nullable=False)
+    # FIXED:
+    status = Column(Enum(TicketStatus, name="ticket_status", values_callable=lambda x: [e.value for e in x]), default=TicketStatus.OPEN, nullable=False)
+    priority = Column(Enum(TicketPriority, name="ticket_priority", values_callable=lambda x: [e.value for e in x]), default=TicketPriority.MEDIUM, nullable=False)
     
     # Admin response
     admin_response = Column(Text, nullable=True)

@@ -92,11 +92,11 @@ class AIMessage(Base):
         nullable=False,
     )
     role: Mapped[MessageRole] = mapped_column(
-        Enum(MessageRole, name="message_role"), nullable=False
+        Enum(MessageRole, name="message_role", values_callable=lambda x: [e.value for e in x]), nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     mode: Mapped[TutorMode | None] = mapped_column(
-        Enum(TutorMode, name="tutor_mode"), nullable=True
+        Enum(TutorMode, name="tutor_mode", values_callable=lambda x: [e.value for e in x]), nullable=True
     )
 
     # Tag extracted post-hoc for student weakness analysis & mastery tracking

@@ -37,7 +37,7 @@ class Announcement(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     announcement_type: Mapped[AnnouncementType] = mapped_column(
-        Enum(AnnouncementType, name="announcement_type"),
+        Enum(AnnouncementType, name="announcement_type", values_callable=lambda x: [e.value for e in x]),
         default=AnnouncementType.PLATFORM_NEWS,
         nullable=False,
     )
