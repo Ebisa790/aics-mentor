@@ -3,6 +3,8 @@ import { userApi, deviceApi, supportApi, type Device } from '../api'
 import { Crown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+
 // Helper to format ISO date strings into relative time (e.g., "5m ago", "Just now")
 function formatLastActive(isoString: string): string {
   if (!isoString) return 'Unknown'
@@ -270,7 +272,7 @@ export function ProfilePage() {
     setError(null)
     setShow2FASetup(true)
     try {
-      const res = await fetch('/api/auth/2fa/setup', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/2fa/setup`, {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('access_token') || '') },
       })
@@ -288,7 +290,7 @@ export function ProfilePage() {
     setIsVerifying2FA(true)
     setError(null)
     try {
-      const res = await fetch('/api/auth/2fa/verify', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/2fa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -316,7 +318,7 @@ export function ProfilePage() {
     if (!twoFACode.trim()) return
     setError(null)
     try {
-      const res = await fetch('/api/auth/2fa/disable', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/2fa/disable`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
