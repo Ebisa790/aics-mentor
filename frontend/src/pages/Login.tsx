@@ -198,7 +198,11 @@ export function LoginPage() {
       if (status === 401) {
         setError('Incorrect email or password. Please try again.')
       } else if (status === 403) {
-        setError('Your account has been deactivated. Please contact support to reactivate your account.')
+        if (detail && typeof detail === 'string' && detail.toLowerCase().includes('locked')) {
+          setError('Too many failed login attempts. Please wait a few minutes and try again.')
+        } else {
+          setError('Your account has been deactivated. Please contact support to reactivate your account.')
+        }
       } else if (typeof detail === 'string') {
         setError(detail)
       } else if (err?.message && err.message.includes('Network')) {
