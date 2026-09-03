@@ -111,7 +111,7 @@ export function ResetPasswordPage() {
             'Could not reset your password. Please try again.',
         )
       } else {
-        setError('Could not reset your password. Please try again.')
+        setError('Couldn\'t reset your password. The link may have expired. Please request a new one.')
       }
     } finally {
       setIsSubmitting(false)

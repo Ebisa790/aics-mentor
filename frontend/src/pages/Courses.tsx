@@ -44,7 +44,7 @@ export function CoursesPage() {
 
         setError(
           errorObj?.response?.data?.detail ||
-            'Failed to load curriculum courses. Please try again.'
+            'Couldn\'t load courses. Check your internet and try again.'
         )
       }
     } finally {

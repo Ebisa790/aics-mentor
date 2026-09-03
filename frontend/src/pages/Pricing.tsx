@@ -35,7 +35,7 @@ export function PricingPage() {
       setPricing(primaryPlan ?? null)
     } catch (err: unknown) {
       console.error('Failed to fetch pricing:', err)
-      setError('Could not load pricing information. Please try again.')
+      setError('Couldn\'t load pricing. Please try again later.')
     } finally {
       setLoading(false)
     }

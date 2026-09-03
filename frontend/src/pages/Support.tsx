@@ -95,7 +95,7 @@ export function SupportPage() {
       if (err?.response?.status === 401) {
         setError('Please log in to submit a support ticket.')
       } else {
-        setError(err?.response?.data?.detail || 'Failed to send support ticket. Please try again.')
+        setError(err?.response?.data?.detail || 'Couldn\'t send your ticket. Please check your connection and try again.')
       }
     } finally {
       setIsSubmitting(false)

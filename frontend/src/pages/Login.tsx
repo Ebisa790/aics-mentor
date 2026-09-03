@@ -193,13 +193,13 @@ export function LoginPage() {
       }
     } catch (err: any) {
       if (err?.response?.data?.detail) {
-        setError(err.response.data.detail)
+        setError(err.response?.data?.detail || 'Incorrect email or password. Please try again.')
       } else if (err?.response?.status === 403) {
         setError('Your account has been deactivated. Please contact support to reactivate your account.')
       } else if (err?.message) {
         setError(err.message === 'Network Error' ? 'Connection issue. Check your internet and try again.' : err.message)
       } else {
-        setError('Incorrect email or password.')
+        setError('Incorrect email or password. Please try again.')
       }
     } finally {
       setIsSubmitting(false)

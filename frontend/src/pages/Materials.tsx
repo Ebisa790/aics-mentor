@@ -16,7 +16,7 @@ export function MaterialsPage() {
       const data = res?.data !== undefined ? res.data : res
       setMaterials(Array.isArray(data) ? data : data?.materials ?? [])
     } catch {
-      setError('Failed to load materials.')
+      setError('Couldn\'t load your materials. Tap Retry to try again.')
     }
   }
 
@@ -50,7 +50,7 @@ export function MaterialsPage() {
       await materialApi.delete(id)
       await load()
     } catch {
-      setError('Failed to delete material.')
+      setError('Couldn\'t delete this material. Please try again.')
     }
   }
 

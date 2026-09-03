@@ -74,7 +74,7 @@ export function DashboardPage() {
         )
       })
       .catch((err) => {
-        console.error('Failed to load announcements:', err)
+        console.error('Couldn\'t load announcements:', err)
       })
 
     return () => {

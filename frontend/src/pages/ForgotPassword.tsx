@@ -19,7 +19,7 @@ export function ForgotPasswordPage() {
     } catch {
       // Backend always returns 200 for this endpoint by design (no user enumeration),
       // so a caught error here means something else went wrong (network, etc).
-      setMessage('Something went wrong. Please try again.')
+      setMessage('Couldn\'t send the reset link. Please check your email and try again.')
     } finally {
       setIsSubmitting(false)
     }

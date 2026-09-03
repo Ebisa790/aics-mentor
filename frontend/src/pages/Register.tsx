@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import {
   Eye,
   EyeOff,
@@ -58,29 +57,6 @@ export function RegisterPage() {
     isPasswordValid &&
     agreedToTerms
 
-  const getErrorMessage = (err: unknown) => {
-    if (axios.isAxiosError(err) && err.response?.data?.detail) {
-      const detail = err.response.data.detail
-
-      if (typeof detail === 'string') {
-        return detail
-      }
-
-      if (Array.isArray(detail)) {
-        return detail
-          .map((item: any) => item?.msg || item)
-          .filter(Boolean)
-          .join(', ')
-      }
-    }
-
-    if (err instanceof Error && err.message) {
-      return err.message
-    }
-
-    return 'Could not create your account. Please try again.'
-  }
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
@@ -116,8 +92,21 @@ export function RegisterPage() {
     try {
       await register(trimmedEmail, password, trimmedName)
       navigate('/dashboard')
-    } catch (err) {
-      setError(getErrorMessage(err))
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail
+      if (typeof detail === 'string') {
+        setError(detail)
+      } else if (Array.isArray(detail)) {
+        const messages = detail
+          .map((item: any) => item?.msg || item)
+          .filter(Boolean)
+          .join(', ')
+        setError(messages)
+      } else if (err instanceof Error && err.message) {
+        setError(err.message)
+      } else {
+        setError('Registration failed. Please check your details and try again.')
+      }
     } finally {
       setIsSubmitting(false)
     }

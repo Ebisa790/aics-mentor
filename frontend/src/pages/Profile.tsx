@@ -224,7 +224,7 @@ export function ProfilePage() {
       await refreshUser()
       setSaved(true)
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to update profile. Please try again.'))
+      setError(getErrorMessage(err, 'Couldn\'t update your profile. Please try again.'))
     } finally {
       setIsSaving(false)
     }
