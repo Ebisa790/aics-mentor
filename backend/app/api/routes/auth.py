@@ -653,13 +653,15 @@ def forgot_password(request: Request, payload: ForgotPasswordRequest, db: Sessio
     db.commit()
 
     reset_link = f"{settings.FRONTEND_ORIGIN}/reset-password?token={raw_token}"
+    email_sent = False
     try:
-        send_password_reset_email(user.email, reset_link)
+        email_sent = send_password_reset_email(user.email, reset_link)
     except Exception:
-        pass
+        email_sent = False
 
+    # Return dev token if email sending failed (for development/fallback)
     dev_token = None
-    if settings.ENVIRONMENT != "production" and not settings.SMTP_HOST:
+    if not email_sent or settings.ENVIRONMENT != "production":
         dev_token = raw_token
 
     return ForgotPasswordResponse(message=generic_message, dev_reset_token=dev_token)
