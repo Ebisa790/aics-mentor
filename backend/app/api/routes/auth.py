@@ -666,12 +666,6 @@ def forgot_password(request: Request, payload: ForgotPasswordRequest, db: Sessio
 @router.post("/reset-password", response_model=UserOut)
 @limiter.limit("15/minute")
 def reset_password(request: Request, payload: ResetPasswordRequest, db: Session = Depends(get_db)):
-    from app.core.database import SessionLocal
-    from sqlalchemy import text as sql_text
-    
-    db.close()
-    db = SessionLocal()
-    
     try:
         token_hash = hashlib.sha256(payload.token.encode()).hexdigest()
         now_utc = datetime.now(timezone.utc)
@@ -727,8 +721,6 @@ def reset_password(request: Request, payload: ResetPasswordRequest, db: Session 
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Password reset failed: {str(e)}")
-    finally:
-        db.close()
 
 
 @router.post("/delete-account")
