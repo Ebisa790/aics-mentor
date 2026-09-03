@@ -61,6 +61,37 @@ def send_email(
     message["From"] = settings.SMTP_FROM_EMAIL
     message["To"] = to_email
 
+    # Try Brevo HTTP API first (more reliable from cloud services)
+    try:
+        import requests
+        brevo_url = "https://api.brevo.com/v3/smtp/email"
+        brevo_payload = {
+            "sender": {"email": settings.SMTP_FROM_EMAIL, "name": "ExitAI Ethiopia"},
+            "to": [{"email": to_email}],
+            "subject": subject,
+            "textContent": body_text,
+        }
+        if body_html:
+            brevo_payload["htmlContent"] = body_html
+        
+        brevo_response = requests.post(
+            brevo_url,
+            json=brevo_payload,
+            headers={
+                "api-key": settings.SMTP_PASSWORD,
+                "Content-Type": "application/json"
+            },
+            timeout=30
+        )
+        
+        if brevo_response.status_code == 201:
+            logger.info("Email sent via Brevo API to %s", to_email)
+            return True
+        else:
+            logger.warning(f"Brevo API failed: {brevo_response.status_code} - {brevo_response.text[:200]}")
+    except Exception as api_err:
+        logger.warning(f"Brevo API error: {api_err}")
+    
     try:
         # Handle Port 465 (Implicit SSL) vs 587/25 (Explicit STARTTLS)
         if settings.SMTP_PORT == 465:
