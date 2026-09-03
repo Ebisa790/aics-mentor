@@ -77,6 +77,8 @@ export function ProfilePage() {
   const [otpauthUri, setOtpauthUri] = useState('')
   const [twoFACode, setTwoFACode] = useState('')
   const [isVerifying2FA, setIsVerifying2FA] = useState(false)
+  const [twoFAMethod, setTwoFAMethod] = useState<'app' | 'email'>('app')
+  const [emailCodeSent, setEmailCodeSent] = useState(false)
 
   const [supportSubject, setSupportSubject] = useState('')
   const [supportMessage, setSupportMessage] = useState('')
@@ -282,6 +284,31 @@ export function ProfilePage() {
       }
     } catch {
       setError('Failed to setup 2FA. Please try again.')
+    }
+  }
+
+  const handleEmail2FASend = async () => {
+    setError(null)
+    setIsVerifying2FA(true)
+    try {
+      const res = await fetch(${API_BASE_URL}/api/auth/2fa/email/send, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('access_token'),
+        },
+        body: JSON.stringify({ email: user?.email || '', password: currentPassword }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setEmailCodeSent(true)
+      } else {
+        setError(data.detail || 'Could not send verification code.')
+      }
+    } catch {
+      setError('Could not send 2FA code. Please try again.')
+    } finally {
+      setIsVerifying2FA(false)
     }
   }
 
