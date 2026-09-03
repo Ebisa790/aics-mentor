@@ -704,15 +704,6 @@ def reset_password(request: Request, payload: ResetPasswordRequest, db: Session 
             PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)
         ).update({"used_at": now_utc})
 
-        try:
-            db.execute(
-                sql_text("DELETE FROM device_sessions WHERE user_id = :u"),
-                {"u": str(user.id)}
-            )
-        except Exception:
-            db.rollback()
-            pass
-
         db.commit()
         db.refresh(user)
         return user
