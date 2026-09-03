@@ -458,14 +458,17 @@ def verify_2fa_setup(
 ):
     code = payload.get("code", "")
     
-    if not current_user.totp_secret:
+    # Fetch fresh user from db to get latest totp_secret
+    user = db.get(User, current_user.id)
+    
+    if not user.totp_secret:
         raise HTTPException(status_code=400, detail="2FA setup not initiated. Call /api/auth/2fa/setup first.")
 
-    totp = pyotp.TOTP(current_user.totp_secret)
+    totp = pyotp.TOTP(user.totp_secret)
     if not totp.verify(code, valid_window=2):
         raise HTTPException(status_code=400, detail="Invalid 2FA code. Please try again.")
 
-    current_user.is_2fa_enabled = True
+    user.is_2fa_enabled = True
     db.commit()
 
     return {"message": "2FA enabled successfully!"}
