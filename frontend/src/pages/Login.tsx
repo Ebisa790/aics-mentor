@@ -77,7 +77,7 @@ export function LoginPage() {
         setError(data.detail || 'Invalid 2FA code.')
       }
     } catch {
-      setError('Failed to verify 2FA. Please try again.')
+      setError('Could not verify 2FA. Please check your connection and try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -104,10 +104,10 @@ export function LoginPage() {
       if (response.ok) {
         setEmailCodeSent(true)
       } else {
-        setError(data.detail || 'Failed to send verification code.')
+        setError(data.detail || 'Could not send verification code. Please try again.')
       }
     } catch {
-      setError('Failed to send 2FA code. Please try again.')
+      setError('Could not send 2FA code. Check your connection and try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -145,7 +145,7 @@ export function LoginPage() {
         setError(data.detail || 'Invalid verification code.')
       }
     } catch {
-      setError('Failed to verify code. Please try again.')
+      setError('Could not verify code. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -163,7 +163,7 @@ export function LoginPage() {
       await loginWithGoogle(credentialResponse.credential)
       navigate('/dashboard')
     } catch {
-      setError('Google sign-in didn\'t work. Please try again or use email login.')
+      setError("Google sign-in didn't work. Please try again or use email login.")
     } finally {
       setIsSubmitting(false)
     }
@@ -192,14 +192,21 @@ export function LoginPage() {
         navigate('/dashboard')
       }
     } catch (err: any) {
-      if (err?.response?.data?.detail) {
-        setError(err.response?.data?.detail || 'Incorrect email or password. Please try again.')
-      } else if (err?.response?.status === 403) {
-        setError('Your account has been deactivated. Please contact support to reactivate your account.')
-      } else if (err?.message) {
-        setError(err.message === 'Network Error' ? 'Connection issue. Check your internet and try again.' : err.message)
-      } else {
+      const detail = err?.response?.data?.detail
+      const status = err?.response?.status
+
+      if (status === 401) {
         setError('Incorrect email or password. Please try again.')
+      } else if (status === 403) {
+        setError('Your account has been deactivated. Please contact support to reactivate your account.')
+      } else if (typeof detail === 'string') {
+        setError(detail)
+      } else if (err?.message && err.message.includes('Network')) {
+        setError('Connection issue. Check your internet and try again.')
+      } else if (err?.message && err.message.includes('401')) {
+        setError('Incorrect email or password. Please try again.')
+      } else {
+        setError('Could not sign in. Please try again.')
       }
     } finally {
       setIsSubmitting(false)
