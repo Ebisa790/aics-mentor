@@ -224,7 +224,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
         if now_utc < locked_until:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account is temporarily locked due to failed login attempts. Try again later."
+                detail="Too many failed login attempts. Please wait a few minutes and try again."
             )
 
     if not user.is_active:
