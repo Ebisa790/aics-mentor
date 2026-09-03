@@ -289,8 +289,8 @@ def get_question_coverage(db: Session = Depends(get_db)):
     
     # Difficulty breakdown
     easy_count = db.query(Question).filter(Question.difficulty == 'beginner').count()
-    medium_count = db.query(Question).filter(Question.difficulty == 'INTERMEDIATE').count()
-    hard_count = db.query(Question).filter(Question.difficulty == 'ADVANCED').count()
+    medium_count = db.query(Question).filter(Question.difficulty == 'intermediate').count()
+    hard_count = db.query(Question).filter(Question.difficulty == 'advanced').count()
     
     total = easy_count + medium_count + hard_count
     

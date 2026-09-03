@@ -66,8 +66,8 @@ def get_question_coverage(
     
     # Difficulty breakdown
     easy_count = db.query(Question).filter(Question.difficulty == 'beginner').count()
-    medium_count = db.query(Question).filter(Question.difficulty == 'INTERMEDIATE').count()
-    hard_count = db.query(Question).filter(Question.difficulty == 'ADVANCED').count()
+    medium_count = db.query(Question).filter(Question.difficulty == 'intermediate').count()
+    hard_count = db.query(Question).filter(Question.difficulty == 'advanced').count()
     
     total = easy_count + medium_count + hard_count
     
@@ -219,14 +219,14 @@ def bulk_import_questions(
         "MEDIUM": "MEDIUM",
         "HARD": "HARD",
         "beginner": "easy",
-        "INTERMEDIATE": "MEDIUM",
-        "ADVANCED": "HARD"
+        "intermediate": "medium",
+        "advanced": "hard"
     }
     
     created = 0
     for q in questions_data:
         diff_value = q.get("difficulty", "medium")
-        mapped_diff = diff_map.get(diff_value.lower(), "INTERMEDIATE")
+        mapped_diff = diff_map.get(diff_value.lower(), "intermediate")
         
         # Create exam question with GENERATED status (needs review)
         exam_question = ExamQuestion(
@@ -275,14 +275,14 @@ def bulk_import_questions(
         # Map difficulty to enum values
         diff_map = {
             "easy": "beginner",
-            "medium": "INTERMEDIATE", 
-            "hard": "ADVANCED",
+            "medium": "intermediate", 
+            "hard": "advanced",
             "easy": "beginner",
-            "MEDIUM": "INTERMEDIATE",
-            "HARD": "ADVANCED"
+            "MEDIUM": "intermediate",
+            "HARD": "advanced"
         }
         diff_value = q.get("difficulty", "medium")
-        mapped_diff = diff_map.get(diff_value.lower(), "INTERMEDIATE")
+        mapped_diff = diff_map.get(diff_value.lower(), "intermediate")
         
         from datetime import datetime
         new_question = Question(
@@ -328,8 +328,8 @@ def get_course_question_stats(
     
     total = db.query(Question).filter(Question.course_id == course.id).count()
     easy = db.query(Question).filter(Question.course_id == course.id, Question.difficulty == 'beginner').count()
-    medium = db.query(Question).filter(Question.course_id == course.id, Question.difficulty == 'INTERMEDIATE').count()
-    hard = db.query(Question).filter(Question.course_id == course.id, Question.difficulty == 'ADVANCED').count()
+    medium = db.query(Question).filter(Question.course_id == course.id, Question.difficulty == 'intermediate').count()
+    hard = db.query(Question).filter(Question.course_id == course.id, Question.difficulty == 'advanced').count()
     
     return {
         "course": course.name,
