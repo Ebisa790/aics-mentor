@@ -666,6 +666,7 @@ def forgot_password(request: Request, payload: ForgotPasswordRequest, db: Sessio
 @router.post("/reset-password", response_model=UserOut)
 @limiter.limit("15/minute")
 def reset_password(request: Request, payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    from sqlalchemy import text as sql_text
     try:
         token_hash = hashlib.sha256(payload.token.encode()).hexdigest()
         now_utc = datetime.now(timezone.utc)
