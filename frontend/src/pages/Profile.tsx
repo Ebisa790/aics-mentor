@@ -638,15 +638,27 @@ export function ProfilePage() {
             </div>
 
             {!is2FAEnabled && !show2FASetup && (
-              <button
-                onClick={handle2FASetup}
-                className="py-2.5 px-5 bg-indigo-600 text-white font-bold text-sm rounded-xl hover:bg-indigo-700 transition-all"
-              >
-                Enable 2FA
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handle2FASetup}
+                  className="py-2.5 px-5 bg-indigo-600 text-white font-bold text-sm rounded-xl hover:bg-indigo-700 transition-all"
+                >
+                  Use Google Authenticator
+                </button>
+                <button
+                  onClick={() => {
+                    setShow2FASetup(true)
+                    setTwoFAMethod('email')
+                    setEmailCodeSent(false)
+                  }}
+                  className="py-2.5 px-5 bg-emerald-500 text-white font-bold text-sm rounded-xl hover:bg-emerald-600 transition-all"
+                >
+                  Use Email Code
+                </button>
+              </div>
             )}
 
-            {show2FASetup && !is2FAEnabled && (
+            {show2FASetup && !is2FAEnabled && twoFAMethod === 'app' && (
               <div className="space-y-3">
                 {otpauthUri && (
                   <div className="p-4 bg-slate-50 rounded-xl text-center space-y-2">
@@ -659,7 +671,7 @@ export function ProfilePage() {
                   </div>
                 )}
                 <div>
-                  <label className="label">Enter 6-digit code</label>
+                  <label className="label">Enter 6-digit code from app</label>
                   <input
                     type="text"
                     maxLength={6}
@@ -676,6 +688,45 @@ export function ProfilePage() {
                 >
                   {isVerifying2FA ? 'Verifying...' : 'Verify & Enable'}
                 </button>
+              </div>
+            )}
+
+            {show2FASetup && !is2FAEnabled && twoFAMethod === 'email' && (
+              <div className="space-y-3">
+                {!emailCodeSent ? (
+                  <>
+                    <p className="text-xs text-slate-500">We'll send a 6-digit verification code to your email.</p>
+                    <button
+                      onClick={handleEmail2FASend}
+                      disabled={isVerifying2FA}
+                      className="py-2.5 px-5 bg-emerald-500 text-white font-bold text-sm rounded-xl hover:bg-emerald-600 transition-all disabled:opacity-50"
+                    >
+                      {isVerifying2FA ? 'Sending...' : 'Send Verification Code'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-slate-500">Code sent to {user?.email}</p>
+                    <div>
+                      <label className="label">Enter 6-digit code from email</label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={twoFACode}
+                        onChange={(e) => setTwoFACode(e.target.value)}
+                        className="input text-center text-2xl tracking-widest font-mono"
+                      />
+                    </div>
+                    <button
+                      onClick={handle2FAVerify}
+                      disabled={isVerifying2FA || twoFACode.length !== 6}
+                      className="py-2.5 px-5 bg-emerald-500 text-white font-bold text-sm rounded-xl hover:bg-emerald-600 transition-all disabled:opacity-50"
+                    >
+                      {isVerifying2FA ? 'Verifying...' : 'Verify & Enable'}
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
