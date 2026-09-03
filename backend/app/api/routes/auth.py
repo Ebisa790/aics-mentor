@@ -81,14 +81,17 @@ def _enforce_device_type_limit(user: User, request: Request, db: Session) -> Non
     )
     
     # Check if same device type already active
+    # Sort by last_active (most recent first)
+    active_devices.sort(key=lambda d: d.last_active if d.last_active else datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    
     same_type_devices = [
         d for d in active_devices 
         if d.device_type == current_device_type
     ]
     
-    if same_type_devices:
-        # Revoke old same-type device (keep only one per type)
-        for device in same_type_devices:
+    if len(same_type_devices) > 1:
+        # Keep the most recent one, revoke older ones
+        for device in same_type_devices[1:]:
             device.is_revoked = True
         db.commit()
         
