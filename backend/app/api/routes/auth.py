@@ -298,6 +298,7 @@ def google_login(request: Request, payload: GoogleLoginRequest, db: Session = De
     Authenticates or registers a user via Google OAuth ID token.
     Validates the token against Google APIs and returns standard JWT tokens.
     """
+    print(f"DEBUG: GOOGLE_CLIENT_ID from settings = {repr(settings.GOOGLE_CLIENT_ID)}")
     if not getattr(settings, "GOOGLE_CLIENT_ID", None):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
