@@ -348,7 +348,7 @@ export function MockExamPage() {
 
       alert(
         err.response?.data?.detail ||
-          'Failed to submit exam. Please try again.'
+          'We couldn\'t submit your exam. Your answers are saved - please try again.'
       );
     } finally {
       setLoading(false);
@@ -749,7 +749,7 @@ export function MockExamPage() {
       } else {
         alert(
           err.response?.data?.detail ||
-            'Failed to start mock exam session.'
+            'Couldn\'t start your exam. Check your connection and try again.'
         );
       }
     } finally {

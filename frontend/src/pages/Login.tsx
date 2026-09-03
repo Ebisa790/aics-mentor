@@ -163,7 +163,7 @@ export function LoginPage() {
       await loginWithGoogle(credentialResponse.credential)
       navigate('/dashboard')
     } catch {
-      setError('Failed to authenticate with Google.')
+      setError('Google sign-in didn\'t work. Please try again or use email login.')
     } finally {
       setIsSubmitting(false)
     }
@@ -197,7 +197,7 @@ export function LoginPage() {
       } else if (err?.response?.status === 403) {
         setError('Your account has been deactivated. Please contact support to reactivate your account.')
       } else if (err?.message) {
-        setError(err.message)
+        setError(err.message === 'Network Error' ? 'Connection issue. Check your internet and try again.' : err.message)
       } else {
         setError('Incorrect email or password.')
       }

@@ -77,11 +77,11 @@ export function CourseDetailPage() {
           setFetchError(
             typeof err.response?.data?.detail === 'string'
               ? err.response.data.detail
-              : 'Failed to load course details. Please try again.'
+              : 'Couldn\'t load this course. Check your internet and try again.'
           )
         }
       } else {
-        setFetchError('Failed to load course details. Please try again.')
+        setFetchError('Couldn\'t load this course. Check your internet and try again.')
       }
 
       setCourse(null)
@@ -304,7 +304,7 @@ export function CourseDetailPage() {
         </div>
 
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-          {fetchError ? 'Failed to Load Course' : 'Course Not Found'}
+          {fetchError ? 'Couldn\'t Load This Course' : 'Course Not Found'}
         </h2>
 
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-md mx-auto mb-6">

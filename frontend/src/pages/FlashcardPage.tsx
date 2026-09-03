@@ -115,7 +115,7 @@ export function FlashcardPage() {
       const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/flashcards`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
-      if (!response.ok) throw new Error('Failed to load flashcards')
+      if (!response.ok) throw new Error('Couldn\'t load your flashcards. Tap Retry to try again.')
       const data = await response.json()
       const allCards: Flashcard[] = data.flashcards || []
       setAllFlashcards(allCards)
@@ -126,7 +126,7 @@ export function FlashcardPage() {
       setIsPremium(data.is_premium || false)
       setTotalCards(data.total || 0)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load')
+      setError(err instanceof Error ? err.message : 'Couldn\'t load your flashcards.')
     } finally {
       setLoading(false)
     }
