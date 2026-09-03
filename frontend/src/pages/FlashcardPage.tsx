@@ -472,7 +472,7 @@ export function FlashcardPage() {
 
             {/* Rating Buttons - Human labels */}
             {isFlipped && (
-              <div className="grid grid-cols-4 gap-2 mt-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-6">
                 <button onClick={handleAgain} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all hover:scale-105 ${isDarkMode ? 'bg-red-950/50 border border-red-800 text-red-300 hover:bg-red-950/70' : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'}`}>
                   <span className="text-sm font-bold">Didn't get it</span>
                   <span className="text-[9px] opacity-70">See again soon</span>
