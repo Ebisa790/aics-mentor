@@ -65,7 +65,7 @@ def get_question_coverage(
         })
     
     # Difficulty breakdown
-    easy_count = db.query(Question).filter(Question.difficulty == 'BEGINNER').count()
+    easy_count = db.query(Question).filter(Question.difficulty == 'beginner').count()
     medium_count = db.query(Question).filter(Question.difficulty == 'INTERMEDIATE').count()
     hard_count = db.query(Question).filter(Question.difficulty == 'ADVANCED').count()
     
@@ -218,7 +218,7 @@ def bulk_import_questions(
         "EASY": "EASY",
         "MEDIUM": "MEDIUM",
         "HARD": "HARD",
-        "BEGINNER": "EASY",
+        "beginner": "easy",
         "INTERMEDIATE": "MEDIUM",
         "ADVANCED": "HARD"
     }
@@ -274,10 +274,10 @@ def bulk_import_questions(
     for q in questions_data:
         # Map difficulty to enum values
         diff_map = {
-            "easy": "BEGINNER",
+            "easy": "beginner",
             "medium": "INTERMEDIATE", 
             "hard": "ADVANCED",
-            "EASY": "BEGINNER",
+            "easy": "beginner",
             "MEDIUM": "INTERMEDIATE",
             "HARD": "ADVANCED"
         }
@@ -327,7 +327,7 @@ def get_course_question_stats(
         raise HTTPException(404, "Course not found")
     
     total = db.query(Question).filter(Question.course_id == course.id).count()
-    easy = db.query(Question).filter(Question.course_id == course.id, Question.difficulty == 'BEGINNER').count()
+    easy = db.query(Question).filter(Question.course_id == course.id, Question.difficulty == 'beginner').count()
     medium = db.query(Question).filter(Question.course_id == course.id, Question.difficulty == 'INTERMEDIATE').count()
     hard = db.query(Question).filter(Question.course_id == course.id, Question.difficulty == 'ADVANCED').count()
     
