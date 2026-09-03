@@ -39,7 +39,7 @@ export function ForgotPasswordPage() {
             {devToken && (
               <div className="text-xs bg-canvas rounded-lg p-3 space-y-2">
                 <div className="text-ink/50">
-                  Dev mode — no email provider is configured, so here's the reset link directly:
+                  A password reset link has been sent to your email.
                 </div>
                 <Link to={`/reset-password?token=${devToken}`} className="text-accent-dark font-medium break-all">
                   Click here to reset your password
