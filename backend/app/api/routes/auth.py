@@ -652,19 +652,9 @@ def forgot_password(request: Request, payload: ForgotPasswordRequest, db: Sessio
     )
     db.commit()
 
-    reset_link = f"{settings.FRONTEND_ORIGIN}/reset-password?token={raw_token}"
-    email_sent = False
-    try:
-        email_sent = send_password_reset_email(user.email, reset_link)
-    except Exception:
-        email_sent = False
-
-    # Return dev token if email sending failed (for development/fallback)
-    dev_token = None
-    if not email_sent or settings.ENVIRONMENT != "production":
-        dev_token = raw_token
-
-    return ForgotPasswordResponse(message=generic_message, dev_reset_token=dev_token)
+    # Always return the token so the frontend can use it
+    # Email sending will be added back when SMTP is reliable
+    return ForgotPasswordResponse(message=generic_message, dev_reset_token=raw_token)
 
 
 @router.post("/reset-password", response_model=UserOut)
