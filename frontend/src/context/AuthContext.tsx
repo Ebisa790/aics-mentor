@@ -81,45 +81,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user])
 
   const login = async (email: string, password: string) => {
-    const authResponse = await authApi.login(email, password)
-    console.log('AuthContext login - response:', authResponse)
-    
-    // Check if 2FA is required
-    if (authResponse && (authResponse as any).requires_2fa === true) {
+    try {
+      const authResponse = await authApi.login(email, password)
+      console.log('AuthContext login - response:', authResponse)
+      
+      // Check if 2FA is required
+      if (authResponse && (authResponse as any).requires_2fa === true) {
+        return authResponse
+      }
+      
+      // Normal login - set tokens
+      if (authResponse && authResponse.access_token) {
+        setTokens(authResponse.access_token, authResponse.refresh_token)
+        await refreshUser()
+      }
+      
       return authResponse
+    } catch (err: any) {
+      if (err?.response?.status === 401) {
+        throw new Error('Incorrect email or password. Please try again.')
+      }
+      if (err?.response?.status === 403) {
+        const detail = err?.response?.data?.detail
+        if (detail && typeof detail === 'string' && detail.toLowerCase().includes('locked')) {
+          throw new Error('Too many failed login attempts. Please wait a few minutes and try again.')
+        }
+        throw new Error('Your account has been deactivated. Please contact support to reactivate your account.')
+      }
+      if (err?.message && err.message.includes('Network')) {
+        throw new Error('Connection issue. Check your internet and try again.')
+      }
+      throw err
     }
-    
-    // Normal login - set tokens
-    if (authResponse && authResponse.access_token) {
-      setTokens(authResponse.access_token, authResponse.refresh_token)
-      await refreshUser()
-    }
-    
-    return authResponse
   }
 
   const loginWithGoogle = async (idToken: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id_token: idToken }),
-    })
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id_token: idToken }),
+      })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.detail || 'Google authentication failed')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Google authentication failed')
+      }
+
+      const authResponse = await response.json()
+      setTokens(authResponse.access_token, authResponse.refresh_token)
+      await refreshUser()
+    } catch (err: any) {
+      if (err?.message?.includes('401')) {
+        throw new Error('Google sign-in failed. Please try again.')
+      }
+      throw err
     }
-
-    const authResponse = await response.json()
-    setTokens(authResponse.access_token, authResponse.refresh_token)
-    await refreshUser()
   }
 
   const register = async (email: string, password: string, fullName: string) => {
-    await authApi.register({ email, password, full_name: fullName })
-    await login(email, password)
+    try {
+      await authApi.register({ email, password, full_name: fullName })
+      await login(email, password)
+    } catch (err: any) {
+      if (err?.response?.status === 400) {
+        throw new Error('An account with this email already exists.')
+      }
+      throw err
+    }
   }
 
   const logout = () => {
