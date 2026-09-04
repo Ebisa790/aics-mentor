@@ -238,7 +238,7 @@ export function ProfilePage() {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + localStorage.getItem('access_token'),
         },
-        body: JSON.stringify({ email: user?.email || '', password: currentPassword }),
+        body: JSON.stringify({ email: user?.email || '' }),
       })
       const data = await res.json()
       if (res.ok) {
