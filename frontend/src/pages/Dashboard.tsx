@@ -178,7 +178,7 @@ export function DashboardPage() {
                 <button
                   type="button"
                   onClick={handleMockExamClick}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-xs font-bold text-slate-900 shadow-sm transition hover:bg-slate-100 active:scale-[0.98] sm:w-auto sm:py-2.5 sm:text-sm"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-xs font-bold text-slate-900 shadow-sm transition active:scale-95 hover:bg-slate-100 active:scale-[0.98] sm:w-auto sm:py-2.5 sm:text-sm"
                 >
                   {!hasPremiumAccess && (
                     <Lock className="h-3.5 w-3.5" />
@@ -200,7 +200,7 @@ export function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => setIsCodeTraceOpen(true)}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-xs font-bold text-slate-950 shadow-sm transition hover:bg-emerald-400 active:scale-[0.98] sm:w-auto sm:py-2.5 sm:text-sm"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-xs font-bold text-slate-950 shadow-sm transition active:scale-95 hover:bg-emerald-400 active:scale-[0.98] sm:w-auto sm:py-2.5 sm:text-sm"
                 >
                   <Terminal className="h-4 w-4" />
                   Code Trace Debugger
@@ -240,7 +240,7 @@ export function DashboardPage() {
               {announcements.slice(0, 3).map((announcement) => (
                 <article
                   key={announcement.id}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:p-5"
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition active:scale-95 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 sm:p-5"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 
@@ -291,7 +291,7 @@ export function DashboardPage() {
           <ExamCountdown examDate={user?.exam_date ?? null} />
 
           {/* Exam target */}
-          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition active:scale-95 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
 
             <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 sm:h-14 sm:w-14">
               <Target className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -308,7 +308,7 @@ export function DashboardPage() {
 
               <Link
                 to="/courses"
-                className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 transition-colors hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 transition-colors active:scale-95 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 Browse All Courses & Topics
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -339,7 +339,7 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => setIsCodeTraceOpen(true)}
-              className="group flex flex-col justify-between rounded-xl border border-l-4 border-slate-200 border-l-emerald-500 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:border-l-emerald-500 dark:bg-slate-900 dark:hover:border-slate-700"
+              className="group flex flex-col justify-between rounded-xl border border-l-4 border-slate-200 border-l-emerald-500 bg-white p-5 text-left shadow-sm transition-all active:scale-95 duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:border-l-emerald-500 dark:bg-slate-900 dark:hover:border-slate-700"
             >
               <div>
                 <div className="flex items-center justify-between gap-3">
@@ -368,7 +368,7 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={handleMockExamClick}
-              className="group flex flex-col justify-between rounded-xl border border-l-4 border-slate-200 border-l-blue-500 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:border-l-blue-500 dark:bg-slate-900 dark:hover:border-slate-700"
+              className="group flex flex-col justify-between rounded-xl border border-l-4 border-slate-200 border-l-blue-500 bg-white p-5 text-left shadow-sm transition-all active:scale-95 duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:border-l-blue-500 dark:bg-slate-900 dark:hover:border-slate-700"
             >
               <div>
                 <div className="flex items-center justify-between gap-3">
@@ -408,7 +408,7 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={handleTutorClick}
-              className="group flex flex-col justify-between rounded-xl border border-l-4 border-slate-200 border-l-purple-500 bg-white p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:border-l-purple-500 dark:bg-slate-900 dark:hover:border-slate-700 sm:col-span-2 md:col-span-1"
+              className="group flex flex-col justify-between rounded-xl border border-l-4 border-slate-200 border-l-purple-500 bg-white p-5 text-left shadow-sm transition-all active:scale-95 duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:border-l-purple-500 dark:bg-slate-900 dark:hover:border-slate-700 sm:col-span-2 md:col-span-1"
             >
               <div>
                 <div className="flex items-center justify-between gap-3">
@@ -466,7 +466,7 @@ export function DashboardPage() {
 
             <Link
               to="/courses"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 transition active:scale-95 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto"
             >
               Explore Courses
               <ArrowRight className="h-3.5 w-3.5" />

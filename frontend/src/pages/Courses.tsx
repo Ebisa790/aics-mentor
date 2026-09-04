@@ -134,7 +134,7 @@ export function CoursesPage() {
             <div className="mb-7">
               <Link
                 to="/dashboard"
-                className="group inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:bg-slate-800/5 hover:text-indigo-600 dark:text-indigo-400"
+                className="group inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 transition-colors active:scale-95 hover:bg-slate-100 dark:bg-slate-800/5 hover:text-indigo-600 dark:text-indigo-400"
               >
                 <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                 Back to Dashboard
@@ -204,7 +204,7 @@ export function CoursesPage() {
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search courses by code, title, or topic..."
                   aria-label="Search courses"
-                  className="h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white pl-11 pr-11 text-sm text-slate-900 dark:text-slate-100 shadow-sm outline-none transition-all placeholder:text-slate-400 dark:text-slate-500 focus:border-accent/50 focus:ring-4 focus:ring-accent/10 dark:bg-slate-900"
+                  className="h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white pl-11 pr-11 text-sm text-slate-900 dark:text-slate-100 shadow-sm outline-none transition-all active:scale-95 placeholder:text-slate-400 dark:text-slate-500 focus:border-accent/50 focus:ring-4 focus:ring-accent/10 dark:bg-slate-900"
                 />
 
                 {searchQuery && (
@@ -212,7 +212,7 @@ export function CoursesPage() {
                     type="button"
                     onClick={() => setSearchQuery('')}
                     aria-label="Clear search"
-                    className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:bg-slate-800/5 hover:text-slate-900 dark:text-slate-100"
+                    className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 transition-colors active:scale-95 hover:bg-slate-100 dark:bg-slate-800/5 hover:text-slate-900 dark:text-slate-100"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -222,7 +222,7 @@ export function CoursesPage() {
               <button
                 type="button"
                 onClick={() => setShowFilters((value) => !value)}
-                className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold transition-all lg:hidden ${
+                className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold transition-all active:scale-95 lg:hidden ${
                   showFilters || selectedCategory !== 'ALL'
                     ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-600 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
                     : 'border-slate-200 dark:border-slate-700 bg-white text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800/[0.03] dark:bg-slate-900'
@@ -256,7 +256,7 @@ export function CoursesPage() {
                         key={category}
                         type="button"
                         onClick={() => setSelectedCategory(category)}
-                        className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-semibold transition-all ${
+                        className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-semibold transition-all active:scale-95 ${
                           active
                             ? 'bg-slate-100 dark:bg-slate-800 text-white shadow-sm'
                             : 'bg-slate-100 dark:bg-slate-800/5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800/10 hover:text-slate-900 dark:text-slate-100'
@@ -298,7 +298,7 @@ export function CoursesPage() {
                         key={category}
                         type="button"
                         onClick={() => setSelectedCategory(category)}
-                        className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                        className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all active:scale-95 ${
                           active
                             ? 'bg-slate-100 dark:bg-slate-800 text-white'
                             : 'bg-slate-100 dark:bg-slate-800/5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:bg-slate-800/10 hover:text-slate-900 dark:text-slate-100'
@@ -407,7 +407,7 @@ export function CoursesPage() {
               <button
                 type="button"
                 onClick={() => fetchCourses()}
-                className="mt-6 inline-flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 px-5 py-2.5 text-xs font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-slate-100 dark:bg-slate-800/90 hover:shadow-lg"
+                className="mt-6 inline-flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 px-5 py-2.5 text-xs font-bold text-white transition-all active:scale-95 hover:-translate-y-0.5 hover:bg-slate-100 dark:bg-slate-800/90 hover:shadow-lg"
               >
                 Try Again
               </button>
@@ -436,7 +436,7 @@ export function CoursesPage() {
 
               <Link
                 to="/dashboard"
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 px-5 py-2.5 text-xs font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-slate-100 dark:bg-slate-800/90"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 px-5 py-2.5 text-xs font-bold text-white transition-all active:scale-95 hover:-translate-y-0.5 hover:bg-slate-100 dark:bg-slate-800/90"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Return to Dashboard
@@ -473,7 +473,7 @@ export function CoursesPage() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 px-5 py-2.5 text-xs font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-slate-100 dark:bg-slate-800/90"
+                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 px-5 py-2.5 text-xs font-bold text-white transition-all active:scale-95 hover:-translate-y-0.5 hover:bg-slate-100 dark:bg-slate-800/90"
                 >
                   <X className="h-3.5 w-3.5" />
                   Clear Filters
@@ -520,7 +520,7 @@ export function CoursesPage() {
                         <Link
                           key={course.id}
                           to={`/courses/${course.id}`}
-                          className="group relative flex min-h-[245px] flex-col overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300 dark:border-indigo-700 hover:shadow-xl hover:shadow-indigo-500/10 dark:bg-slate-900"
+                          className="group relative flex min-h-[245px] flex-col overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white p-5 shadow-sm transition-all active:scale-95 duration-300 hover:-translate-y-1 hover:border-indigo-300 dark:border-indigo-700 hover:shadow-xl hover:shadow-indigo-500/10 dark:bg-slate-900"
                         >
                           {/* Accent line */}
                           <div className="absolute left-0 right-0 top-0 h-0.5 origin-left scale-x-0 bg-indigo-600 dark:bg-indigo-500 transition-transform duration-300 group-hover:scale-x-100" />
@@ -530,7 +530,7 @@ export function CoursesPage() {
                             {/* Card top */}
                             <div className="flex items-start justify-between gap-3">
                               {course.code ? (
-                                <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800/5 px-2.5 py-1 font-mono text-[11px] font-bold text-slate-600 dark:text-slate-400 transition-colors group-hover:bg-indigo-600 dark:bg-indigo-500/10 group-hover:text-indigo-600 dark:text-indigo-400">
+                                <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800/5 px-2.5 py-1 font-mono text-[11px] font-bold text-slate-600 dark:text-slate-400 transition-colors active:scale-95 group-hover:bg-indigo-600 dark:bg-indigo-500/10 group-hover:text-indigo-600 dark:text-indigo-400">
                                   {course.code}
                                 </span>
                               ) : (
@@ -549,7 +549,7 @@ export function CoursesPage() {
 
                             {/* Course title */}
                             <div className="mt-5">
-                              <h3 className="font-bold text-lg font-bold leading-snug text-slate-900 dark:text-slate-100 transition-colors group-hover:text-indigo-600 dark:text-indigo-400">
+                              <h3 className="font-bold text-lg font-bold leading-snug text-slate-900 dark:text-slate-100 transition-colors active:scale-95 group-hover:text-indigo-600 dark:text-indigo-400">
                                 {course.name}
                               </h3>
 
@@ -581,11 +581,11 @@ export function CoursesPage() {
 
                               {/* Bottom action */}
                               <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
-                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors group-hover:text-indigo-600 dark:text-indigo-400">
+                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors active:scale-95 group-hover:text-indigo-600 dark:text-indigo-400">
                                   Explore Course
                                 </span>
 
-                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/5 text-slate-500 dark:text-slate-400 transition-all duration-300 group-hover:bg-indigo-600 dark:bg-indigo-500 group-hover:text-white">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800/5 text-slate-500 dark:text-slate-400 transition-all active:scale-95 duration-300 group-hover:bg-indigo-600 dark:bg-indigo-500 group-hover:text-white">
                                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                                 </span>
                               </div>

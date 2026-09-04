@@ -1060,7 +1060,7 @@ export function MockExamPage() {
               onClick={() =>
                 setShowUpgradeModal(true)
               }
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl transition shrink-0 flex items-center gap-1.5 shadow-sm"
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl transition active:scale-95 shrink-0 flex items-center gap-1.5 shadow-sm"
             >
               <Crown className="h-3.5 w-3.5 fill-slate-950" />
               <span>Upgrade</span>
@@ -1097,7 +1097,7 @@ export function MockExamPage() {
                           preset.id
                         )
                       }
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${
+                      className={`p-4 rounded-xl border-2 text-left transition-all active:scale-95 ${
                         isSelected
                           ? 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-600/20'
                           : 'border-slate-200 bg-white hover:border-slate-300'
@@ -1211,7 +1211,7 @@ export function MockExamPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition active:scale-95 shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {!isPremium && (
                   <Lock className="h-4 w-4 text-indigo-200" />
@@ -1363,7 +1363,7 @@ export function MockExamPage() {
               onClick={() =>
                 setShowSubmitModal(true)
               }
-              className="bg-red-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-red-700 transition shadow-sm"
+              className="bg-red-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-red-700 transition active:scale-95 shadow-sm"
             >
               Finish & Submit
             </button>
@@ -1391,7 +1391,7 @@ export function MockExamPage() {
                       currentQ.id
                     )
                   }
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all active:scale-95 flex items-center gap-1.5 ${
                     flaggedQuestions[
                       currentQ.id
                     ]
@@ -1451,7 +1451,7 @@ export function MockExamPage() {
                           opt
                         )
                       }
-                      className={`w-full text-left p-4 rounded-xl border transition-all flex items-center gap-4 ${
+                      className={`w-full text-left p-4 rounded-xl border transition-all active:scale-95 flex items-center gap-4 ${
                         isSelected
                           ? 'border-indigo-600 bg-indigo-50/60 font-medium text-indigo-950 shadow-sm ring-1 ring-indigo-600'
                           : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800'
@@ -1518,7 +1518,7 @@ export function MockExamPage() {
                           )
                       )
                     }
-                    className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-indigo-700 transition flex items-center gap-1"
+                    className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-xs font-semibold hover:bg-indigo-700 transition active:scale-95 flex items-center gap-1"
                   >
                     <span>Next</span>
                     <ChevronRight className="h-4 w-4" />
@@ -1629,7 +1629,7 @@ export function MockExamPage() {
                             idx
                           )
                         }
-                        className={`h-9 w-full rounded-lg text-xs border transition-all flex items-center justify-center ${statusClasses}`}
+                        className={`h-9 w-full rounded-lg text-xs border transition-all active:scale-95 flex items-center justify-center ${statusClasses}`}
                       >
                         {idx + 1}
                       </button>
@@ -1702,7 +1702,7 @@ export function MockExamPage() {
                     handleSubmitExam
                   }
                   disabled={loading}
-                  className="px-5 py-2.5 bg-red-600 text-white text-xs font-semibold rounded-xl hover:bg-red-700 transition disabled:opacity-50"
+                  className="px-5 py-2.5 bg-red-600 text-white text-xs font-semibold rounded-xl hover:bg-red-700 transition active:scale-95 disabled:opacity-50"
                 >
                   {loading
                     ? 'Submitting...'
@@ -1846,7 +1846,7 @@ export function MockExamPage() {
                   handleStartTargetedRetake
                 }
                 disabled={loading}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-3 rounded-xl transition shadow-sm flex items-center gap-2 disabled:opacity-50"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-3 rounded-xl transition active:scale-95 shadow-sm flex items-center gap-2 disabled:opacity-50"
               >
                 <RotateCcw className="h-4 w-4 shrink-0" />
 
@@ -1863,7 +1863,7 @@ export function MockExamPage() {
               onClick={() =>
                 setStep('config')
               }
-              className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold px-5 py-3 rounded-xl transition flex items-center gap-2"
+              className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold px-5 py-3 rounded-xl transition active:scale-95 flex items-center gap-2"
             >
               <span>
                 New Exam
@@ -1903,7 +1903,7 @@ export function MockExamPage() {
                     key={
                       item.id ?? idx
                     }
-                    className={`bg-white rounded-2xl border p-6 space-y-4 transition-all shadow-sm ${
+                    className={`bg-white rounded-2xl border p-6 space-y-4 transition-all active:scale-95 shadow-sm ${
                       item.is_correct
                         ? 'border-slate-200'
                         : 'border-rose-200 bg-rose-50/10'
@@ -1942,7 +1942,7 @@ export function MockExamPage() {
                         disabled={
                           explState.loading
                         }
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition active:scale-95 disabled:opacity-50"
                       >
                         <Sparkles className="h-3.5 w-3.5 fill-amber-300 text-amber-500 shrink-0" />
 
@@ -2007,7 +2007,7 @@ export function MockExamPage() {
                         return (
                           <div
                             key={opt}
-                            className={`p-3 rounded-xl border text-xs flex items-center gap-3 transition-all ${style}`}
+                            className={`p-3 rounded-xl border text-xs flex items-center gap-3 transition-all active:scale-95 ${style}`}
                           >
 
                             <span

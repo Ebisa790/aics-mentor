@@ -354,7 +354,7 @@ export function FlashcardPage() {
   }
 
   return (
-    <div className={`min-h-screen py-8 px-4 transition-colors ${isDarkMode ? 'bg-slate-950' : 'bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50'}`}>
+    <div className={`min-h-screen py-8 px-4 transition-colors active:scale-95 ${isDarkMode ? 'bg-slate-950' : 'bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50'}`}>
       <div className="max-w-2xl mx-auto">
         {/* Premium Banner */}
         {!isPremium && totalCards > flashcards.length && (
@@ -376,12 +376,12 @@ export function FlashcardPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <button onClick={() => navigate(-1)} className={`flex items-center text-sm font-semibold transition-colors ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-indigo-600'}`}>
+          <button onClick={() => navigate(-1)} className={`flex items-center text-sm font-semibold transition-colors active:scale-95 ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-indigo-600'}`}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </button>
           
           <div className="flex items-center gap-2">
-            <button onClick={shuffleCards} className={`p-2 rounded-xl border transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-500 hover:text-indigo-600'}`} title="Shuffle cards">
+            <button onClick={shuffleCards} className={`p-2 rounded-xl border transition-all active:scale-95 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-500 hover:text-indigo-600'}`} title="Shuffle cards">
               <Shuffle className="w-4 h-4" />
             </button>
             
@@ -430,7 +430,7 @@ export function FlashcardPage() {
           <div>
             <div 
               onClick={handleFlip}
-              className={`relative cursor-pointer rounded-3xl shadow-xl border p-8 min-h-[320px] flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-2xl ${
+              className={`relative cursor-pointer rounded-3xl shadow-xl border p-8 min-h-[320px] flex flex-col items-center justify-center text-center transition-all active:scale-95 duration-300 hover:shadow-2xl ${
                 isDarkMode ? 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700' : 'bg-gradient-to-br from-white to-slate-50 border-slate-200'
               }`}
             >
@@ -450,7 +450,7 @@ export function FlashcardPage() {
                 </span>
               )}
 
-              <div className={`transition-all duration-300 transform ${isFlipped ? 'scale-95' : 'scale-100'}`}>
+              <div className={`transition-all active:scale-95 duration-300 transform ${isFlipped ? 'scale-95' : 'scale-100'}`}>
                 {!isFlipped ? (
                   <div>
                     <p className={`text-2xl font-bold leading-relaxed ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -473,19 +473,19 @@ export function FlashcardPage() {
             {/* Rating Buttons - Human labels */}
             {isFlipped && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-6">
-                <button onClick={handleAgain} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all hover:scale-105 ${isDarkMode ? 'bg-red-950/50 border border-red-800 text-red-300 hover:bg-red-950/70' : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'}`}>
+                <button onClick={handleAgain} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all active:scale-95 hover:scale-105 ${isDarkMode ? 'bg-red-950/50 border border-red-800 text-red-300 hover:bg-red-950/70' : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'}`}>
                   <span className="text-sm font-bold">Didn't get it</span>
                   <span className="text-[9px] opacity-70">See again soon</span>
                 </button>
-                <button onClick={handleHard} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all hover:scale-105 ${isDarkMode ? 'bg-amber-950/50 border border-amber-800 text-amber-300 hover:bg-amber-950/70' : 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
+                <button onClick={handleHard} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all active:scale-95 hover:scale-105 ${isDarkMode ? 'bg-amber-950/50 border border-amber-800 text-amber-300 hover:bg-amber-950/70' : 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
                   <span className="text-sm font-bold">Almost there</span>
                   <span className="text-[9px] opacity-70">1 day</span>
                 </button>
-                <button onClick={handleGood} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all hover:scale-105 ${isDarkMode ? 'bg-emerald-950/50 border border-emerald-800 text-emerald-300 hover:bg-emerald-950/70' : 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'}`}>
+                <button onClick={handleGood} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all active:scale-95 hover:scale-105 ${isDarkMode ? 'bg-emerald-950/50 border border-emerald-800 text-emerald-300 hover:bg-emerald-950/70' : 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'}`}>
                   <span className="text-sm font-bold">Got it</span>
                   <span className="text-[9px] opacity-70">3 days</span>
                 </button>
-                <button onClick={handleEasy} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all hover:scale-105 ${isDarkMode ? 'bg-blue-950/50 border border-blue-800 text-blue-300 hover:bg-blue-950/70' : 'bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
+                <button onClick={handleEasy} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all active:scale-95 hover:scale-105 ${isDarkMode ? 'bg-blue-950/50 border border-blue-800 text-blue-300 hover:bg-blue-950/70' : 'bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
                   <span className="text-sm font-bold">Too easy!</span>
                   <span className="text-[9px] opacity-70">7 days</span>
                 </button>
@@ -494,13 +494,13 @@ export function FlashcardPage() {
 
             {/* Navigation */}
             <div className="flex items-center justify-between mt-6">
-              <button onClick={prevCard} disabled={currentIndex === 0} className={`p-2.5 rounded-xl border transition-all disabled:opacity-30 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+              <button onClick={prevCard} disabled={currentIndex === 0} className={`p-2.5 rounded-xl border transition-all active:scale-95 disabled:opacity-30 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button onClick={restartReview} className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-indigo-600'}`}>
+              <button onClick={restartReview} className={`flex items-center gap-1.5 text-sm font-medium transition-colors active:scale-95 ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-indigo-600'}`}>
                 <RotateCcw className="w-3.5 h-3.5" /> Start over
               </button>
-              <button onClick={nextCard} disabled={currentIndex === flashcards.length - 1} className={`p-2.5 rounded-xl border transition-all disabled:opacity-30 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+              <button onClick={nextCard} disabled={currentIndex === flashcards.length - 1} className={`p-2.5 rounded-xl border transition-all active:scale-95 disabled:opacity-30 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>

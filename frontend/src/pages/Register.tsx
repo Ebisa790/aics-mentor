@@ -340,7 +340,7 @@ export function RegisterPage() {
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                     onClick={() => setShowPassword((current) => !current)}
                     disabled={isSubmitting}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors active:scale-95 disabled:opacity-50"
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -427,7 +427,7 @@ export function RegisterPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || !isFormValid}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
               >
                 {isSubmitting ? (
                   <>
