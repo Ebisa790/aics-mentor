@@ -713,10 +713,7 @@ Answer the student's question based on the provided context. Be clear, concise, 
 If the answer isn't in the context, use your general CS knowledge.
 Always end with a key takeaway or exam tip."""
 
-    user_prompt = f"Context:
-{context}
-
-Question: {question}"
+    user_prompt = f"Context:\n{context}\n\nQuestion: {question}"
     
     try:
         response = client.chat.completions.create(
