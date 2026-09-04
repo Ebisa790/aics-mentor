@@ -577,8 +577,9 @@ def verify_email_2fa(
     if expires_at and datetime.now(timezone.utc) > expires_at:
         raise HTTPException(status_code=401, detail="2FA code expired. Please request a new one.")
 
-    setattr(user, 'email_2fa_code', None)
-    setattr(user, 'email_2fa_expires', None)
+    user.email_2fa_code = None
+    user.email_2fa_expires = None
+    user.is_2fa_enabled = True
     db.commit()
 
     session_jti = generate_jti()
