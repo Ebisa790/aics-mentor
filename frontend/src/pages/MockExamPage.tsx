@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { FormattedQuestionText } from '../components/FormattedQuestionText';
 import ReactMarkdown from 'react-markdown';
 import UpgradeModal from '../components/UpgradeModal';
-
+import { Spinner } from '../components/Spinner'
 import {
   ShieldAlert,
   Clock,
@@ -1219,7 +1219,7 @@ export function MockExamPage() {
 
                 <span>
                   {loading
-                    ? 'Initializing Secure Engine...'
+                    ? <Spinner size='lg' color='emerald' label='Initializing Secure Engine...' />
                     : 'Begin Mock Exam'}
                 </span>
 
