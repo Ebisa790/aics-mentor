@@ -288,7 +288,10 @@ const handle2FAVerify = async () => {
     if (!twoFACode.trim()) return
     setError(null)
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/2fa/disable`, {
+      const disableUrl = twoFAMethod === 'email' 
+  ? `${API_BASE_URL}/api/auth/2fa/email/disable`
+  : `${API_BASE_URL}/api/auth/2fa/disable`
+   const res = await fetch(disableUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
