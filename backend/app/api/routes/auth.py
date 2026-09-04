@@ -489,9 +489,10 @@ def disable_2fa(
     if not current_user.is_2fa_enabled:
         raise HTTPException(status_code=400, detail="2FA is not enabled for this account.")
 
-    totp = pyotp.TOTP(current_user.totp_secret)
-    if not totp.verify(code, valid_window=1):
-        raise HTTPException(status_code=400, detail="Invalid 2FA code. Cannot disable 2FA.")
+    if current_user.totp_secret:
+        totp = pyotp.TOTP(current_user.totp_secret)
+        if not totp.verify(code, valid_window=1):
+            raise HTTPException(status_code=400, detail="Invalid 2FA code. Cannot disable 2FA.")
 
     current_user.is_2fa_enabled = False
     current_user.totp_secret = None
