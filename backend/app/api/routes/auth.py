@@ -524,6 +524,33 @@ def send_email_2fa(
     return {"message": "2FA code sent to your email."}
 
 
+@router.post("/2fa/email/disable")
+def disable_2fa_email(
+    request: Request,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    code = payload.get("code", "")
+    
+    stored_code = getattr(current_user, 'email_2fa_code', None)
+    expires_at = getattr(current_user, 'email_2fa_expires', None)
+    
+    if not stored_code or stored_code != code:
+        raise HTTPException(status_code=401, detail="Invalid 2FA code.")
+    
+    if expires_at and datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(status_code=401, detail="2FA code expired. Please request a new one.")
+
+    current_user.email_2fa_code = None
+    current_user.email_2fa_expires = None
+    current_user.is_2fa_enabled = False
+    current_user.totp_secret = None
+    db.commit()
+
+    return {"message": "2FA disabled successfully using email verification."}
+
+
 @router.post("/2fa/email/verify")
 def verify_email_2fa(
     request: Request,
