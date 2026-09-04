@@ -449,9 +449,29 @@ export function ProfilePage() {
 
             {is2FAEnabled && (
               <div className="space-y-3">
-                <p className="text-xs text-slate-500">Enter current 2FA code to disable:</p>
-                <input type="text" maxLength={6} placeholder="000000" value={twoFACode} onChange={(e) => setTwoFACode(e.target.value)} className="input text-center text-2xl tracking-widest font-mono max-w-[150px]" />
-                <button onClick={handle2FADisable} disabled={twoFACode.length !== 6} className="py-2 px-4 bg-rose-500 text-white font-bold text-xs rounded-xl hover:bg-rose-600 transition-all disabled:opacity-50">Disable 2FA</button>
+                <div className="flex gap-2">
+                  <button onClick={() => { setTwoFAMethod('app'); setEmailCodeSent(false); }} className={`py-2 px-4 text-xs font-bold rounded-xl transition-all ${twoFAMethod === 'app' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>Authenticator</button>
+                  <button onClick={() => { setTwoFAMethod('email'); setEmailCodeSent(false); }} className={`py-2 px-4 text-xs font-bold rounded-xl transition-all ${twoFAMethod === 'email' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>Email</button>
+                </div>
+                {twoFAMethod === 'app' ? (
+                  <>
+                    <p className="text-xs text-slate-500">Enter current Google Authenticator code to disable:</p>
+                    <input type="text" maxLength={6} placeholder="000000" value={twoFACode} onChange={(e) => setTwoFACode(e.target.value)} className="input text-center text-2xl tracking-widest font-mono max-w-[150px]" />
+                    <button onClick={handle2FADisable} disabled={twoFACode.length !== 6} className="py-2 px-4 bg-rose-500 text-white font-bold text-xs rounded-xl hover:bg-rose-600 transition-all disabled:opacity-50">Disable 2FA</button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-slate-500">We'll send a 6-digit code to {user?.email} to disable:</p>
+                    {!emailCodeSent ? (
+                      <button onClick={handleEmail2FASend} disabled={isVerifying2FA} className="py-2 px-4 bg-emerald-500 text-white font-bold text-xs rounded-xl hover:bg-emerald-600 transition-all disabled:opacity-50">{isVerifying2FA ? 'Sending...' : 'Send Code'}</button>
+                    ) : (
+                      <>
+                        <input type="text" maxLength={6} placeholder="000000" value={twoFACode} onChange={(e) => setTwoFACode(e.target.value)} className="input text-center text-2xl tracking-widest font-mono max-w-[150px]" />
+                        <button onClick={handle2FADisable} disabled={twoFACode.length !== 6} className="py-2 px-4 bg-rose-500 text-white font-bold text-xs rounded-xl hover:bg-rose-600 transition-all disabled:opacity-50">Disable 2FA</button>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
