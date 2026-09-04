@@ -252,19 +252,21 @@ export function ProfilePage() {
       setIsVerifying2FA(false)
     }
   }
-
-  const handle2FAVerify = async () => {
+const handle2FAVerify = async () => {
     if (!twoFACode.trim()) return
     setIsVerifying2FA(true)
     setError(null)
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/2fa/verify`, {
+      const url = twoFAMethod === 'app' 
+        ? `${API_BASE_URL}/api/auth/2fa/verify`
+        : `${API_BASE_URL}/api/auth/2fa/email/verify`
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + localStorage.getItem('access_token'),
         },
-        body: JSON.stringify({ code: twoFACode }),
+        body: JSON.stringify({ code: twoFACode, email: user?.email || '' }),
       })
       const data = await res.json()
       if (res.ok) {
