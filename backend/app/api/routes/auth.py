@@ -505,27 +505,18 @@ def send_email_2fa(
     request: Request,
     payload: dict,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    email = payload.get("email")
-    password = payload.get("password")
-
-    if not email or not password:
-        raise HTTPException(status_code=400, detail="Email and password required.")
-
-    user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials.")
-
     import random
     code = str(random.randint(100000, 999999))
     
-    setattr(user, 'email_2fa_code', code)
-    setattr(user, 'email_2fa_expires', datetime.now(timezone.utc) + timedelta(minutes=10))
+    current_user.email_2fa_code = code
+    current_user.email_2fa_expires = datetime.now(timezone.utc) + timedelta(minutes=10)
     db.commit()
 
     from app.core.email import send_email_async
     send_email_async(
-        to_email=user.email,
+        to_email=current_user.email,
         subject="Your ExitAI Ethiopia 2FA Code",
         body_text=f"Your 2FA code is: {code}. This code expires in 10 minutes."
     )
