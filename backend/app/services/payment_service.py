@@ -73,7 +73,7 @@ class ChapaClient:
                 "status": "success",
                 "message": "Hosted Link Generated",
                 "data": {
-                    "checkout_url": f"http://localhost:5173/payment/callback?tx_ref={payload['tx_ref']}"
+                    "checkout_url": f"https://aics-mentor.vercel.app/payment/callback?tx_ref={payload['tx_ref']}"
                 }
             }
         async with httpx.AsyncClient() as client:
@@ -191,7 +191,7 @@ class PaymentService:
         tx_ref = self.generate_tx_ref(user.id)
         
         # Build URLs
-        frontend_return_url = "http://localhost:5173/payment/callback?tx_ref=" + tx_ref
+        frontend_return_url = "https://aics-mentor.vercel.app/payment/callback?tx_ref=" + tx_ref
         backend_callback_url = callback_url or settings.CHAPA_CALLBACK_URL
         
         # Prepare Chapa payload
