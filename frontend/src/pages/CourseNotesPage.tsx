@@ -208,7 +208,9 @@ export function CourseNotesPage() {
 
   const handleTextSelection = () => {
     if (!isPremium) {
-      setIsUpgradeModalOpen(true)
+      // Show soft toast instead of blocking modal
+      setShowCompletionToast(true)
+      setTimeout(() => setShowCompletionToast(false), 3000)
       return
     }
     const selection = window.getSelection()
@@ -522,7 +524,7 @@ export function CourseNotesPage() {
       {/* Completion Toast */}
       {showCompletionToast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-emerald-500 text-white text-sm font-bold shadow-xl animate-bounce">
-          Module completed!
+          ✨ Upgrade to Premium to use AI Study Assistant
         </div>
       )}
 
