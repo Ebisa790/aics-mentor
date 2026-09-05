@@ -620,11 +620,32 @@ def verify_email_2fa(
 
     if trust_device:
         now_utc = datetime.now(timezone.utc)
-        device = db.query(UserDevice).filter(UserDevice.session_jti == session_jti).first()
-        if device:
+        from user_agents import parse as ua_parse
+        user_agent_str = request.headers.get("User-Agent", "")
+        user_agent = ua_parse(user_agent_str)
+        if user_agent.is_mobile:
+            current_device_type = "mobile"
+        elif user_agent.is_tablet:
+            current_device_type = "tablet"
+        else:
+            current_device_type = "desktop"
+        browser_name = f"{user_agent.browser.family} {user_agent.browser.version_string}".strip()
+        
+        # Mark ALL matching devices (same user + type + browser) as trusted
+        matching_devices = (
+            db.query(UserDevice)
+            .filter(
+                UserDevice.user_id == user.id,
+                UserDevice.device_type == current_device_type,
+                UserDevice.browser == browser_name,
+                UserDevice.is_revoked == False,
+            )
+            .all()
+        )
+        for device in matching_devices:
             device.is_trusted = True
             device.trusted_until = now_utc + timedelta(days=30)
-            db.commit()
+        db.commit()
 
     return Token(
         access_token=create_access_token(subject=str(user.id), jti=session_jti),
@@ -671,11 +692,32 @@ def verify_2fa_login(
     
     if trust_device:
         now_utc = datetime.now(timezone.utc)
-        device = db.query(UserDevice).filter(UserDevice.session_jti == session_jti).first()
-        if device:
+        from user_agents import parse as ua_parse
+        user_agent_str = request.headers.get("User-Agent", "")
+        user_agent = ua_parse(user_agent_str)
+        if user_agent.is_mobile:
+            current_device_type = "mobile"
+        elif user_agent.is_tablet:
+            current_device_type = "tablet"
+        else:
+            current_device_type = "desktop"
+        browser_name = f"{user_agent.browser.family} {user_agent.browser.version_string}".strip()
+        
+        # Mark ALL matching devices (same user + type + browser) as trusted
+        matching_devices = (
+            db.query(UserDevice)
+            .filter(
+                UserDevice.user_id == user.id,
+                UserDevice.device_type == current_device_type,
+                UserDevice.browser == browser_name,
+                UserDevice.is_revoked == False,
+            )
+            .all()
+        )
+        for device in matching_devices:
             device.is_trusted = True
             device.trusted_until = now_utc + timedelta(days=30)
-            db.commit()
+        db.commit()
 
     return Token(
         access_token=create_access_token(subject=str(user.id), jti=session_jti),
