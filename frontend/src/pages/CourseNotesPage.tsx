@@ -207,6 +207,10 @@ export function CourseNotesPage() {
   }, [currentPage, pages.length, showAskAI, showCommandPalette])
 
   const handleTextSelection = () => {
+    if (!isPremium) {
+      setIsUpgradeModalOpen(true)
+      return
+    }
     const selection = window.getSelection()
     if (!selection) return
     const text = selection.toString().trim()
@@ -214,7 +218,6 @@ export function CourseNotesPage() {
       setSelectedText(text)
       setShowAskAI(true)
       setAiAnswer('')
-      
     }
   }
 
@@ -734,7 +737,7 @@ export function CourseNotesPage() {
 
                {/* Ask AI - Improved UX */}
 {showAskAI && (
-  <aside className="fixed right-0 top-0 bottom-0 z-[90] w-full sm:w-[420px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+  <aside className="fixed right-0 top-0 bottom-0 z-[90] w-full sm:w-[420px] overflow-y-auto bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
     {/* Header */}
     <div className="px-5 py-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 text-white shrink-0">
       <div className="flex items-center justify-between">
