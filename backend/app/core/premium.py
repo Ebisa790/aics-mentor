@@ -75,6 +75,6 @@ def truncate_content_for_preview(
     truncated = content[:preview_length]
     
     # Add premium lock indicator
-    truncated += "\n\n---\n\n> 🔒 **You're viewing 20% of this module**\n>\n> **Premium unlocks:**\n> - Complete definitions & explanations\n> - Exam traps & common mistakes\n> - Memory aids & mnemonics\n> - Quick revision summary\n>\n> **Upgrade to Premium to unlock the full guide.**"
+    
 
     return truncated, True
