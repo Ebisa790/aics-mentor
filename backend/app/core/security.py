@@ -164,7 +164,6 @@ def track_device_session(
             UserDevice.user_id == user_uuid,
             UserDevice.device_type == device_type,
             UserDevice.browser == browser_name,
-            UserDevice.ip_address == ip_address,
             UserDevice.is_revoked == False,
         )
         .first()
