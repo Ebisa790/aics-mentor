@@ -885,7 +885,50 @@ export function CourseNotesPage() {
   </aside>
 )}
 
-                {/* Complete Button */}
+{/* Premium Gate - Beautiful Upgrade Section */}
+{!isPremium && notes?.modules?.[currentPage]?.is_preview && (
+  <div className="mt-8 rounded-2xl bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/40 dark:via-orange-950/40 dark:to-yellow-950/40 border border-amber-200 dark:border-amber-800 p-6 sm:p-8 text-center">
+    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-white mb-4 shadow-lg shadow-amber-500/30">
+      <Lock className="w-7 h-7" />
+    </div>
+    
+    <h3 className="text-lg font-black text-amber-900 dark:text-amber-100 mb-2">
+      You're viewing {notes.modules[currentPage].preview_percentage || 20}% of this module
+    </h3>
+    
+    <p className="text-sm text-amber-700 dark:text-amber-300 mb-5 max-w-md mx-auto">
+      Premium unlocks the complete study guide with everything you need to pass
+    </p>
+    
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6 max-w-md mx-auto text-left">
+      {[
+        "Complete definitions & explanations",
+        "Exam traps & common mistakes",
+        "Memory aids & mnemonics",
+        "Quick revision summary",
+      ].map((feature) => (
+        <div key={feature} className="flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 bg-white/50 dark:bg-white/5 rounded-lg px-3 py-2">
+          <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+          <span>{feature}</span>
+        </div>
+      ))}
+    </div>
+    
+    <button
+      onClick={() => setIsUpgradeModalOpen(true)}
+      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold text-sm shadow-lg shadow-amber-500/30 hover:from-amber-400 hover:to-yellow-400 transition-all active:scale-95"
+    >
+      <Crown className="w-4 h-4 fill-amber-200" />
+      Upgrade to Premium
+    </button>
+    
+    <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-3">
+      One-time payment · Lifetime access · Instant unlock
+    </p>
+  </div>
+)}
+
+{/* Complete Button */}
                 <div className="mt-10 pt-7 border-t border-slate-200/70 dark:border-slate-800 flex justify-center">
                   <button onClick={markCurrentModuleRead} className={`px-6 py-3 rounded-2xl text-sm font-bold transition-all ${readModules.has(currentPage) ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20'}`}>
                     {readModules.has(currentPage) ? '✓ Completed' : 'Mark as Complete'}
