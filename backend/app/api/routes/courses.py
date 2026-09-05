@@ -6,15 +6,13 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, List
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File,Request, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
 from celery.result import AsyncResult
 from app.models.quiz import Question
 from app.core.database import get_db
-from app.core.rate_limit import limiter
-from app.core.rate_limit import limiter
 from app.models.user import SubscriptionTier, UserRole
 from app.core.premium import is_premium_or_admin, truncate_content_for_preview
 from app.api.deps import require_admin, get_current_user
@@ -674,71 +672,12 @@ FINAL CHECKLIST:
 # Ethiopian MoE Exit Exam High-Yield Notes Generation Endpoint
 # -------------------------------------------------------------------
 
-@router.post("/{course_id}/notes/ask")
-@limiter.limit("20/minute")
-def ask_notes_ai(
-    course_id: uuid.UUID,
-    payload: dict,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    AI-powered Q&A about course study notes.
-    Uses Groq to answer questions based on the selected text and page content.
-    """
-    from app.core.ai_client import get_groq_client
-    
-    question = payload.get("question", "").strip()
-    selected_text = payload.get("selected_text", "").strip()
-    page_content = payload.get("page_content", "").strip()
-    
-    if not question:
-        raise HTTPException(status_code=400, detail="Question is required.")
-    
-    course = db.get(Course, course_id)
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-    
-    client = get_groq_client()
-    if not client:
-        raise HTTPException(status_code=503, detail="AI service is not configured.")
-    
-    # Build context from selected text and page content
-    context = selected_text if selected_text else page_content
-    context = context[:5000]  # Limit context size
-    
-    system_prompt = f"""You are an AI tutor helping Ethiopian CS students prepare for their Exit Exam.
-Course: {course.name}
-Code: {getattr(course, 'code', 'CS')}
-
-Answer the student's question based on the provided context. Be clear, concise, and exam-focused.
-If the answer isn't in the context, use your general CS knowledge.
-Always end with a key takeaway or exam tip."""
-
-    user_prompt = f"Context:\n{context}\n\nQuestion: {question}"
-    
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3,
-            max_tokens=800,
-        )
-        answer = response.choices[0].message.content.strip()
-        return {"answer": answer}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI request failed: {str(e)[:200]}")
-
-
 @router.get("/{course_id}/notes", dependencies=[Depends(get_current_user)])
 def get_or_generate_course_notes(
     course_id: uuid.UUID,
     regenerate: bool = Query(False),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # ✅ Add current_user
+    current_user: User = Depends(get_current_user)  
 ):
     """
     Generates ultra-focused, high-yield study notes strictly formatted for the 
@@ -1059,7 +998,7 @@ def start_note_generation(
     # If notes exist and regenerate is False, return existing immediately
     if not regenerate:
         # Students only see APPROVED notes, Admins see all
-        if get_current_user.role == UserRole.ADMIN:
+        if current_user.role == UserRole.ADMIN:
             existing_notes = (
                 db.query(CourseNotes)
                 .filter(CourseNotes.course_id == course_id)
