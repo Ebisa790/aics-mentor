@@ -13,6 +13,8 @@ from sqlalchemy import func
 from celery.result import AsyncResult
 from app.models.quiz import Question
 from app.core.database import get_db
+from app.core.rate_limit import limiter
+from app.core.rate_limit import limiter
 from app.models.user import SubscriptionTier, UserRole
 from app.core.premium import is_premium_or_admin, truncate_content_for_preview
 from app.api.deps import require_admin, get_current_user
