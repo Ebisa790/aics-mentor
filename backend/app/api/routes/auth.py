@@ -257,12 +257,26 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
     # ENFORCE DEVICE TYPE LIMIT: Max 2 devices, must be different types
     _enforce_device_type_limit(user, request, db)
 
-    # Check if 2FA is enabled and device is trusted
+    # Check if 2FA is enabled - only skip if CURRENT device is trusted
     if user.is_2fa_enabled:
+        from user_agents import parse as ua_parse
+        user_agent_str = request.headers.get("User-Agent", "")
+        user_agent = ua_parse(user_agent_str)
+        if user_agent.is_mobile:
+            current_device_type = "mobile"
+        elif user_agent.is_tablet:
+            current_device_type = "tablet"
+        else:
+            current_device_type = "desktop"
+        browser_name = f"{user_agent.browser.family} {user_agent.browser.version_string}".strip()
+        
+        # Check if THIS specific device is trusted
         trusted_device = (
             db.query(UserDevice)
             .filter(
                 UserDevice.user_id == user.id,
+                UserDevice.device_type == current_device_type,
+                UserDevice.browser == browser_name,
                 UserDevice.is_trusted == True,
                 UserDevice.trusted_until > now_utc,
                 UserDevice.is_revoked == False,
