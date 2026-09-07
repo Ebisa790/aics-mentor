@@ -9,13 +9,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.database import get_db
+from app.api.deps import get_current_user, require_admin
 from app.models.user import User
 from app.models.course import Course
 from app.models.quiz import Question
 from app.models.exam_question import ExamQuestion, ReviewStatus
 from app.api.deps import require_admin
 
-router = APIRouter(prefix="/api/admin/review-queue", tags=["admin-review"])
+router = APIRouter(prefix="/api/admin/review-queue", tags=["admin-review"], dependencies=[Depends(require_admin)])
 
 
 @router.get("/")

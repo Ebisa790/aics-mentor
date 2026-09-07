@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from app.services.cpp_compiler import execute_cpp_code
 from app.services.trace_verifier import verify_and_patch_drill
 from app.core.database import get_db
+from app.api.deps import get_current_user, require_admin
 from app.models.user import User
 from app.models.attempt import DrillAttempt
 from app.schemas.code_trace import (
@@ -196,7 +197,7 @@ def parse_json_safely(content: str) -> dict:
 
 # ============================== Admin Drill Management ==============================
 
-@router.post("/admin/generate")
+@router.post("/admin/generate", dependencies=[Depends(require_admin)])
 def admin_generate_drills(
     payload: dict,
     current_user: User = Depends(get_current_user),
@@ -235,7 +236,7 @@ def admin_generate_drills(
     return {"message": f"Created {created} drills", "created": created}
 
 
-@router.get("/admin/list")
+@router.get("/admin/list", dependencies=[Depends(require_admin)])
 def admin_list_drills(
     subject: str = "all",
     status_filter: str = "all",
@@ -272,7 +273,7 @@ def admin_list_drills(
     }
 
 
-@router.post("/admin/approve-all")
+@router.post("/admin/approve-all", dependencies=[Depends(require_admin)])
 def admin_approve_all_drills(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -288,7 +289,7 @@ def admin_approve_all_drills(
     return {"message": f"Approved {updated} drills!", "approved_count": updated}
 
 
-@router.post("/admin/{drill_id}/approve")
+@router.post("/admin/{drill_id}/approve", dependencies=[Depends(require_admin)])
 def admin_approve_drill(
     drill_id: str,
     current_user: User = Depends(get_current_user),
@@ -310,7 +311,7 @@ def admin_approve_drill(
     return {"message": "Drill approved", "id": drill_id}
 
 
-@router.post("/admin/{drill_id}/reject")
+@router.post("/admin/{drill_id}/reject", dependencies=[Depends(require_admin)])
 def admin_reject_drill(
     drill_id: str,
     current_user: User = Depends(get_current_user),
@@ -332,7 +333,7 @@ def admin_reject_drill(
     return {"message": "Drill rejected", "id": drill_id}
 
 
-@router.delete("/admin/{drill_id}")
+@router.delete("/admin/{drill_id}", dependencies=[Depends(require_admin)])
 def admin_delete_drill(
     drill_id: str,
     current_user: User = Depends(get_current_user),
@@ -352,7 +353,7 @@ def admin_delete_drill(
     return {"message": "Drill deleted", "id": drill_id}
 
 
-@router.post("/admin/export-prompt")
+@router.post("/admin/export-prompt", dependencies=[Depends(require_admin)])
 def admin_export_drill_prompt(
     payload: dict,
     current_user: User = Depends(get_current_user),
@@ -434,7 +435,7 @@ subject, topic, code_snippet, language, total_steps, trace_steps (array of strin
     return {"prompt": prompt}
 
 
-@router.post("/admin/{drill_id}/approve")
+@router.post("/admin/{drill_id}/approve", dependencies=[Depends(require_admin)])
 def admin_approve_drill(
     drill_id: str,
     current_user: User = Depends(get_current_user),
@@ -456,7 +457,7 @@ def admin_approve_drill(
     return {"message": "Drill approved", "id": drill_id}
 
 
-@router.post("/admin/{drill_id}/reject")
+@router.post("/admin/{drill_id}/reject", dependencies=[Depends(require_admin)])
 def admin_reject_drill(
     drill_id: str,
     current_user: User = Depends(get_current_user),
@@ -478,7 +479,7 @@ def admin_reject_drill(
     return {"message": "Drill rejected", "id": drill_id}
 
 
-@router.delete("/admin/{drill_id}")
+@router.delete("/admin/{drill_id}", dependencies=[Depends(require_admin)])
 def admin_delete_drill(
     drill_id: str,
     current_user: User = Depends(get_current_user),
@@ -498,7 +499,7 @@ def admin_delete_drill(
     return {"message": "Drill deleted", "id": drill_id}
 
 
-@router.post("/admin/export-prompt")
+@router.post("/admin/export-prompt", dependencies=[Depends(require_admin)])
 def admin_export_drill_prompt(
     payload: dict,
     current_user: User = Depends(get_current_user),

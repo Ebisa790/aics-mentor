@@ -74,6 +74,18 @@ def chat(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
+    # Premium gating: Free users get limited AI tutor access
+    from app.models.user import SubscriptionTier, UserRole
+    is_premium_or_admin = (
+        current_user.subscription_tier == SubscriptionTier.PREMIUM
+        or current_user.role == UserRole.ADMIN
+    )
+    if not is_premium_or_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI Study Assistant is a Premium feature. Please upgrade to continue."
+        )
+
     client = get_groq_client()
     if client is None:
         raise HTTPException(

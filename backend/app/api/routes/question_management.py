@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/admin/questions", tags=["admin-questions"])
 
 # ============================== Question Coverage Report ==============================
 
-@router.get("/coverage")
+@router.get("/coverage", dependencies=[Depends(require_admin)])
 def get_question_coverage(
     db: Session = Depends(get_db),
     admin_user: User = Depends(require_admin)
@@ -107,7 +107,7 @@ def get_question_coverage(
 
 # ============================== Question Export Prompts ==============================
 
-@router.post("/export-prompt")
+@router.post("/export-prompt", dependencies=[Depends(require_admin)])
 def export_question_prompt(
     payload: dict,
     db: Session = Depends(get_db),
@@ -187,7 +187,7 @@ FORMAT: Return ONLY a JSON array of {count} questions."""
 
 # ============================== Bulk Question Import ==============================
 
-@router.post("/bulk-import")
+@router.post("/bulk-import", dependencies=[Depends(require_admin)])
 def bulk_import_questions(
     payload: dict,
     db: Session = Depends(get_db),
@@ -314,7 +314,7 @@ def bulk_import_questions(
 
 # ============================== Question Stats by Course ==============================
 
-@router.get("/course/{course_id}/stats")
+@router.get("/course/{course_id}/stats", dependencies=[Depends(require_admin)])
 def get_course_question_stats(
     course_id: str,
     db: Session = Depends(get_db),

@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[AdminUserOut])
+@router.get("", response_model=list[AdminUserOut], dependencies=[Depends(require_admin)])
 def list_users(
     search: str | None = None,
     is_active: bool | None = None,
@@ -49,7 +49,7 @@ def list_users(
     return query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
 
 
-@router.patch("/{user_id}", response_model=AdminUserOut)
+@router.patch("/{user_id}", response_model=AdminUserOut, dependencies=[Depends(require_admin)])
 def update_user(
     user_id: uuid.UUID,
     payload: AdminUserUpdate,
@@ -83,7 +83,7 @@ def update_user(
     db.refresh(user)
     return user
 
-@router.get("/export")
+@router.get("/export", dependencies=[Depends(require_admin)])
 def export_users_csv(
     search: str | None = None,
     is_active: bool | None = None,
