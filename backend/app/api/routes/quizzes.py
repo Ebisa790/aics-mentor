@@ -363,6 +363,10 @@ def submit_quiz_or_mock(
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz or Mock Exam not found")
 
+    # IDOR protection: Ensure the quiz belongs to the current user
+    if quiz.generated_for_user_id is not None and quiz.generated_for_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="This quiz belongs to another student")
+
     try:
         question_map = {str(qq.question.id): qq.question for qq in quiz.quiz_questions if qq.question}
         
