@@ -30,6 +30,22 @@ class SecurityHeadersMiddleware:
                     (b"permissions-policy", b"geolocation=(), microphone=(), camera=()"),
                     (b"cross-origin-opener-policy", b"same-origin-allow-popups"),
                     (b"x-xss-protection", b"0"),
+                    # Content Security Policy (CSP) - main XSS defense
+                    (
+                        b"content-security-policy",
+                        (
+                            b"default-src 'self'; "
+                            b"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; "
+                            b"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                            b"font-src 'self' https://fonts.gstatic.com; "
+                            b"img-src 'self' data: blob:; "
+                            b"connect-src 'self' https://aics-mentor-backend.onrender.com https://api.openai.com https://api.groq.com; "
+                            b"frame-src 'self' https://accounts.google.com; "
+                            b"frame-ancestors 'none'; "
+                            b"base-uri 'self'; "
+                            b"form-action 'self';"
+                        ),
+                    ),
                 ]
 
                 # Append HTTP Strict Transport Security (HSTS) in production or over HTTPS
