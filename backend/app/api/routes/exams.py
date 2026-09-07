@@ -300,6 +300,10 @@ def submit_exam(
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz session not found.")
 
+    # IDOR protection: Ensure the quiz belongs to the current user
+    if quiz.generated_for_user_id is not None and quiz.generated_for_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="This exam belongs to another student")
+
     user_answers = payload.get("answers", {}) if payload else {}
 
     total_questions = len(quiz.quiz_questions) if quiz.quiz_questions else 0
