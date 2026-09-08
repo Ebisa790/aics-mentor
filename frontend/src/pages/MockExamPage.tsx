@@ -97,7 +97,7 @@ export function MockExamPage() {
   const lastViolationTimeRef = useRef(0);
 
   // Use Auth Context
-  const { isPremium, isLoading: isAuthLoading } = useAuth();
+  const { user, isPremium, isLoading: isAuthLoading } = useAuth();
 
   const [showUpgradeModal, setShowUpgradeModal] =
     useState<boolean>(false);
@@ -1397,6 +1397,13 @@ export function MockExamPage() {
             <div>
 
               <div className="flex items-center gap-2">
+
+                {user?.full_name && (
+                  <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+                    <BookOpen className="h-3 w-3 text-slate-400" />
+                    {user.full_name}
+                  </span>
+                )}
 
                 <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded uppercase tracking-wider">
                   Session #
