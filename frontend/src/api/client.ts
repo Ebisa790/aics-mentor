@@ -79,6 +79,52 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
   pendingQueue = []
 }
 
+// --- Friendly Error Message Extractor ---
+function getFriendlyErrorMessage(error: AxiosError): string {
+  const data = error.response?.data as any
+
+  // Backend usually returns { detail: '...' }
+  if (data?.detail) {
+    // If detail is an object (FastAPI validation), extract first error
+    if (typeof data.detail === 'string') return data.detail
+    if (Array.isArray(data.detail) && data.detail.length > 0) {
+      const first = data.detail[0]
+      if (first?.msg) return first.msg
+    }
+  }
+
+  if (data?.message) {
+    if (typeof data.message === 'string') return data.message
+    if (typeof data.message === 'object' && data.message?.message) {
+      return data.message.message
+    }
+  }
+
+  if (data?.error) {
+    if (typeof data.error === 'string') return data.error
+    if (typeof data.error === 'object' && data.error?.message) {
+      return data.error.message
+    }
+  }
+
+  // Fallbacks by status code
+  const status = error.response?.status
+  if (status === 401) return 'Your session has expired. Please sign in again.'
+  if (status === 403) return 'You do not have permission to perform this action.'
+  if (status === 404) return 'The requested resource was not found.'
+  if (status === 429) return 'Too many requests. Please slow down and try again.'
+  if (status === 500) return 'Something went wrong on our end. Please try again.'
+  if (status === 502 || status === 503) return 'The service is temporarily unavailable. Please try again later.'
+
+  return 'Something went wrong. Please try again.'
+}
+
+// Attach the friendly message to the error before rejecting
+function normalizeApiError(error: AxiosError): AxiosError {
+  ;(error as any).friendlyMessage = getFriendlyErrorMessage(error)
+  return error
+}
+
 // --- Response Interceptor with Silent Token Refresh ---
 apiClient.interceptors.response.use(
   (response) => response,
@@ -141,7 +187,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error)
+    return Promise.reject(normalizeApiError(error))
   }
 )
 

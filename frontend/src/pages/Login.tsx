@@ -192,7 +192,7 @@ export function LoginPage() {
         navigate('/dashboard')
       }
     } catch (err: any) {
-      const detail = err?.response?.data?.detail
+      const detail = err?.friendlyMessage || err?.response?.data?.detail
       const status = err?.response?.status
 
       if (status === 401) {

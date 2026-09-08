@@ -126,7 +126,8 @@ export function FlashcardPage() {
       setIsPremium(data.is_premium || false)
       setTotalCards(data.total || 0)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Couldn\'t load your flashcards.')
+      const friendly = (err as any)?.friendlyMessage
+      setError(friendly || (err instanceof Error ? err.message : 'Couldn\'t load your flashcards.'))
     } finally {
       setLoading(false)
     }

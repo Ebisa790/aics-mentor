@@ -163,7 +163,7 @@ export function CourseNotesPage() {
         setNotes(data)
         setCurrentPage(0)
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'An unexpected error occurred.'
+        const message = (err as any)?.friendlyMessage || (err instanceof Error ? err.message : 'An unexpected error occurred.')
         setError(message)
       } finally {
         setLoading(false)

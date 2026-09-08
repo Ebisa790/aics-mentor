@@ -93,7 +93,7 @@ export function RegisterPage() {
       await register(trimmedEmail, password, trimmedName)
       navigate('/dashboard')
     } catch (err: any) {
-      const detail = err?.response?.data?.detail
+      const detail = err?.friendlyMessage || err?.response?.data?.detail
       if (typeof detail === 'string') {
         setError(detail)
       } else if (Array.isArray(detail)) {
