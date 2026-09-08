@@ -1000,6 +1000,69 @@ export function MockExamPage() {
     };
 
   // ============================================================
+  // KEYBOARD NAVIGATION
+  // ============================================================
+
+  useEffect(() => {
+    if (step !== 'taking') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+
+      // Option selection: A, B, C, D
+      const currentQ = questions[currentIndex];
+      if (['a', 'b', 'c', 'd'].includes(key) && currentQ) {
+        e.preventDefault();
+        handleSelectOption(currentQ.id, key.toUpperCase());
+        return;
+      }
+
+      // Navigation: Arrow keys
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setCurrentIndex((prev) =>
+          Math.min(questions.length - 1, prev + 1)
+        );
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setCurrentIndex((prev) =>
+          Math.max(0, prev - 1)
+        );
+        return;
+      }
+
+      // Flag question: F key
+      if (key === 'f' && currentQ) {
+        e.preventDefault();
+        toggleFlagQuestion(currentQ.id);
+        return;
+      }
+
+      // Submit exam: Ctrl+Enter
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setShowSubmitModal(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    step,
+    currentIndex,
+    questions,
+    userAnswers,
+    handleSelectOption,
+    toggleFlagQuestion,
+  ]);
+
+  // ============================================================
   // STEP 1: CONFIGURATION SCREEN
   // ============================================================
 
