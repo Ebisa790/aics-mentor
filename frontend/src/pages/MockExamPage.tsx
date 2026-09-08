@@ -119,6 +119,9 @@ export function MockExamPage() {
   const [enableProctoring, setEnableProctoring] =
     useState<boolean>(true);
 
+  const [rulesAcknowledged, setRulesAcknowledged] =
+    useState<boolean>(false);
+
   // Exam session states
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -1204,13 +1207,27 @@ export function MockExamPage() {
                 </li>
               </ul>
 
+              <label className="flex items-start gap-2.5 pt-2 border-t border-indigo-100 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rulesAcknowledged}
+                  onChange={(e) =>
+                    setRulesAcknowledged(e.target.checked)
+                  }
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-xs font-semibold text-indigo-950 leading-relaxed">
+                  I have read and agree to the official CBT examination rules and proctoring requirements.
+                </span>
+              </label>
+
             </div>
 
             <div className="flex gap-3 pt-2">
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={!rulesAcknowledged || loading}
                 className="flex-1 bg-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition active:scale-95 shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {!isPremium && (
