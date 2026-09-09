@@ -6,7 +6,6 @@ import {
   Award,
   Sparkles,
   HelpCircle,
-
 } from 'lucide-react';
 import { ExamResultSummary, ExamResultItem, cleanOptionText } from './MockExamTypes';
 
@@ -127,7 +126,7 @@ export function MockExamResults({
         </div>
       </div>
 
-           {/* Domain Breakdown */}
+      {/* Domain Breakdown */}
       {(() => {
         const domainStats: Record<string, { total: number; correct: number }> = {};
         resultSummary.breakdown.forEach((item: any) => {
@@ -139,59 +138,60 @@ export function MockExamResults({
           if (item.is_correct) domainStats[course].correct += 1;
         });
 
-        const domains = Object.entries(domainStats);
+        const domains = Object.entries(domainStats)
+          .filter(([, stats]) => stats.total >= 2)
+          .sort((a, b) => (b[1].correct / b[1].total) - (a[1].correct / a[1].total));
+
         if (domains.length === 0) return null;
+
+        const strongAreas = domains.slice(0, 5).filter(([, s]) => (s.correct / s.total) >= 0.5);
+        const weakAreas = domains.slice(-5).reverse().filter(([, s]) => (s.correct / s.total) < 0.7);
 
         return (
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <h2 className="text-base font-bold text-slate-900 mb-4">
               Subject-wise Performance
             </h2>
-            <div className="space-y-4">
-              {domains
-                .sort((a, b) => (b[1].correct / b[1].total) - (a[1].correct / a[1].total))
-                .map(([course, stats]) => {
-                  const pct = Math.round((stats.correct / stats.total) * 100);
-                  const remark =
-                    pct >= 70 ? 'Good' : pct >= 50 ? 'Needs work' : 'Weak area';
 
-                  return (
-                    <div key={course}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm text-slate-700 font-medium">{course}</span>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs font-semibold ${
-                              pct >= 70 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-rose-600'
-                            }`}
-                          >
-                            {pct}% ({stats.correct}/{stats.total})
-                          </span>
-                          <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full ${
-                              pct >= 70
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : pct >= 50
-                                ? 'bg-amber-50 text-amber-700'
-                                : 'bg-rose-50 text-rose-700'
-                            }`}
-                          >
-                            {remark}
-                          </span>
+            {strongAreas.length > 0 && (
+              <div className="mb-5">
+                <p className="text-xs font-semibold text-emerald-700 mb-2">Good</p>
+                <div className="space-y-2">
+                  {strongAreas.map(([course, stats]) => {
+                    const pct = Math.round((stats.correct / stats.total) * 100);
+                    return (
+                      <div key={course} className="flex items-center gap-3">
+                        <span className="text-xs text-slate-600 w-36 truncate">{course}</span>
+                        <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-100">
+                          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
                         </div>
+                        <span className="text-xs font-bold text-emerald-600 w-12 text-right">{pct}%</span>
                       </div>
-                      <div className="h-1.5 rounded-full overflow-hidden bg-slate-100">
-                        <div
-                          className={`h-full rounded-full ${
-                            pct >= 70 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'
-                          }`}
-                          style={{ width: `${pct}%` }}
-                        />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {weakAreas.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-rose-700 mb-2">Needs Work</p>
+                <div className="space-y-2">
+                  {weakAreas.map(([course, stats]) => {
+                    const pct = Math.round((stats.correct / stats.total) * 100);
+                    return (
+                      <div key={course} className="flex items-center gap-3">
+                        <span className="text-xs text-slate-600 w-36 truncate">{course}</span>
+                        <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-100">
+                          <div className="h-full rounded-full bg-rose-400" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-rose-600 w-12 text-right">{pct}%</span>
                       </div>
-                    </div>
-                  );
-                })}
-            </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         );
       })()}
