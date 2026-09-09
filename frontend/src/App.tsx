@@ -38,6 +38,7 @@ import { AdminQuestionCoverage } from './pages/AdminQuestionCoverage'
 import { FlashcardPage } from './pages/FlashcardPage'
 import { AdminFlashcardReview } from './pages/AdminFlashcardReview'
 import { AdminSupportDashboard } from './pages/AdminSupportDashboard'
+import { AdminTransactionsPage } from './pages/AdminTransactions'
 
 export default function App() {
   return (
@@ -81,6 +82,7 @@ export default function App() {
                   <Route path="/admin/drills" element={<AdminDrillManagement />} />
                   <Route path="/admin/question-coverage" element={<AdminQuestionCoverage />} />
                   <Route path="/admin/support" element={<AdminSupportDashboard />} />
+                  <Route path="/admin/transactions" element={<AdminTransactionsPage />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route path="/admin/pricing" element={<AdminPricingPage />} />
                   <Route path="/admin/courses" element={<AdminCoursesPage />} />

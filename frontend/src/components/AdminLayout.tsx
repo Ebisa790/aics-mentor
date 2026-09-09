@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import {  useState, useEffect } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { 
   LayoutDashboard,
   FileText, 
+  CreditCard,
   Users, 
   DollarSign, 
   BookOpen, 
@@ -32,6 +33,7 @@ const ADMIN_NAV = [
   { to: '/admin/announcements', label: 'Announcements', icon: MessageSquare },
   { to: '/admin/review', label: 'Review Queue', icon: ClipboardCheck },
   { to: '/admin/support', label: 'Support Tickets', icon: LifeBuoy },
+  { to: '/admin/transactions', label: 'Transactions', icon: CreditCard },
 ]
 
 export function AdminLayout() {

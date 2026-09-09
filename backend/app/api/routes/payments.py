@@ -335,6 +335,55 @@ def archive_pricing_plan(
     return {"message": "Plan archived successfully"}
 
 
+@router.get("/admin/transactions", response_model=list[dict])
+def get_payment_transactions(
+    status_filter: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all payment transactions for admin review."""
+    from app.models.payment import Payment, PaymentStatus
+    from app.models.user import User as UserModel
+
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    query = (
+        db.query(Payment, UserModel.full_name, UserModel.email)
+        .join(UserModel, UserModel.id == Payment.user_id)
+    )
+
+    if status_filter:
+        query = query.filter(Payment.status == status_filter)
+
+    results = (
+        query
+        .order_by(Payment.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+
+    return [
+        {
+            "id": str(payment.id),
+            "tx_ref": payment.tx_ref,
+            "chapa_transaction_id": payment.chapa_transaction_id,
+            "student_name": full_name,
+            "student_email": email,
+            "amount": float(payment.amount),
+            "currency": payment.currency,
+            "status": payment.status.value,
+            "payment_method": payment.payment_method,
+            "created_at": payment.created_at.isoformat() if payment.created_at else None,
+            "verified_at": payment.verified_at.isoformat() if payment.verified_at else None,
+        }
+        for payment, full_name, email in results
+    ]
+
+
 @router.get("/admin/stats")
 def get_payment_stats(
     db: Session = Depends(get_db),
