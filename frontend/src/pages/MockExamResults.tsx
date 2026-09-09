@@ -6,9 +6,7 @@ import {
   Award,
   Sparkles,
   HelpCircle,
-  TrendingUp,
-  TrendingDown,
-  Minus,
+
 } from 'lucide-react';
 import { ExamResultSummary, ExamResultItem, cleanOptionText } from './MockExamTypes';
 
@@ -129,11 +127,11 @@ export function MockExamResults({
         </div>
       </div>
 
-      {/* Domain Breakdown */}
+           {/* Domain Breakdown */}
       {(() => {
         const domainStats: Record<string, { total: number; correct: number }> = {};
         resultSummary.breakdown.forEach((item: any) => {
-          const course = item.course_name || 'General';
+          const course = item.course_name || 'Other Topics';
           if (!domainStats[course]) {
             domainStats[course] = { total: 0, correct: 0 };
           }
@@ -145,45 +143,47 @@ export function MockExamResults({
         if (domains.length === 0) return null;
 
         return (
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-indigo-600" />
-              Performance by Domain
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <h2 className="text-base font-bold text-slate-900 mb-4">
+              Subject-wise Performance
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {domains
                 .sort((a, b) => (b[1].correct / b[1].total) - (a[1].correct / a[1].total))
                 .map(([course, stats]) => {
                   const pct = Math.round((stats.correct / stats.total) * 100);
-                  const isStrong = pct >= 70;
-                  const isWeak = pct < 50;
-                  const icon = isStrong ? (
-                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                  ) : isWeak ? (
-                    <TrendingDown className="h-4 w-4 text-rose-500" />
-                  ) : (
-                    <Minus className="h-4 w-4 text-amber-500" />
-                  );
+                  const remark =
+                    pct >= 70 ? 'Good' : pct >= 50 ? 'Needs work' : 'Weak area';
 
                   return (
                     <div key={course}>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1.5">
-                          {icon}
-                          <span className="text-xs font-semibold text-slate-700">{course}</span>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-sm text-slate-700 font-medium">{course}</span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs font-semibold ${
+                              pct >= 70 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-rose-600'
+                            }`}
+                          >
+                            {pct}% ({stats.correct}/{stats.total})
+                          </span>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full ${
+                              pct >= 70
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : pct >= 50
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-rose-50 text-rose-700'
+                            }`}
+                          >
+                            {remark}
+                          </span>
                         </div>
-                        <span
-                          className={`text-xs font-bold ${
-                            isWeak ? 'text-rose-600' : isStrong ? 'text-emerald-600' : 'text-amber-600'
-                          }`}
-                        >
-                          {pct}% ({stats.correct}/{stats.total})
-                        </span>
                       </div>
-                      <div className="h-2 rounded-full overflow-hidden bg-slate-100">
+                      <div className="h-1.5 rounded-full overflow-hidden bg-slate-100">
                         <div
                           className={`h-full rounded-full ${
-                            isWeak ? 'bg-rose-500' : isStrong ? 'bg-emerald-500' : 'bg-amber-500'
+                            pct >= 70 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'
                           }`}
                           style={{ width: `${pct}%` }}
                         />
