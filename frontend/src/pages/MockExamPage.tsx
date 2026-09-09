@@ -120,6 +120,7 @@ export function MockExamPage() {
           correct_option: item.correct_answer || '',
           is_correct: Boolean(item.is_correct),
           explanation: item.explanation,
+          course_name: item.course_name || null,
         };
       });
 
