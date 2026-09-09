@@ -17,6 +17,7 @@ export interface ExamResultItem extends Question {
   correct_option: string;
   is_correct: boolean;
   explanation?: string;
+  course_name?: string | null;
 }
 
 export interface ExamResultSummary {
