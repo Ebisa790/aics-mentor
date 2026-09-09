@@ -6,6 +6,9 @@ import {
   Award,
   Sparkles,
   HelpCircle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from 'lucide-react';
 import { ExamResultSummary, ExamResultItem, cleanOptionText } from './MockExamTypes';
 
@@ -126,6 +129,73 @@ export function MockExamResults({
         </div>
       </div>
 
+      {/* Domain Breakdown */}
+      {(() => {
+        const domainStats: Record<string, { total: number; correct: number }> = {};
+        resultSummary.breakdown.forEach((item: any) => {
+          const course = item.course_name || 'General';
+          if (!domainStats[course]) {
+            domainStats[course] = { total: 0, correct: 0 };
+          }
+          domainStats[course].total += 1;
+          if (item.is_correct) domainStats[course].correct += 1;
+        });
+
+        const domains = Object.entries(domainStats);
+        if (domains.length === 0) return null;
+
+        return (
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              Performance by Domain
+            </h2>
+            <div className="space-y-3">
+              {domains
+                .sort((a, b) => (b[1].correct / b[1].total) - (a[1].correct / a[1].total))
+                .map(([course, stats]) => {
+                  const pct = Math.round((stats.correct / stats.total) * 100);
+                  const isStrong = pct >= 70;
+                  const isWeak = pct < 50;
+                  const icon = isStrong ? (
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                  ) : isWeak ? (
+                    <TrendingDown className="h-4 w-4 text-rose-500" />
+                  ) : (
+                    <Minus className="h-4 w-4 text-amber-500" />
+                  );
+
+                  return (
+                    <div key={course}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          {icon}
+                          <span className="text-xs font-semibold text-slate-700">{course}</span>
+                        </div>
+                        <span
+                          className={`text-xs font-bold ${
+                            isWeak ? 'text-rose-600' : isStrong ? 'text-emerald-600' : 'text-amber-600'
+                          }`}
+                        >
+                          {pct}% ({stats.correct}/{stats.total})
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full overflow-hidden bg-slate-100">
+                        <div
+                          className={`h-full rounded-full ${
+                            isWeak ? 'bg-rose-500' : isStrong ? 'bg-emerald-500' : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Question Breakdown */}
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-slate-900 tracking-tight">Question Review</h2>
@@ -168,7 +238,7 @@ export function MockExamResults({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
                   {(['A', 'B', 'C', 'D'] as const).map((opt) => {
-                    const rawText = item[`option_${opt.toLowerCase()}` as keyof ExamResultItem] || '';
+                    const rawText = (item as any)[`option_${opt.toLowerCase()}`] || '';
                     const optionText = cleanOptionText(String(rawText || ''));
                     const isUserPick = item.selected_option === opt;
                     const isCorrectOpt = item.correct_option === opt;

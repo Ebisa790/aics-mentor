@@ -342,6 +342,14 @@ def submit_exam(
             )
             db.add(attempt_ans)
 
+            # Get course name for domain breakdown
+            course_name = None
+            course_id_val = getattr(q, "course_id", None)
+            if course_id_val:
+                from app.models.course import Course
+                course_obj = db.get(Course, course_id_val)
+                course_name = course_obj.name if course_obj else None
+
             detailed_results.append({
                 "question_id": q_id_str,
                 "prompt": getattr(q, "question_text", None) or getattr(q, "prompt", ""),
@@ -349,6 +357,8 @@ def submit_exam(
                 "correct_answer": norm_correct if norm_correct else "A",
                 "is_correct": is_correct,
                 "explanation": getattr(q, "explanation", None),
+                "course_id": str(course_id_val) if course_id_val else None,
+                "course_name": course_name,
             })
 
     score_percentage = round((correct_count / total_questions * 100), 2) if total_questions > 0 else 0.0
