@@ -39,6 +39,8 @@ import { FlashcardPage } from './pages/FlashcardPage'
 import { AdminFlashcardReview } from './pages/AdminFlashcardReview'
 import { AdminSupportDashboard } from './pages/AdminSupportDashboard'
 import { AdminTransactionsPage } from './pages/AdminTransactions'
+import { ManualPaymentStatusPage } from './pages/ManualPaymentStatus'
+import { AdminManualPaymentsPage } from './pages/AdminManualPayments'
 
 export default function App() {
   return (
@@ -73,6 +75,7 @@ export default function App() {
               <Route path="/tutor" element={<TutorPage />} />
               <Route path="/materials" element={<MaterialsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/payment/manual/status" element={<ManualPaymentStatusPage />} />
               
               {/* Admin Routes (Require Admin Role) */}
               <Route element={<AdminRoute />}>
@@ -83,6 +86,7 @@ export default function App() {
                   <Route path="/admin/question-coverage" element={<AdminQuestionCoverage />} />
                   <Route path="/admin/support" element={<AdminSupportDashboard />} />
                   <Route path="/admin/transactions" element={<AdminTransactionsPage />} />
+                  <Route path="/admin/manual-payments" element={<AdminManualPaymentsPage />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route path="/admin/pricing" element={<AdminPricingPage />} />
                   <Route path="/admin/courses" element={<AdminCoursesPage />} />

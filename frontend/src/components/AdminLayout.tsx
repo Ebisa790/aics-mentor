@@ -18,7 +18,8 @@ import {
   Sun,
   Bell,
   Activity,
-  LifeBuoy
+  LifeBuoy,
+  Wallet
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -34,6 +35,7 @@ const ADMIN_NAV = [
   { to: '/admin/review', label: 'Review Queue', icon: ClipboardCheck },
   { to: '/admin/support', label: 'Support Tickets', icon: LifeBuoy },
   { to: '/admin/transactions', label: 'Transactions', icon: CreditCard },
+  { to: '/admin/manual-payments', label: 'Manual Payments', icon: Wallet },
 ]
 
 export function AdminLayout() {

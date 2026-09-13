@@ -383,3 +383,107 @@ export interface CreateSupportTicketRequest {
   message: string
   issue_type?: string
 }
+
+
+// ============================================================
+// Manual Payment Types
+// ============================================================
+
+export type ManualBank = 'cbe' | 'telebirr' | 'awash'
+
+export interface BankAccountInfo {
+  bank: ManualBank
+  account_number: string
+  account_name: string
+  display_name: string
+}
+
+export interface ManualPaymentOptions {
+  banks: BankAccountInfo[]
+  amount: number
+  currency: string
+  plan_id: string
+  plan_name: string
+  instructions: string
+  // False when Chapa is still in mock/test mode (MOCK_PAYMENT=true).
+  chapa_live: boolean
+}
+
+export interface ManualPaymentInitiateRequest {
+  plan_id: string
+  bank: ManualBank
+}
+
+export interface ManualPaymentInitiateResponse {
+  tx_ref: string
+  payment_id: string
+  bank: ManualBank
+  account_number: string
+  account_name: string
+  amount: number
+  currency: string
+  instructions: string
+}
+
+export interface ManualPaymentSubmitRequest {
+  tx_ref: string
+  bank_reference: string
+  sender_name?: string
+  sender_phone?: string
+  student_note?: string
+}
+
+export interface ManualPaymentSubmitResponse {
+  success: boolean
+  message: string
+  payment_id: string
+  tx_ref: string
+  status: PaymentStatus
+}
+
+export interface ManualPaymentStatusItem {
+  payment_id: string
+  tx_ref: string
+  bank: ManualBank
+  amount: number
+  currency: string
+  status: PaymentStatus
+  bank_reference: string
+  sender_name?: string | null
+  created_at: string
+  verified_at?: string | null
+  admin_note?: string | null
+}
+
+export interface ManualPaymentAdminItem {
+  payment_id: string
+  tx_ref: string
+  user_id: string
+  user_email: string
+  user_full_name?: string | null
+  plan_name: string
+  amount: number
+  currency: string
+  status: PaymentStatus
+  bank: ManualBank
+  bank_reference: string
+  sender_name?: string | null
+  sender_phone?: string | null
+  student_note?: string | null
+  admin_note?: string | null
+  created_at: string
+  verified_at?: string | null
+}
+
+export interface ManualPaymentAdminListResponse {
+  items: ManualPaymentAdminItem[]
+  total: number
+  pending_count: number
+}
+
+export interface ManualPaymentActionResponse {
+  success: boolean
+  message: string
+  payment_id: string
+  status: PaymentStatus
+}

@@ -8,8 +8,14 @@ import {
   Loader2,
   ArrowLeft
 } from 'lucide-react'
-import { paymentApi, type PricingPlan } from '../api'
+import {
+  paymentApi,
+  manualPaymentApi,
+  type PricingPlan,
+  type ManualPaymentOptions,
+} from '../api'
 import { useAuth } from '../context/AuthContext'
+import { ManualPaymentModal } from '../components/ManualPaymentModal'
 
 export function PricingPage() {
   const navigate = useNavigate()
@@ -19,11 +25,19 @@ export function PricingPage() {
   const [loading, setLoading] = useState(true)
   const [initializing, setInitializing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showManualModal, setShowManualModal] = useState(false)
+  const [manualOptions, setManualOptions] = useState<ManualPaymentOptions | null>(null)
 
   const reason = searchParams.get('reason')
 
   useEffect(() => {
     fetchPricing()
+    // Fetch manual payment options in parallel so we know
+    // whether Chapa is live and which banks are available.
+    manualPaymentApi
+      .getOptions()
+      .then(setManualOptions)
+      .catch((err) => console.warn('Failed to load manual options:', err))
   }, [])
 
   const fetchPricing = async () => {
@@ -215,33 +229,82 @@ export function PricingPage() {
                 </div>
               )}
 
-              <button
-                onClick={handleCheckout}
-                disabled={initializing || !pricing}
-                className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition shadow-lg shadow-indigo-500/20 disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {initializing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Redirecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Crown className="w-5 h-5 fill-amber-400 text-amber-400" />
-                    <span>
-                      Pay {pricing?.amount} {pricing?.currency} with Chapa
+                          {/* Chapa under-review notice */}
+              {manualOptions && !manualOptions.chapa_live && (
+                <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-relaxed text-amber-800">
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                  <div>
+                    <span className="font-bold block mb-0.5">
+                      Online card payment is under review
                     </span>
-                  </>
-                )}
-              </button>
+                    While our payment provider finishes review, please use
+                    the bank transfer option below. Your access is activated
+                    within 24 hours.
+                  </div>
+                </div>
+              )}
+
+              {/* Payment buttons */}
+              <div className="mt-4 space-y-3">
+                {/* Chapa button — disabled when not live */}
+                <button
+                  onClick={handleCheckout}
+                  disabled={
+                    initializing ||
+                    !pricing ||
+                    (manualOptions?.chapa_live === false)
+                  }
+                  className={`w-full font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 ${
+                    manualOptions?.chapa_live === false
+                      ? 'bg-slate-200 text-slate-500 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600'
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 disabled:opacity-60'
+                  }`}
+                >
+                  {initializing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Redirecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Crown className="w-5 h-5 fill-amber-400 text-amber-400" />
+                      <span>
+                        Pay {pricing?.amount} {pricing?.currency} with Chapa
+                      </span>
+                    </>
+                  )}
+                </button>
+
+                {/* Manual bank transfer button */}
+                <button
+                  onClick={() => setShowManualModal(true)}
+                  disabled={!pricing}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition shadow-lg shadow-emerald-500/20 disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  <ShieldCheck className="w-5 h-5" />
+                  <span>
+                    Pay {pricing?.amount} {pricing?.currency} via Bank Transfer
+                  </span>
+                </button>
+              </div>
 
               <p className="text-center text-xs text-slate-400 mt-4">
-                Pay securely via Chapa (Telebirr, CBE, Awash, etc.)
+                {manualOptions?.chapa_live
+                  ? 'Pay via Chapa or bank transfer. Both activate instantly or within 24 hours.'
+                  : 'Bank transfer is verified manually within 24 hours.'}
               </p>
             </div>
           </div>
         )}
       </div>
+
+      <ManualPaymentModal
+        isOpen={showManualModal}
+        onClose={() => setShowManualModal(false)}
+        onSuccess={() => {
+          refreshUser?.()
+        }}
+      />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { LifeBuoy, FileText, LayoutDashboard, BookOpen, FileQuestion, MessageCircle, ShieldCheck } from 'lucide-react'
+import { LifeBuoy, FileText, LayoutDashboard, BookOpen, FileQuestion, MessageCircle, ShieldCheck, Wallet } from 'lucide-react'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/mock-exams', label: 'Mock Exams', icon: FileQuestion },
   { to: '/tutor', label: 'Study Assistant', icon: MessageCircle },
   { to: '/support', label: 'Support', icon: LifeBuoy },
+  { to: '/payment/manual/status', label: 'My Bank Payments', icon: Wallet },
 ]
 
 export function AppLayout() {

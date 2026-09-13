@@ -22,6 +22,30 @@ import type {
   ReviewStatus,
   TutorMode,
   User,
+  ManualPaymentOptions,
+  ManualPaymentInitiateRequest,
+  ManualPaymentInitiateResponse,
+  ManualPaymentSubmitRequest,
+  ManualPaymentSubmitResponse,
+  ManualPaymentStatusItem,
+  ManualPaymentAdminListResponse,
+  ManualPaymentActionResponse,
+} from './types'
+
+// Manual payment types live in ./types and are re-exported here so
+// components can import them alongside manualPaymentApi.
+export type {
+  ManualBank,
+  BankAccountInfo,
+  ManualPaymentOptions,
+  ManualPaymentInitiateRequest,
+  ManualPaymentInitiateResponse,
+  ManualPaymentSubmitRequest,
+  ManualPaymentSubmitResponse,
+  ManualPaymentStatusItem,
+  ManualPaymentAdminItem,
+  ManualPaymentAdminListResponse,
+  ManualPaymentActionResponse,
 } from './types'
 
 // --- Device Interfaces ---
@@ -197,6 +221,49 @@ export const paymentApi = {
 
   verifyPayment: (txRef: string) =>
     apiClient.get<PaymentVerifyResponse>(`/api/payments/verify/${txRef}`).then((res) => res.data),
+}
+
+export const manualPaymentApi = {
+  getOptions: () =>
+    apiClient
+      .get<ManualPaymentOptions>('/api/payments/manual/options')
+      .then((res) => res.data),
+
+  initiate: (payload: ManualPaymentInitiateRequest) =>
+    apiClient
+      .post<ManualPaymentInitiateResponse>('/api/payments/manual/initiate', payload)
+      .then((res) => res.data),
+
+  submit: (payload: ManualPaymentSubmitRequest) =>
+    apiClient
+      .post<ManualPaymentSubmitResponse>('/api/payments/manual/submit', payload)
+      .then((res) => res.data),
+
+  myPayments: () =>
+    apiClient
+      .get<ManualPaymentStatusItem[]>('/api/payments/manual/mine')
+      .then((res) => res.data),
+
+  adminListPending: () =>
+    apiClient
+      .get<ManualPaymentAdminListResponse>('/api/payments/manual/admin/pending')
+      .then((res) => res.data),
+
+  adminApprove: (paymentId: string, adminNote?: string) =>
+    apiClient
+      .post<ManualPaymentActionResponse>(
+        `/api/payments/manual/admin/${paymentId}/approve`,
+        { admin_note: adminNote || null }
+      )
+      .then((res) => res.data),
+
+  adminReject: (paymentId: string, reason: string) =>
+    apiClient
+      .post<ManualPaymentActionResponse>(
+        `/api/payments/manual/admin/${paymentId}/reject`,
+        { reason }
+      )
+      .then((res) => res.data),
 }
 
 export const drillsApi = {
