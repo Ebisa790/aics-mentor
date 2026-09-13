@@ -32,6 +32,7 @@ from app.api.routes import (
     admin,
     admin_users,
     payments,
+    manual_payments,
     drills,
     ai,  
     devices,
@@ -84,6 +85,28 @@ app = FastAPI(
     redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
     openapi_url="/openapi.json" if settings.ENVIRONMENT != "production" else None,
 )
+
+@app.get("/api/debug-enums")
+def debug_enums():
+    from app.models.user import UserRole, SubscriptionTier
+    from sqlalchemy import text
+    from app.core.database import engine
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT enum_range(NULL::user_role)"))
+        db_user_role = str(result.scalar())
+        result = conn.execute(text("SELECT enum_range(NULL::subscription_tier)"))
+        db_sub_tier = str(result.scalar())
+    return {
+        "code_user_role": [e.value for e in UserRole],
+        "db_user_role": db_user_role,
+        "code_subscription_tier": [e.value for e in SubscriptionTier],
+        "db_subscription_tier": db_sub_tier,
+    }
+
+    redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
+    openapi_url="/openapi.json" if settings.ENVIRONMENT != "production" else None,
+
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -114,6 +137,7 @@ app.include_router(quizzes.router)
 app.include_router(quizzes.questions_router)
 app.include_router(attempts.router)
 app.include_router(payments.router)
+app.include_router(manual_payments.router)
 app.include_router(tutor.router)
 app.include_router(ai.router) 
 app.include_router(admin.router)

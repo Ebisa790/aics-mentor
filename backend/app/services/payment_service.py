@@ -423,3 +423,28 @@ class PaymentService:
             currency=payment.currency,
             plan_name=plan.name
         )
+
+    # ============================================================
+    # MANUAL PAYMENT SUPPORT
+    # ============================================================
+
+    def activate_manual_subscription(
+        self,
+        user: User,
+        payment: Payment,
+        bank_reference: str,
+    ) -> None:
+        """
+        Public activation path for manual (bank-transfer) payments.
+
+        Delegates to the same _activate_subscription() used by Chapa,
+        so both channels share identical subscription rules.
+
+        The bank reference is stored in payment.chapa_transaction_id
+        for traceability (prefixed with 'manual_' to make it obvious
+        this was not a Chapa transaction).
+        """
+        fake_chapa_data = {
+            "reference": f"manual_{bank_reference}",
+        }
+        self._activate_subscription(user, payment, fake_chapa_data)

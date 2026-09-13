@@ -64,6 +64,15 @@ class Settings(BaseSettings):
     
     # Mock payment mode for development
     MOCK_PAYMENT: bool = False
+
+
+
+    MANUAL_CBE_ACCOUNT: str = ""
+    MANUAL_CBE_NAME: str = ""
+    MANUAL_TELEBIRR_PHONE: str = ""
+    MANUAL_TELEBIRR_NAME: str = ""
+    MANUAL_AWASH_ACCOUNT: str = ""
+    MANUAL_AWASH_NAME: str = ""
     
     # Sentry error monitoring
     SENTRY_DSN: str = ""

@@ -182,3 +182,48 @@ class Subscription(Base):
     user: Mapped["User"] = relationship("User")
     plan: Mapped["PricingPlan"] = relationship("PricingPlan", back_populates="subscriptions")
     payment: Mapped["Payment"] = relationship("Payment", back_populates="subscription")
+
+
+class ManualPaymentDetail(Base):
+    """
+    Extra details for manual (bank-transfer) payments.
+
+    One row per manual Payment. Stores the bank reference number the
+    student submitted, plus sender info and admin notes.
+    Only exists for Payment rows where payment_method starts with
+    'manual_'. Chapa payments never have a row here.
+    """
+    __tablename__ = "manual_payment_details"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    payment_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("payments.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    bank_name: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    bank_reference: Mapped[str] = mapped_column(
+        String(255), nullable=False, unique=True, index=True
+    )
+
+    sender_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    sender_phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+    student_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    admin_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # One-to-one relationship back to Payment
+    payment: Mapped["Payment"] = relationship(
+        "Payment",
+        backref="manual_detail",
+        uselist=False,
+    )

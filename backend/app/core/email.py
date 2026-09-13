@@ -422,3 +422,178 @@ def send_support_ticket_resolved(to_email: str, ticket_id: str) -> bool:
     """
 
     return send_email(to_email=to_email, subject=subject, body_text=body_text, body_html=body_html)
+
+
+
+def send_manual_payment_pending_email(
+    to_email: str,
+    full_name: str,
+    amount: float,
+    currency: str,
+    bank_display: str,
+    reference: str,
+) -> bool:
+    """
+    Sent after a student submits their bank reference.
+    Tells them we received it and an admin will verify within 24 hours.
+    """
+    subject = "Payment received - pending verification"
+
+    body_text = (
+        f"Hi {full_name},\n\n"
+        f"We received your manual payment details.\n\n"
+        f"Amount: {amount} {currency}\n"
+        f"Bank: {bank_display}\n"
+        f"Reference: {reference}\n\n"
+        f"Our team will verify your payment within 24 hours. "
+        f"You will receive another email once your Premium access is activated.\n\n"
+        f"You can check the status anytime from your dashboard.\n\n"
+        f"Best regards,\n"
+        f"ExitAI Ethiopia Team"
+    )
+
+    body_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f9fafb; padding: 20px; }}
+            .card {{ max-width: 560px; margin: 0 auto; background: #ffffff; padding: 32px; border-radius: 8px; border: 1px solid #e5e7eb; }}
+            .header {{ text-align: center; margin-bottom: 24px; }}
+            .header h2 {{ color: #d97706; margin: 0; }}
+            .details {{ background: #fffbeb; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #d97706; }}
+            .details p {{ margin: 6px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <div class="header">
+                <h2>Payment Received - Pending Verification</h2>
+            </div>
+            <p>Hi <strong>{full_name}</strong>,</p>
+            <p>We received your manual payment details. Here's what we have on file:</p>
+            <div class="details">
+                <p><strong>Amount:</strong> {amount} {currency}</p>
+                <p><strong>Bank:</strong> {bank_display}</p>
+                <p><strong>Reference:</strong> {reference}</p>
+            </div>
+            <p>Our team will verify your payment within <strong>24 hours</strong>. You will receive another email once your Premium access is activated.</p>
+            <p>You can also check the status anytime from your dashboard.</p>
+            <p>Best regards,<br>ExitAI Ethiopia Team</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    return send_email(to_email=to_email, subject=subject, body_text=body_text, body_html=body_html)
+
+
+def send_manual_payment_approved_email(
+    to_email: str,
+    full_name: str,
+    amount: float,
+    currency: str,
+    plan_name: str,
+) -> bool:
+    """
+    Sent after admin approves a manual payment.
+    Premium is now active.
+    """
+    subject = "Payment verified - Premium activated"
+
+    body_text = (
+        f"Hi {full_name},\n\n"
+        f"Your payment of {amount} {currency} for {plan_name} has been verified.\n\n"
+        f"Your Premium access is now active.\n\n"
+        f"You now have access to:\n"
+        f"- Unlimited quizzes (no cooldown)\n"
+        f"- 100-question Mock Exam Simulator\n"
+        f"- Full access to all CS course notes\n"
+        f"- AI Tutor & explanations\n"
+        f"- Advanced analytics\n\n"
+        f"Start exploring your full access now!\n\n"
+        f"Thank you for supporting ExitAI Ethiopia.\n\n"
+        f"Best regards,\n"
+        f"ExitAI Ethiopia Team"
+    )
+
+    body_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f9fafb; padding: 20px; }}
+            .card {{ max-width: 560px; margin: 0 auto; background: #ffffff; padding: 32px; border-radius: 8px; border: 1px solid #e5e7eb; text-align: center; }}
+            .success {{ font-size: 48px; margin: 16px 0; }}
+            h2 {{ color: #059669; }}
+            .details {{ background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 16px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <div class="success">&#x2705;</div>
+            <h2>Premium Activated</h2>
+            <p>Hi <strong>{full_name}</strong>,</p>
+            <p>Your payment of <strong>{amount} {currency}</strong> for <strong>{plan_name}</strong> has been verified.</p>
+            <div class="details">
+                <p><strong>Your Premium access is now active.</strong></p>
+            </div>
+            <p>Start exploring your full access now.</p>
+            <p>Thank you for supporting ExitAI Ethiopia.</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    return send_email(to_email=to_email, subject=subject, body_text=body_text, body_html=body_html)
+
+
+def send_manual_payment_rejected_email(
+    to_email: str,
+    full_name: str,
+    reason: str,
+) -> bool:
+    """
+    Sent after admin rejects a manual payment.
+    """
+    subject = "Payment could not be verified"
+
+    body_text = (
+        f"Hi {full_name},\n\n"
+        f"We could not verify your manual payment.\n\n"
+        f"Reason: {reason}\n\n"
+        f"If you believe this is a mistake, please contact our support team with your bank reference number.\n\n"
+        f"Best regards,\n"
+        f"ExitAI Ethiopia Support Team"
+    )
+
+    body_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f9fafb; padding: 20px; }}
+            .card {{ max-width: 560px; margin: 0 auto; background: #ffffff; padding: 32px; border-radius: 8px; border: 1px solid #e5e7eb; }}
+            h2 {{ color: #dc2626; }}
+            .reason {{ background: #fef2f2; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #dc2626; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>Payment Could Not Be Verified</h2>
+            <p>Hi <strong>{full_name}</strong>,</p>
+            <p>We could not verify your manual payment.</p>
+            <div class="reason">
+                <p><strong>Reason:</strong> {reason}</p>
+            </div>
+            <p>If you believe this is a mistake, please contact our support team with your bank reference number.</p>
+            <p>Best regards,<br>ExitAI Ethiopia Support Team</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    return send_email(to_email=to_email, subject=subject, body_text=body_text, body_html=body_html)
