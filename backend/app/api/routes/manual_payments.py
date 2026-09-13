@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.rate_limit import limiter
+from app.core.config import settings
 from app.api.deps import get_current_user, require_admin
 from app.models.user import User
 from app.models.payment import Payment, PaymentStatus, PricingPlan
@@ -89,6 +90,7 @@ def get_manual_options(request: Request, db: Session = Depends(get_db)):
             plan_id=uuid.UUID(int=0),
             plan_name="",
             instructions="Manual payment is currently unavailable.",
+            chapa_live=not settings.MOCK_PAYMENT,
         )
 
     instructions = INSTRUCTIONS_TEMPLATE.format(
@@ -103,6 +105,7 @@ def get_manual_options(request: Request, db: Session = Depends(get_db)):
         plan_id=plan.id,
         plan_name=plan.name,
         instructions=instructions,
+        chapa_live=not settings.MOCK_PAYMENT,
     )
 
 

@@ -55,6 +55,10 @@ class ManualPaymentOptionsResponse(BaseModel):
     plan_id: UUID
     plan_name: str
     instructions: str
+    # False when Chapa is in mock/test mode (MOCK_PAYMENT=true).
+    # Frontend uses this to disable the Chapa button and nudge
+    # students toward manual bank transfer until Chapa goes live.
+    chapa_live: bool = False
 
 
 # ============================================================
