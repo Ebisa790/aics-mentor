@@ -56,6 +56,20 @@ const bankFormatHint: Record<ManualBank, string> = {
   awash: 'Letters, numbers, dashes (e.g. -2DBWYO2M4D-9UIFS)',
 }
 
+// USSD codes for quick mobile payment.
+const bankUssd: Record<ManualBank, string> = {
+  cbe: '*889#',
+  telebirr: '*127#',
+  awash: '*901#',
+}
+
+// Friendly per-bank instruction shown above the USSD code.
+const bankUssdHint: Record<ManualBank, string> = {
+  cbe: 'Dial from the phone registered with CBE Birr',
+  telebirr: 'Dial from the phone registered with Telebirr',
+  awash: 'Dial from the phone registered with Awash',
+}
+
 export function ManualPaymentModal({
   isOpen,
   onClose,
@@ -356,6 +370,46 @@ export function ManualPaymentModal({
                   </div>
                 </div>
               </div>
+
+              {/* USSD shortcut — appears once a bank is selected */}
+              {selectedBank && (
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-500/30 dark:bg-indigo-500/10">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
+                      <Smartphone className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-indigo-900 dark:text-indigo-300">
+                        Fastest way to pay
+                      </p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-indigo-800/80 dark:text-indigo-300/80">
+                        {bankUssdHint[selectedBank]}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(bankUssd[selectedBank], 'ussd')}
+                        className="mt-3 inline-flex items-center gap-2.5 rounded-xl bg-white px-4 py-2.5 shadow-sm ring-1 ring-indigo-200 transition hover:bg-indigo-50 dark:bg-slate-950 dark:ring-indigo-500/30 dark:hover:bg-slate-900"
+                        title="Tap to copy USSD code"
+                      >
+                        <span className="font-mono text-2xl font-black tracking-wider text-indigo-700 dark:text-indigo-300">
+                          {bankUssd[selectedBank]}
+                        </span>
+                        {copiedField === 'ussd' ? (
+                          <Check className="h-4 w-4 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-4 w-4 text-indigo-500/70" />
+                        )}
+                      </button>
+
+                      <p className="mt-2 text-[11px] text-indigo-700/70 dark:text-indigo-300/60">
+                        Follow the menu, then come back and submit your
+                        reference below.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Bank selection */}
               <div>
