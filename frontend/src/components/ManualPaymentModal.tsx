@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import axios from 'axios'
 import {
+  AlertCircle,
   Building2,
   Check,
   Copy,
@@ -39,6 +40,20 @@ const bankMeta: Record<ManualBank, { label: string; icon: any; hint: string }> =
     icon: Building2,
     hint: 'Awash Bank',
   },
+}
+
+// Client-side format hints matching backend validation.
+// Users see green/amber feedback as they type — fewer rejections.
+const bankPatterns: Record<ManualBank, RegExp> = {
+  cbe: /^FT[A-Z0-9]{6,20}$/,
+  telebirr: /^[0-9]{8,20}$/,
+  awash: /^[A-Z0-9\-]{6,30}$/,
+}
+
+const bankFormatHint: Record<ManualBank, string> = {
+  cbe: 'CBE refs start with FT (e.g. FT24ABC123XYZ)',
+  telebirr: 'Digits only, 8-20 numbers',
+  awash: 'Letters, numbers, dashes (e.g. -2DBWYO2M4D-9UIFS)',
 }
 
 export function ManualPaymentModal({
@@ -128,6 +143,11 @@ export function ManualPaymentModal({
 
   const selectedBankInfo =
     options?.banks.find((b) => b.bank === selectedBank) ?? null
+
+  // Live validation of the reference against the selected bank's format
+  const referenceIsValid = selectedBank
+    ? bankPatterns[selectedBank].test(reference)
+    : false
 
   const handleCopy = async (text: string, field: string) => {
     try {
@@ -445,11 +465,61 @@ export function ManualPaymentModal({
                   <input
                     type="text"
                     value={reference}
-                    onChange={(e) => setReference(e.target.value)}
-                    placeholder="e.g. FT24ABC123XYZ"
+                    onChange={(e) => {
+                      // Auto-uppercase and strip spaces/dashes users
+                      // accidentally include when copying.
+                      const cleaned = e.target.value
+                        .toUpperCase()
+                        .replace(/\s+/g, '')
+                      setReference(cleaned)
+                    }}
+                    placeholder={
+                      selectedBank === 'cbe'
+                        ? 'e.g. FT24ABC123XYZ'
+                        : selectedBank === 'telebirr'
+                          ? 'e.g. 260913172552603'
+                          : 'e.g. -2DBWYO2M4D-9UIFS'
+                    }
                     disabled={submitting}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                    className={`w-full rounded-xl border bg-white px-3 py-2.5 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 disabled:opacity-50 dark:bg-slate-950 dark:text-white ${
+                      reference.length === 0
+                        ? 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700'
+                        : referenceIsValid
+                          ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500 dark:border-emerald-500/60'
+                          : 'border-amber-400 focus:border-amber-500 focus:ring-amber-500 dark:border-amber-500/60'
+                    }`}
                   />
+
+                  {/* Live format hint */}
+                  {reference.length > 0 && (
+                    <p
+                      className={`mt-1.5 flex items-center gap-1.5 text-[11px] font-medium ${
+                        referenceIsValid
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
+                      {referenceIsValid ? (
+                        <>
+                          <Check className="h-3 w-3" strokeWidth={3} />
+                          Looks good
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="h-3 w-3" />
+                          {selectedBank
+                            ? bankFormatHint[selectedBank]
+                            : 'Check the reference format'}
+                        </>
+                      )}
+                    </p>
+                  )}
+
+                  {reference.length === 0 && selectedBank && (
+                    <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      {bankFormatHint[selectedBank]}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -528,7 +598,7 @@ export function ManualPaymentModal({
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={submitting || !reference.trim()}
+                  disabled={submitting || !referenceIsValid}
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting ? (
