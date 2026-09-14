@@ -232,3 +232,40 @@ class ManualPaymentDetail(Base):
         backref="manual_detail",
         uselist=False,
     )
+
+
+
+class DeletedPaymentLog(Base):
+    """
+    Permanent archive of payments that were deleted by an admin.
+
+    Every deletion writes a snapshot of the payment, its subscription,
+    and its manual details, so we always have a recovery record and
+    an audit trail — even though the original rows are gone.
+
+    This table is append-only. Never update or delete rows here.
+    """
+    __tablename__ = "deleted_payments_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    payment_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, index=True
+    )
+    deleted_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    deleted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    payment_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
+    subscription_snapshot: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    manual_detail_snapshot: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

@@ -20,7 +20,9 @@ from app.models.payment import (
     PricingPlan, 
     Subscription, 
     SubscriptionStatus,
-    PlanDurationType
+    PlanDurationType,
+    DeletedPaymentLog,
+    ManualPaymentDetail,
 )
 from app.models.user import User, SubscriptionTier
 
@@ -448,3 +450,152 @@ class PaymentService:
             "reference": f"manual_{bank_reference}",
         }
         self._activate_subscription(user, payment, fake_chapa_data)
+
+
+    # ============================================================
+    # ADMIN — DELETE PAYMENT (with archive)
+    # ============================================================
+
+    def delete_payment(
+        self,
+        payment_id: uuid.UUID,
+        deleted_by_user_id: uuid.UUID,
+        reason: Optional[str] = None,
+    ) -> dict:
+        """
+        Delete a payment record. Archives everything first.
+
+        Order of operations (all in one transaction):
+          1. Fetch the payment
+          2. Snapshot payment + subscription + manual details as JSON
+          3. Insert an archive row into deleted_payments_log
+          4. Delete manual_payment_details (FK child)
+          5. Delete subscription (FK child)
+          6. Delete payment (parent)
+          7. If user has no OTHER active subscription, downgrade to FREE
+
+        If ANY step fails, the whole transaction rolls back.
+        """
+        from app.models.user import SubscriptionTier
+
+        payment = self.db.get(Payment, payment_id)
+        if not payment:
+            raise ValueError("Payment not found.")
+
+        user = self.db.get(User, payment.user_id)
+        if not user:
+            raise ValueError("Payment user not found.")
+
+        # ── 1. Snapshot the payment
+        payment_snapshot = {
+            "id": str(payment.id),
+            "user_id": str(payment.user_id),
+            "plan_id": str(payment.plan_id) if payment.plan_id else None,
+            "tx_ref": payment.tx_ref,
+            "chapa_transaction_id": payment.chapa_transaction_id,
+            "amount": float(payment.amount),
+            "currency": payment.currency,
+            "status": payment.status.value,
+            "checkout_url": payment.checkout_url,
+            "payment_method": payment.payment_method,
+            "verified_at": payment.verified_at.isoformat() if payment.verified_at else None,
+            "created_at": payment.created_at.isoformat() if payment.created_at else None,
+            "updated_at": payment.updated_at.isoformat() if payment.updated_at else None,
+            "manual_audit_log": payment.manual_audit_log,
+        }
+
+        # ── 2. Snapshot the subscription (if any)
+        subscription = (
+            self.db.query(Subscription)
+            .filter(Subscription.payment_id == payment.id)
+            .first()
+        )
+        subscription_snapshot = None
+        if subscription:
+            subscription_snapshot = {
+                "id": str(subscription.id),
+                "user_id": str(subscription.user_id),
+                "payment_id": str(subscription.payment_id),
+                "plan_id": str(subscription.plan_id) if subscription.plan_id else None,
+                "status": subscription.status.value,
+                "started_at": subscription.started_at.isoformat() if subscription.started_at else None,
+                "expires_at": subscription.expires_at.isoformat() if subscription.expires_at else None,
+            }
+
+        # ── 3. Snapshot the manual payment details (if any)
+        detail = (
+            self.db.query(ManualPaymentDetail)
+            .filter(ManualPaymentDetail.payment_id == payment.id)
+            .first()
+        )
+        detail_snapshot = None
+        if detail:
+            detail_snapshot = {
+                "id": str(detail.id),
+                "bank_name": detail.bank_name,
+                "bank_reference": detail.bank_reference,
+                "sender_name": detail.sender_name,
+                "sender_phone": detail.sender_phone,
+                "student_note": detail.student_note,
+                "admin_note": detail.admin_note,
+                "created_at": detail.created_at.isoformat() if detail.created_at else None,
+            }
+
+        # ── 4. Write the archive row FIRST (before any deletes)
+        log_entry = DeletedPaymentLog(
+            payment_id=payment.id,
+            deleted_by=deleted_by_user_id,
+            reason=reason,
+            payment_snapshot=payment_snapshot,
+            subscription_snapshot=subscription_snapshot,
+            manual_detail_snapshot=detail_snapshot,
+        )
+        self.db.add(log_entry)
+
+        # ── 5. Delete manual details (FK child)
+        if detail:
+            self.db.delete(detail)
+
+        # ── 6. Delete subscription (FK child)
+        if subscription:
+            self.db.delete(subscription)
+
+        # ── 7. Delete the payment itself
+        self.db.delete(payment)
+
+        # ── 8. Downgrade user if they have no OTHER active subscription
+        #     (Needs to run after subscription delete so the query is accurate.)
+        self.db.flush()
+
+        now = datetime.now(timezone.utc)
+        other_active = (
+            self.db.query(Subscription)
+            .filter(
+                Subscription.user_id == user.id,
+                Subscription.status == SubscriptionStatus.ACTIVE,
+            )
+            .filter(
+                (Subscription.expires_at == None) |  # noqa: E711
+                (Subscription.expires_at > now)
+            )
+            .first()
+        )
+
+        if not other_active and user.subscription_tier == SubscriptionTier.PREMIUM:
+            user.subscription_tier = SubscriptionTier.FREE
+            user.subscription_expires_at = None
+
+        # ── 9. Commit
+        self.db.commit()
+
+        logger.info(
+            f"Payment deleted: id={payment_id}, by={deleted_by_user_id}, "
+            f"reason={reason or '(none)'}"
+        )
+
+        return {
+            "deleted_payment_id": str(payment_id),
+            "had_subscription": subscription_snapshot is not None,
+            "had_manual_detail": detail_snapshot is not None,
+            "user_downgraded": not other_active and user.subscription_tier == SubscriptionTier.FREE,
+        }

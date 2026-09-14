@@ -14,6 +14,8 @@ import {
   ChevronDown,
   Copy,
   Check,
+  Trash2,
+  Loader2,
 } from 'lucide-react'
 
 interface PaymentTransaction {
@@ -40,6 +42,13 @@ export function AdminTransactionsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [copiedRef, setCopiedRef] = useState<string | null>(null)
+
+  // Delete-payment state
+  const [deleteTarget, setDeleteTarget] = useState<PaymentTransaction | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [totalRevenue, setTotalRevenue] = useState(0)
   const [successCount, setSuccessCount] = useState(0)
   const [pendingCount, setPendingCount] = useState(0)
@@ -157,6 +166,63 @@ export function AdminTransactionsPage() {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const openDeleteModal = (tx: PaymentTransaction) => {
+    setDeleteTarget(tx)
+    setDeleteConfirmText('')
+    setDeleteReason('')
+    setDeleteError(null)
+  }
+
+  const closeDeleteModal = () => {
+    if (deleting) return
+    setDeleteTarget(null)
+    setDeleteConfirmText('')
+    setDeleteReason('')
+    setDeleteError(null)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE') {
+      setDeleteError('Type DELETE (in capitals) to confirm.')
+      return
+    }
+
+    setDeleting(true)
+    setDeleteError(null)
+
+    try {
+      await apiClient.delete(`/api/payments/admin/${deleteTarget.id}`, {
+        data: { reason: deleteReason.trim() || undefined },
+      })
+
+      // Remove the row from local state
+      setTransactions((prev) => prev.filter((t) => t.id !== deleteTarget.id))
+
+      // Close modal
+      setDeleteTarget(null)
+      setDeleteConfirmText('')
+      setDeleteReason('')
+    } catch (err: any) {
+      console.error('Delete payment failed:', err)
+      const status = err?.response?.status
+      const detail = err?.response?.data?.detail
+      const errMessage = err?.response?.data?.error
+
+      if (status === 404) {
+        setDeleteError('Payment not found. It may have been deleted already.')
+      } else if (typeof detail === 'string') {
+        setDeleteError(detail)
+      } else if (typeof errMessage === 'string') {
+        setDeleteError(errMessage)
+      } else {
+        setDeleteError('Could not delete this payment. Please try again.')
+      }
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const handleCopyRef = (ref: string) => {
@@ -303,12 +369,13 @@ export function AdminTransactionsPage() {
                   <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Amount</th>
                   <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Status</th>
                   <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Method</th>
+                  <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase w-14 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                       No transactions found
                     </td>
                   </tr>
@@ -368,10 +435,23 @@ export function AdminTransactionsPage() {
                           <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
                             {tx.payment_method || '—'}
                           </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openDeleteModal(tx)
+                              }}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition"
+                              title="Delete this payment"
+                              aria-label="Delete this payment"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
                         </tr>
                         {isExpanded && (
                           <tr key={`${tx.id}-expanded`} className="bg-slate-50 dark:bg-slate-800/30">
-                            <td colSpan={7} className="px-6 py-4">
+                            <td colSpan={8} className="px-6 py-4">
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
                                   <p className="text-[10px] font-bold text-slate-400 uppercase">Full Tx Ref</p>
@@ -445,6 +525,146 @@ export function AdminTransactionsPage() {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeDeleteModal()
+          }}
+        >
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Delete this payment permanently?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  This cannot be undone. The record will be archived first,
+                  but removed from the platform.
+                </p>
+              </div>
+            </div>
+
+            {/* Payment details */}
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-4 space-y-2 text-xs">
+              <div className="flex justify-between gap-4">
+                <span className="text-slate-500 dark:text-slate-400">Student</span>
+                <span className="font-semibold text-slate-900 dark:text-white text-right truncate">
+                  {deleteTarget.student_name}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-slate-500 dark:text-slate-400">Tx Ref</span>
+                <span className="font-mono text-slate-700 dark:text-slate-300 text-right truncate">
+                  {deleteTarget.tx_ref}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-slate-500 dark:text-slate-400">Amount</span>
+                <span className="font-bold text-slate-900 dark:text-white">
+                  {deleteTarget.amount.toFixed(2)} {deleteTarget.currency}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-slate-500 dark:text-slate-400">Status</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  {deleteTarget.status}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-slate-500 dark:text-slate-400">Method</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                  {deleteTarget.payment_method || 'chapa'}
+                </span>
+              </div>
+            </div>
+
+            {/* Warning list */}
+            <div className="rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3.5 text-xs text-amber-800 dark:text-amber-300">
+              <p className="font-bold mb-1">What will happen:</p>
+              <ul className="space-y-0.5 ml-3 list-disc">
+                <li>The payment record is deleted</li>
+                <li>Its subscription (if any) is removed</li>
+                <li>Its manual details (if any) are removed</li>
+                <li>If the student has no other active Premium, they are downgraded to FREE</li>
+                <li>The full record is archived in deleted_payments_log for recovery</li>
+              </ul>
+            </div>
+
+            {/* Optional reason */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Reason (optional)
+              </label>
+              <input
+                type="text"
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                disabled={deleting}
+                placeholder="e.g. test data cleanup"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+              />
+            </div>
+
+            {/* Confirm text input */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Type <span className="font-mono text-rose-600">DELETE</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                disabled={deleting}
+                autoComplete="off"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm font-mono uppercase tracking-wider text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 disabled:opacity-50"
+                placeholder="DELETE"
+              />
+            </div>
+
+            {deleteError && (
+              <div className="rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-3 py-2.5 text-xs text-rose-700 dark:text-rose-400">
+                {deleteError}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={
+                  deleting ||
+                  deleteConfirmText.trim().toUpperCase() !== 'DELETE'
+                }
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {deleting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                {deleting ? 'Deleting...' : 'Delete permanently'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

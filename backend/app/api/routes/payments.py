@@ -1,7 +1,7 @@
 import logging
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
@@ -382,6 +382,44 @@ def get_payment_transactions(
         }
         for payment, full_name, email in results
     ]
+
+
+@router.delete("/admin/{payment_id}")
+def delete_payment_record(
+    payment_id: uuid.UUID,
+    payload: Optional[dict] = Body(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Permanently delete a payment record (Admin only).
+
+    Archives the payment + its subscription + its manual details
+    into deleted_payments_log BEFORE deleting, so we have a full
+    recovery record. If the student has no other active Premium,
+    they are downgraded to FREE.
+    """
+    service = PaymentService(db)
+
+    try:
+        result = service.delete_payment(
+            payment_id=payment_id,
+            deleted_by_user_id=current_user.id,
+            reason=(payload or {}).get("reason") if payload else None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        logger.error(f"Payment deletion failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not delete payment. Please try again.",
+        )
+
+    return {
+        "success": True,
+        "message": "Payment deleted and archived.",
+        **result,
+    }
 
 
 @router.get("/admin/stats")
