@@ -612,7 +612,7 @@ export function ManualPaymentModal({
                   Step 1 — Choose your bank
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {options.banks.map((bank) => {
                     const meta = bankMeta[bank.bank]
                     const Icon = meta.icon
@@ -623,21 +623,21 @@ export function ManualPaymentModal({
                         key={bank.bank}
                         type="button"
                         onClick={() => setSelectedBank(bank.bank)}
-                        className={`relative flex flex-col items-center gap-1 rounded-2xl border-2 px-2 py-3 transition ${
+                        className={`relative flex items-center sm:flex-col gap-3 sm:gap-1 rounded-2xl border-2 px-4 sm:px-2 py-3 transition ${
                           isSelected
                             ? 'border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-500/10'
                             : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'
                         }`}
                       >
                         <Icon
-                          className={`h-5 w-5 ${
+                          className={`h-5 w-5 shrink-0 ${
                             isSelected
                               ? 'text-emerald-600 dark:text-emerald-400'
                               : 'text-slate-500 dark:text-slate-400'
                           }`}
                         />
                         <span
-                          className={`text-xs font-bold ${
+                          className={`text-sm sm:text-xs font-bold ${
                             isSelected
                               ? 'text-emerald-700 dark:text-emerald-400'
                               : 'text-slate-700 dark:text-slate-300'
@@ -646,7 +646,7 @@ export function ManualPaymentModal({
                           {meta.label}
                         </span>
                         {isSelected && (
-                          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500">
+                          <span className="absolute right-3 sm:right-1 top-1/2 sm:top-1 -translate-y-1/2 sm:translate-y-0 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500">
                             <Check className="h-2.5 w-2.5 text-white" strokeWidth={4} />
                           </span>
                         )}
