@@ -244,6 +244,13 @@ export const manualPaymentApi = {
       .get<ManualPaymentStatusItem[]>('/api/payments/manual/mine')
       .then((res) => res.data),
 
+  cancel: (paymentId: string) =>
+    apiClient
+      .post<ManualPaymentActionResponse>(
+        `/api/payments/manual/${paymentId}/cancel`
+      )
+      .then((res) => res.data),
+
   adminListPending: () =>
     apiClient
       .get<ManualPaymentAdminListResponse>('/api/payments/manual/admin/pending')

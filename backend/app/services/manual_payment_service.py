@@ -339,6 +339,59 @@ class ManualPaymentService:
         return out
 
     # ============================================================
+    # USER — CANCEL PENDING PAYMENT
+    # ============================================================
+
+    def cancel_pending(self, user: User, payment_id: uuid.UUID) -> Payment:
+        """Student cancels their own pending manual payment.
+
+        Deletes the associated manual_payment_details row so the same
+        bank reference can be resubmitted against a fresh payment
+        (useful if they made a typo the first time).
+        """
+        from app.models.payment import ManualPaymentDetail
+
+        payment = self.db.get(Payment, payment_id)
+        if not payment:
+            raise ManualPaymentError("Payment not found.")
+
+        # Ownership check — critical (IDOR protection)
+        if payment.user_id != user.id:
+            raise ManualPaymentError("You can only cancel your own payments.")
+
+        if not payment.payment_method or not payment.payment_method.startswith("manual_"):
+            raise ManualPaymentError("Not a manual payment.")
+
+        if payment.status != PaymentStatus.PENDING:
+            raise ManualPaymentError(
+                f"Cannot cancel a payment that is already "
+                f"{payment.status.value}."
+            )
+
+        # Mark as cancelled
+        payment.status = PaymentStatus.CANCELLED
+        payment.verified_at = datetime.now(timezone.utc)
+
+        # Remove the submitted detail (frees up the bank reference)
+        detail = (
+            self.db.query(ManualPaymentDetail)
+            .filter(ManualPaymentDetail.payment_id == payment.id)
+            .first()
+        )
+        if detail:
+            self.db.delete(detail)
+
+        self.db.commit()
+        self.db.refresh(payment)
+
+        logger.info(
+            f"Manual payment cancelled by user: payment_id={payment.id}, "
+            f"user={user.id}, tx_ref={payment.tx_ref}"
+        )
+
+        return payment
+
+    # ============================================================
     # ADMIN — LIST PENDING
     # ============================================================
 

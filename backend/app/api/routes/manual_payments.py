@@ -236,6 +236,46 @@ def list_my_manual_payments(
 
 
 # ============================================================
+# USER — cancel own pending payment
+# ============================================================
+
+@router.post("/{payment_id}/cancel", response_model=ManualPaymentActionResponse)
+@limiter.limit("10/minute")
+def cancel_manual_payment(
+    payment_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Student cancels their own pending manual payment.
+
+    Frees the submitted bank reference so it can be reused
+    against a new attempt."""
+    service = ManualPaymentService(db)
+
+    try:
+        payment = service.cancel_pending(
+            user=current_user,
+            payment_id=payment_id,
+        )
+    except ManualPaymentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Manual cancel failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not cancel payment. Please try again.",
+        )
+
+    return ManualPaymentActionResponse(
+        success=True,
+        message="Payment cancelled.",
+        payment_id=payment.id,
+        status=payment.status,
+    )
+
+
+# ============================================================
 # ADMIN — list pending
 # ============================================================
 
