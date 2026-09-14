@@ -74,6 +74,7 @@ export function ManualPaymentModal({
   const [senderPhone, setSenderPhone] = useState('')
   const [note, setNote] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [referenceError, setReferenceError] = useState<string | null>(null)
 
   /*
    * Load available banks + plan when the modal opens.
@@ -192,7 +193,19 @@ export function ManualPaymentModal({
       if (axios.isAxiosError(err)) {
         const detail = err.response?.data?.detail
         if (typeof detail === 'string') {
-          setError(detail)
+          // If the message is about duplicates, show it inline
+          // next to the reference field instead of the top banner.
+          const lower = detail.toLowerCase()
+          if (
+            lower.includes('reference is already in use') ||
+            lower.includes('already submitted this reference') ||
+            lower.includes('already approved') ||
+            lower.includes('already been submitted')
+          ) {
+            setReferenceError(detail)
+          } else {
+            setError(detail)
+          }
         } else {
           setError(
             'We could not submit your payment. Please check your connection and try again.'
@@ -472,6 +485,8 @@ export function ManualPaymentModal({
                         .toUpperCase()
                         .replace(/\s+/g, '')
                       setReference(cleaned)
+                      // Any edit clears the previous duplicate error
+                      if (referenceError) setReferenceError(null)
                     }}
                     placeholder={
                       selectedBank === 'cbe'
@@ -518,6 +533,13 @@ export function ManualPaymentModal({
                   {reference.length === 0 && selectedBank && (
                     <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                       {bankFormatHint[selectedBank]}
+                    </p>
+                  )}
+
+                  {referenceError && (
+                    <p className="mt-1.5 flex items-start gap-1.5 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      <span>{referenceError}</span>
                     </p>
                   )}
                 </div>
