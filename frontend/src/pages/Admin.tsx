@@ -4,6 +4,7 @@ import { apiClient } from '../api/client'
 import { announcementApi, courseApi, departmentApi, adminApi } from '../api'
 import type { Announcement, AnnouncementType, Course, Department } from '../api/types'
 import { GlobalReviewQueue } from '../components/GlobalReviewQueue'
+import { ManualPaymentsWidget } from '../components/ManualPaymentsWidget'
 import { CourseMaterialUpload } from '../components/CourseMaterialUpload'
 import { 
   Users, 
@@ -401,6 +402,9 @@ export function AdminPage() {
             </div>
           )}
         </section>
+
+        {/* Manual Payments Alert */}
+        <ManualPaymentsWidget />
 
         {/* Course Question Breakdown */}
         <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">

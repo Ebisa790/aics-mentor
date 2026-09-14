@@ -256,6 +256,11 @@ export const manualPaymentApi = {
       .get<ManualPaymentAdminListResponse>('/api/payments/manual/admin/pending')
       .then((res) => res.data),
 
+  adminStats: () =>
+    apiClient
+      .get<{ pending_count: number }>('/api/payments/manual/admin/stats')
+      .then((res) => res.data),
+
   adminApprove: (paymentId: string, adminNote?: string) =>
     apiClient
       .post<ManualPaymentActionResponse>(

@@ -276,6 +276,32 @@ def cancel_manual_payment(
 
 
 # ============================================================
+# ADMIN — lightweight stats for dashboard widget
+# ============================================================
+
+@router.get("/admin/stats")
+@limiter.limit("120/minute")
+def admin_manual_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Return a small snapshot for the admin dashboard widget."""
+    pending_count = (
+        db.query(Payment)
+        .filter(
+            Payment.status == PaymentStatus.PENDING,
+            Payment.payment_method.like("manual_%"),
+        )
+        .count()
+    )
+
+    return {
+        "pending_count": pending_count,
+    }
+
+
+# ============================================================
 # ADMIN — list pending
 # ============================================================
 
