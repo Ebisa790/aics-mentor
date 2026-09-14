@@ -10,6 +10,7 @@ import {
   Smartphone,
   X,
   Inbox,
+  BookOpen,
 } from 'lucide-react'
 import {
   manualPaymentApi,
