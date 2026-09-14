@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 import {
+  ArrowRight,
   Check,
   Crown,
-  Lock,
   ShieldCheck,
   Sparkles,
   X,
@@ -22,9 +22,9 @@ export function UpgradeModal({
   onClose,
   customMessage,
 }: UpgradeModalProps) {
+  const navigate = useNavigate()
   const [pricing, setPricing] = useState<PricingPlan | null>(null)
   const [loading, setLoading] = useState(false)
-  const [initializing, setInitializing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   /*
@@ -73,15 +73,15 @@ export function UpgradeModal({
   }, [isOpen])
 
   /*
-   * ESC closes the modal unless payment initialization is in progress.
+   * ESC closes the modal.
    */
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen && !initializing) {
+      if (event.key === 'Escape' && isOpen) {
         onClose()
       }
     },
-    [isOpen, initializing, onClose]
+    [isOpen, onClose]
   )
 
   useEffect(() => {
@@ -138,68 +138,12 @@ export function UpgradeModal({
   }
 
   /*
-   * Initialize Chapa checkout.
+   * Close this modal and route the student to the pricing page,
+   * where they choose between Chapa and manual bank transfer.
    */
-  const handleCheckout = async () => {
-    if (!pricing?.id) {
-      setError(
-        'No active pricing plan is available. Please try again later.'
-      )
-      return
-    }
-
-    setInitializing(true)
-    setError(null)
-
-    try {
-      const response = await paymentApi.initializePayment({
-        plan_id: pricing.id,
-      })
-
-      if (!response?.checkout_url) {
-        throw new Error(
-          'Checkout URL was not returned by the server.'
-        )
-      }
-
-      /*
-       * Redirect to Chapa's hosted checkout page.
-       */
-      window.location.href = response.checkout_url
-    } catch (err: unknown) {
-      console.error('Payment initialization failed:', err)
-
-      setInitializing(false)
-
-      if (axios.isAxiosError(err)) {
-        const detail = err.response?.data?.detail
-
-        if (typeof detail === 'string') {
-          setError(detail)
-        } else if (
-          Array.isArray(detail) &&
-          detail.length > 0 &&
-          detail[0]?.msg
-        ) {
-          setError(detail[0].msg)
-        } else {
-          setError(
-            'Unable to start the payment. Please check your connection and try again.'
-          )
-        }
-
-        return
-      }
-
-      if (err instanceof Error) {
-        setError(err.message)
-        return
-      }
-
-      setError(
-        'Something went wrong while starting your payment. Please try again.'
-      )
-    }
+  const handleSeeOptions = () => {
+    onClose()
+    navigate('/pricing?reason=upgrade_modal')
   }
 
   const defaultFeatures = [
@@ -230,10 +174,7 @@ export function UpgradeModal({
       aria-labelledby="upgrade-modal-title"
       aria-describedby="upgrade-modal-description"
       onMouseDown={(event) => {
-        if (
-          event.target === event.currentTarget &&
-          !initializing
-        ) {
+        if (event.target === event.currentTarget) {
           onClose()
         }
       }}
@@ -249,9 +190,8 @@ export function UpgradeModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={initializing}
             aria-label="Close upgrade dialog"
-            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="h-5 w-5" />
           </button>
@@ -405,37 +345,27 @@ export function UpgradeModal({
                 <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
 
                 <span>
-                  Secure payment powered by Chapa
+                  Multiple secure payment options
                 </span>
               </div>
 
-              {/* Checkout */}
+              {/* See payment options */}
               <button
                 type="button"
-                onClick={handleCheckout}
-                disabled={initializing || !pricing?.id}
+                onClick={handleSeeOptions}
+                disabled={!pricing?.id}
                 className="group flex w-full items-center justify-center gap-2.5 rounded-xl bg-indigo-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700 hover:shadow-indigo-500/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-slate-900"
               >
-                {initializing ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    <span>Redirecting to secure checkout...</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-4 w-4 transition-transform group-hover:scale-110" />
-
-                    <span>
-                      Pay {amount} {currency} with Chapa
-                    </span>
-                  </>
-                )}
+                <span>
+                  See payment options
+                </span>
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
 
               {/* Bottom reassurance */}
               <p className="text-center text-[10px] leading-relaxed text-slate-400 dark:text-slate-500">
-                You will be redirected to Chapa's secure hosted payment
-                page to complete your purchase.
+                Choose between Chapa (card / mobile money) and manual
+                bank transfer on the pricing page.
               </p>
             </div>
           )}
