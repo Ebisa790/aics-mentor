@@ -41,6 +41,7 @@ import { AdminSupportDashboard } from './pages/AdminSupportDashboard'
 import { AdminTransactionsPage } from './pages/AdminTransactions'
 import { ManualPaymentStatusPage } from './pages/ManualPaymentStatus'
 import { AdminManualPaymentsPage } from './pages/AdminManualPayments'
+import { AdminManualPaymentsHelpPage } from './pages/AdminManualPaymentsHelp'
 
 export default function App() {
   return (
@@ -87,6 +88,7 @@ export default function App() {
                   <Route path="/admin/support" element={<AdminSupportDashboard />} />
                   <Route path="/admin/transactions" element={<AdminTransactionsPage />} />
                   <Route path="/admin/manual-payments" element={<AdminManualPaymentsPage />} />
+                  <Route path="/admin/manual-payments/help" element={<AdminManualPaymentsHelpPage />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route path="/admin/pricing" element={<AdminPricingPage />} />
                   <Route path="/admin/courses" element={<AdminCoursesPage />} />
