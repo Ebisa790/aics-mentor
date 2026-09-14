@@ -346,7 +346,7 @@ export function AdminManualPaymentsPage() {
       {/* Reject modal */}
       {rejectTarget && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 overflow-y-auto"
           role="dialog"
           aria-modal="true"
           onMouseDown={(e) => {
@@ -355,7 +355,7 @@ export function AdminManualPaymentsPage() {
             }
           }}
         >
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 my-auto">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
               Reject this payment?
             </h3>
