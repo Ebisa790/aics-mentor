@@ -290,21 +290,36 @@ export function ManualPaymentModal({
           ) : (
             /* ============ MAIN FORM ============ */
             <div className="space-y-5">
-              {/* Amount card */}
-              <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 px-4 py-3.5 dark:border-emerald-500/20 dark:from-emerald-950/40 dark:via-slate-900 dark:to-teal-950/30">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                      Amount to send
-                    </div>
-                    <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                      {options.plan_name}
-                    </div>
+              {/* Amount card — big, copyable, impossible to miss */}
+              <div className="rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 dark:border-emerald-500/40 dark:from-emerald-950/40 dark:via-slate-900 dark:to-teal-950/30">
+                <div className="text-center">
+                  <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+                    Send exactly this amount
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-black tracking-tight text-emerald-700 dark:text-emerald-400">
-                      {options.amount} {options.currency}
-                    </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleCopy(String(options.amount), 'amount')
+                    }
+                    className="group mt-3 inline-flex items-center gap-3 rounded-2xl bg-white px-5 py-3 shadow-sm ring-1 ring-emerald-200 transition hover:bg-emerald-50 dark:bg-slate-950 dark:ring-emerald-500/30 dark:hover:bg-slate-900"
+                    title="Tap to copy the exact amount"
+                  >
+                    <span className="text-4xl font-black tracking-tight text-emerald-700 dark:text-emerald-400">
+                      {options.amount}
+                    </span>
+                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-500 self-end pb-1.5">
+                      {options.currency}
+                    </span>
+                    {copiedField === 'amount' ? (
+                      <Check className="h-5 w-5 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-5 w-5 text-emerald-500/70 group-hover:text-emerald-600" />
+                    )}
+                  </button>
+
+                  <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    For: <span className="font-semibold text-slate-700 dark:text-slate-300">{options.plan_name}</span>
                   </div>
                 </div>
               </div>
@@ -388,14 +403,27 @@ export function ManualPaymentModal({
                     )}
                   </button>
 
-                  <div className="rounded-xl bg-white px-3 py-2.5 dark:bg-slate-900">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Account name
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleCopy(selectedBankInfo.account_name, 'name')
+                    }
+                    className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
+                  >
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Account name
+                      </div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {selectedBankInfo.account_name}
+                      </div>
                     </div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                      {selectedBankInfo.account_name}
-                    </div>
-                  </div>
+                    {copiedField === 'name' ? (
+                      <Check className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-slate-400" />
+                    )}
+                  </button>
 
                   <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
                     {options.instructions}
