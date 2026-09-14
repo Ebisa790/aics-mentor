@@ -114,7 +114,7 @@ def get_manual_options(request: Request, db: Session = Depends(get_db)):
 # ============================================================
 
 @router.post("/initiate", response_model=ManualPaymentInitiateResponse)
-@limiter.limit("5/minute")
+@limiter.limit("3/hour;10/day")
 def initiate_manual_payment(
     request: Request,
     payload: ManualPaymentInitiateRequest,
@@ -165,7 +165,7 @@ def initiate_manual_payment(
 # ============================================================
 
 @router.post("/submit", response_model=ManualPaymentSubmitResponse)
-@limiter.limit("10/minute")
+@limiter.limit("5/hour;15/day")
 def submit_manual_payment(
     request: Request,
     payload: ManualPaymentSubmitRequest,
@@ -207,7 +207,9 @@ def submit_manual_payment(
 # ============================================================
 
 @router.get("/mine", response_model=list[ManualPaymentStatusItem])
+@limiter.limit("30/minute")
 def list_my_manual_payments(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -238,7 +240,9 @@ def list_my_manual_payments(
 # ============================================================
 
 @router.get("/admin/pending", response_model=ManualPaymentAdminListResponse)
+@limiter.limit("60/minute")
 def list_pending_manual(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
@@ -281,9 +285,11 @@ def list_pending_manual(
 # ============================================================
 
 @router.post("/admin/{payment_id}/approve", response_model=ManualPaymentActionResponse)
+@limiter.limit("30/minute")
 def approve_manual_payment(
     payment_id: uuid.UUID,
     payload: ManualPaymentApproveRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
@@ -319,9 +325,11 @@ def approve_manual_payment(
 # ============================================================
 
 @router.post("/admin/{payment_id}/reject", response_model=ManualPaymentActionResponse)
+@limiter.limit("30/minute")
 def reject_manual_payment(
     payment_id: uuid.UUID,
     payload: ManualPaymentRejectRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
