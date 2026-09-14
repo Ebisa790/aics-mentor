@@ -70,6 +70,81 @@ const bankUssdHint: Record<ManualBank, string> = {
   awash: 'Dial from the phone registered with Awash',
 }
 
+/**
+ * Small 3-step progress indicator shown at the top of the payment flow.
+ * Steps light up as the student progresses:
+ *   1. Choose bank
+ *   2. Send money
+ *   3. Submit reference
+ */
+function StepIndicator({
+  step1Done,
+  step2Done,
+  step3Done,
+  currentStep,
+}: {
+  step1Done: boolean
+  step2Done: boolean
+  step3Done: boolean
+  currentStep: 1 | 2 | 3
+}) {
+  const steps = [
+    { n: 1, label: 'Choose bank', done: step1Done },
+    { n: 2, label: 'Send money', done: step2Done },
+    { n: 3, label: 'Submit reference', done: step3Done },
+  ]
+
+  return (
+    <div className="mb-5 flex items-start justify-between gap-1">
+      {steps.map((step, idx) => {
+        const isActive = step.n === currentStep && !step.done
+        const isDone = step.done
+        return (
+          <div key={step.n} className="flex flex-1 items-start gap-1">
+            <div className="flex flex-1 flex-col items-center">
+              <div
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${
+                  isDone
+                    ? 'bg-emerald-500 text-white'
+                    : isActive
+                      ? 'bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-500/20'
+                      : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
+                }`}
+              >
+                {isDone ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : step.n}
+              </div>
+              <span
+                className={`mt-1.5 text-center text-[10px] font-semibold leading-tight ${
+                  isDone
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : isActive
+                      ? 'text-indigo-600 dark:text-indigo-400'
+                      : 'text-slate-400 dark:text-slate-500'
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+
+            {idx < steps.length - 1 && (
+              <div
+                className={`mt-3 h-0.5 flex-1 rounded-full transition-colors ${
+                  steps[idx + 1].done
+                    ? 'bg-emerald-500'
+                    : steps[idx].done
+                      ? 'bg-indigo-300 dark:bg-indigo-500/40'
+                      : 'bg-slate-200 dark:bg-slate-700'
+                }`}
+              />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+
 export function ManualPaymentModal({
   isOpen,
   onClose,
@@ -163,6 +238,12 @@ export function ManualPaymentModal({
   const referenceIsValid = selectedBank
     ? bankPatterns[selectedBank].test(reference)
     : false
+
+  // Progress indicator state
+  const step1Done = selectedBank !== null
+  const step2Done = step1Done && options !== null
+  const step3Done = referenceIsValid
+  const currentStep: 1 | 2 | 3 = !step1Done ? 1 : !step3Done ? 2 : 3
 
   const handleCopy = async (text: string, field: string) => {
     try {
@@ -337,6 +418,14 @@ export function ManualPaymentModal({
           ) : (
             /* ============ MAIN FORM ============ */
             <div className="space-y-5">
+              {/* Progress indicator */}
+              <StepIndicator
+                step1Done={step1Done}
+                step2Done={step2Done}
+                step3Done={step3Done}
+                currentStep={currentStep}
+              />
+
               {/* Amount card — big, copyable, impossible to miss */}
               <div className="rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 dark:border-emerald-500/40 dark:from-emerald-950/40 dark:via-slate-900 dark:to-teal-950/30">
                 <div className="text-center">
