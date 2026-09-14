@@ -114,7 +114,7 @@ def get_manual_options(request: Request, db: Session = Depends(get_db)):
 # ============================================================
 
 @router.post("/initiate", response_model=ManualPaymentInitiateResponse)
-@limiter.limit("3/hour;10/day")
+@limiter.limit("10/hour;30/day")
 def initiate_manual_payment(
     request: Request,
     payload: ManualPaymentInitiateRequest,
