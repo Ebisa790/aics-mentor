@@ -47,13 +47,13 @@ const bankMeta: Record<ManualBank, { label: string; icon: any; hint: string }> =
 // Users see green/amber feedback as they type — fewer rejections.
 const bankPatterns: Record<ManualBank, RegExp> = {
   cbe: /^FT[A-Z0-9]{6,20}$/,
-  telebirr: /^[0-9]{8,20}$/,
+  telebirr: /^[A-Z0-9]{8,20}$/,
   awash: /^[A-Z0-9\-]{6,30}$/,
 }
 
 const bankFormatHint: Record<ManualBank, string> = {
   cbe: 'CBE refs start with FT (e.g. FT24ABC123XYZ)',
-  telebirr: 'Digits only, 8-20 numbers',
+  telebirr: 'Uppercase letters and numbers, 8-20 characters',
   awash: 'Letters, numbers, dashes (e.g. -2DBWYO2M4D-9UIFS)',
 }
 
@@ -715,7 +715,7 @@ export function ManualPaymentModal({
                       selectedBank === 'cbe'
                         ? 'e.g. FT24ABC123XYZ'
                         : selectedBank === 'telebirr'
-                          ? 'e.g. 260913172552603'
+                          ? 'e.g. DEV6HKJX7K'
                           : 'e.g. -2DBWYO2M4D-9UIFS'
                     }
                     disabled={submitting}
