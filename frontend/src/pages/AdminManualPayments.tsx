@@ -31,6 +31,13 @@ const bankIcon: Record<ManualBank, any> = {
   awash: Building2,
 }
 
+interface RejectionReason {
+  code: string
+  label: string
+  message: string
+  next_step: string | null
+}
+
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—'
   try {
@@ -55,6 +62,8 @@ export function AdminManualPaymentsPage() {
   // Reject modal state
   const [rejectTarget, setRejectTarget] = useState<ManualPaymentAdminItem | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [rejectionReasons, setRejectionReasons] = useState<RejectionReason[]>([])
+  const [selectedReasonCode, setSelectedReasonCode] = useState<string | null>(null)
 
   const loadPending = async () => {
     setLoading(true)
@@ -72,6 +81,11 @@ export function AdminManualPaymentsPage() {
 
   useEffect(() => {
     loadPending()
+    // Load the preset rejection reasons once.
+    manualPaymentApi
+      .adminRejectionReasons()
+      .then((res) => setRejectionReasons(res.reasons))
+      .catch((err) => console.warn('Failed to load rejection reasons:', err))
   }, [])
 
   const handleApprove = async (item: ManualPaymentAdminItem) => {
@@ -95,18 +109,36 @@ export function AdminManualPaymentsPage() {
   const openReject = (item: ManualPaymentAdminItem) => {
     setRejectTarget(item)
     setRejectReason('')
+    setSelectedReasonCode(null)
+  }
+
+  const selectReason = (code: string) => {
+    setSelectedReasonCode(code)
+    // Clear custom text when switching away from 'other'
+    if (code !== 'other') {
+      setRejectReason('')
+    }
   }
 
   const confirmReject = async () => {
-    if (!rejectTarget || !rejectReason.trim()) return
+    if (!rejectTarget) return
+    if (!selectedReasonCode) return
+    // If "other", custom text is required
+    if (selectedReasonCode === 'other' && !rejectReason.trim()) return
+
     const target = rejectTarget
     setBusyId(target.payment_id)
     setError(null)
     try {
-      await manualPaymentApi.adminReject(target.payment_id, rejectReason.trim())
+      await manualPaymentApi.adminReject(
+        target.payment_id,
+        selectedReasonCode === 'other' ? rejectReason.trim() : '',
+        selectedReasonCode,
+      )
       setItems((prev) => prev.filter((p) => p.payment_id !== target.payment_id))
       setRejectTarget(null)
       setRejectReason('')
+      setSelectedReasonCode(null)
     } catch (err: any) {
       console.error('Reject failed:', err)
       setError(
@@ -323,7 +355,7 @@ export function AdminManualPaymentsPage() {
             }
           }}
         >
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
               Reject this payment?
             </h3>
@@ -333,17 +365,77 @@ export function AdminManualPaymentsPage() {
               Reference: <span className="font-mono">{rejectTarget.bank_reference}</span>
             </p>
 
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Reason <span className="text-rose-500">*</span>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Pick a reason <span className="text-rose-500">*</span>
             </label>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              rows={3}
-              placeholder="e.g. Reference not found in bank statement"
-              disabled={!!busyId}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-            />
+
+            <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-700">
+              {rejectionReasons.length === 0 ? (
+                <div className="p-3 text-xs text-slate-500 dark:text-slate-400 text-center">
+                  Loading reasons…
+                </div>
+              ) : (
+                rejectionReasons.map((r) => {
+                  const isSelected = selectedReasonCode === r.code
+                  return (
+                    <button
+                      key={r.code}
+                      type="button"
+                      onClick={() => selectReason(r.code)}
+                      disabled={!!busyId}
+                      className={`w-full text-left px-3.5 py-2.5 text-xs font-medium transition flex items-start gap-2.5 ${
+                        isSelected
+                          ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-900 dark:text-rose-200'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                          isSelected
+                            ? 'border-rose-600 bg-rose-600'
+                            : 'border-slate-300 dark:border-slate-600'
+                        }`}
+                      >
+                        {isSelected && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        )}
+                      </span>
+                      <span>{r.label}</span>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+
+            {selectedReasonCode === 'other' && (
+              <div className="mt-3">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Custom reason <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={3}
+                  placeholder="Explain the reason in a few words…"
+                  disabled={!!busyId}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+            )}
+
+            {selectedReasonCode && selectedReasonCode !== 'other' && (
+              <div className="mt-3 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3 py-2.5 text-[11px] leading-relaxed text-rose-800 dark:text-rose-300">
+                The student will see:
+                <br />
+                <strong>
+                  {rejectionReasons.find((r) => r.code === selectedReasonCode)?.message}
+                </strong>
+                {(() => {
+                  const r = rejectionReasons.find((x) => x.code === selectedReasonCode)
+                  return r?.next_step ? <><br />{r.next_step}</> : null
+                })()}
+              </div>
+            )}
 
             <div className="mt-5 flex gap-3">
               <button
@@ -355,7 +447,11 @@ export function AdminManualPaymentsPage() {
               </button>
               <button
                 onClick={confirmReject}
-                disabled={!!busyId || !rejectReason.trim()}
+                disabled={
+                  !!busyId ||
+                  !selectedReasonCode ||
+                  (selectedReasonCode === 'other' && !rejectReason.trim())
+                }
                 className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition disabled:opacity-50"
               >
                 {busyId ? (

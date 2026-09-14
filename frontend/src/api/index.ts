@@ -261,6 +261,18 @@ export const manualPaymentApi = {
       .get<{ pending_count: number }>('/api/payments/manual/admin/stats')
       .then((res) => res.data),
 
+  adminRejectionReasons: () =>
+    apiClient
+      .get<{
+        reasons: Array<{
+          code: string
+          label: string
+          message: string
+          next_step: string | null
+        }>
+      }>('/api/payments/manual/admin/rejection-reasons')
+      .then((res) => res.data),
+
   adminApprove: (paymentId: string, adminNote?: string) =>
     apiClient
       .post<ManualPaymentActionResponse>(
@@ -269,11 +281,11 @@ export const manualPaymentApi = {
       )
       .then((res) => res.data),
 
-  adminReject: (paymentId: string, reason: string) =>
+  adminReject: (paymentId: string, reason: string, reasonCode?: string) =>
     apiClient
       .post<ManualPaymentActionResponse>(
         `/api/payments/manual/admin/${paymentId}/reject`,
-        { reason }
+        { reason, reason_code: reasonCode || null }
       )
       .then((res) => res.data),
 }

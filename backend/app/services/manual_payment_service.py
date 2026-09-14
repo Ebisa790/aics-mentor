@@ -56,6 +56,90 @@ class ManualPaymentError(Exception):
     pass
 
 
+# ============================================================
+# REJECTION REASONS
+# ============================================================
+# Preset reasons an admin can pick when rejecting a manual payment.
+# Each entry stores:
+#   label    - short label shown in the admin UI
+#   message  - long friendly explanation sent to the student
+#   next_step - optional custom "what to do" hint (falls back to generic)
+REJECTION_REASONS: dict[str, dict[str, str]] = {
+    "reference_not_found": {
+        "label": "Reference not found in our bank account",
+        "message": "We couldn't find this reference number in our bank account.",
+        "next_step": "Double-check the reference number on your receipt, then resubmit.",
+    },
+    "amount_mismatch": {
+        "label": "Amount doesn't match the plan price",
+        "message": "The amount you sent doesn't match the plan price.",
+        "next_step": "Please send the exact amount shown on the pricing page and submit a new reference.",
+    },
+    "transaction_too_old": {
+        "label": "Transaction is too old",
+        "message": "This transaction is more than 3 days old.",
+        "next_step": "Please make a fresh transfer and submit the new reference.",
+    },
+    "duplicate_reference": {
+        "label": "Reference already used",
+        "message": "This reference number was already used for another payment.",
+        "next_step": "Each reference can only be used once. Please make a new payment.",
+    },
+    "wrong_recipient": {
+        "label": "Sent to wrong account",
+        "message": "The payment was sent to a different account, not the one shown here.",
+        "next_step": "Please send the payment to the account number shown in the app.",
+    },
+    "incomplete_payment": {
+        "label": "Incomplete payment",
+        "message": "The payment looks incomplete or partial.",
+        "next_step": "Please complete the transfer and resubmit with the full amount.",
+    },
+    "reference_mistyped": {
+        "label": "Reference mistyped",
+        "message": "The reference number appears to have been mistyped.",
+        "next_step": "Please double-check the number on your receipt and submit the exact reference.",
+    },
+    "sender_unverified": {
+        "label": "Sender could not be verified",
+        "message": "We couldn't verify the sender of this payment.",
+        "next_step": "Please contact support with a screenshot of your transfer receipt.",
+    },
+    "suspected_fraud": {
+        "label": "Flagged for review",
+        "message": "This payment has been flagged for review.",
+        "next_step": "Please contact support to resolve this.",
+    },
+    "other": {
+        "label": "Other (custom reason)",
+        "message": "Your payment could not be verified.",
+        "next_step": None,
+    },
+}
+
+
+def build_rejection_note(reason_code: str, custom_text: str | None = None) -> str:
+    """Return a storable note combining the reason code and human text.
+
+    Format: '[code] Message — Next step' (next step omitted if not set).
+    For 'other', the custom text is used as the message.
+    """
+    entry = REJECTION_REASONS.get(reason_code)
+    if entry is None:
+        # Unknown code — just store whatever text came in.
+        return custom_text or "Your payment could not be verified."
+
+    if reason_code == "other":
+        message = custom_text or "Your payment could not be verified."
+        return f"[other] {message}"
+
+    message = entry["message"]
+    next_step = entry.get("next_step")
+    if next_step:
+        return f"[{reason_code}] {message} — {next_step}"
+    return f"[{reason_code}] {message}"
+
+
 class ManualPaymentService:
     """Manual bank-transfer payment flow."""
 
@@ -578,7 +662,10 @@ class ManualPaymentService:
     # ============================================================
 
     def reject(
-        self, payment_id: uuid.UUID, reason: str
+        self,
+        payment_id: uuid.UUID,
+        reason: str,
+        reason_code: str | None = None,
     ) -> Payment:
         from app.models.payment import ManualPaymentDetail
 
@@ -602,10 +689,20 @@ class ManualPaymentService:
             .filter(ManualPaymentDetail.payment_id == payment.id)
             .first()
         )
-        if detail:
-            detail.admin_note = reason
+        # Store a formatted note that includes the reason code (for
+        # analytics) plus the human-readable message (for the student).
+        note = reason
+        if reason_code:
+            note = build_rejection_note(reason_code, custom_text=reason)
 
-        self._append_audit(payment, "rejected", reason=reason)
+        if detail:
+            detail.admin_note = note
+
+        self._append_audit(
+            payment, "rejected",
+            reason=reason,
+            reason_code=reason_code,
+        )
         self.db.commit()
         self.db.refresh(payment)
 

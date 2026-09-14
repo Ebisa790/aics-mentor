@@ -188,7 +188,10 @@ class ManualPaymentApproveRequest(BaseModel):
 
 
 class ManualPaymentRejectRequest(BaseModel):
-    reason: str = Field(..., min_length=3, max_length=1000)
+    reason: str = Field("", max_length=1000)
+    # One of the preset reason codes, or None if 'other'.
+    # When provided, backend formats the stored note.
+    reason_code: Optional[str] = Field(None, max_length=50)
 
 
 class ManualPaymentActionResponse(BaseModel):

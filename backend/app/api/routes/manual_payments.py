@@ -276,6 +276,32 @@ def cancel_manual_payment(
 
 
 # ============================================================
+# ADMIN — rejection reasons catalog
+# ============================================================
+
+@router.get("/admin/rejection-reasons")
+@limiter.limit("60/minute")
+def admin_rejection_reasons(
+    request: Request,
+    current_user: User = Depends(require_admin),
+):
+    """Return the preset rejection reasons for the admin UI."""
+    from app.services.manual_payment_service import REJECTION_REASONS
+
+    return {
+        "reasons": [
+            {
+                "code": code,
+                "label": entry["label"],
+                "message": entry["message"],
+                "next_step": entry.get("next_step"),
+            }
+            for code, entry in REJECTION_REASONS.items()
+        ]
+    }
+
+
+# ============================================================
 # ADMIN — lightweight stats for dashboard widget
 # ============================================================
 
@@ -406,6 +432,7 @@ def reject_manual_payment(
         payment = service.reject(
             payment_id=payment_id,
             reason=payload.reason,
+            reason_code=payload.reason_code,
         )
     except ManualPaymentError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
