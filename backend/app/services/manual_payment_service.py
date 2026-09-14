@@ -103,6 +103,18 @@ class ManualPaymentService:
     # VALIDATION HELPERS
     # ============================================================
 
+    def _assert_user_active(self, user: User) -> None:
+        """Refuse to proceed if the account is banned/deactivated.
+
+        Even though get_current_user usually blocks this at login,
+        an old JWT could still work briefly after a ban — so we
+        double-check here before creating or accepting payments.
+        """
+        if not getattr(user, "is_active", True):
+            raise ManualPaymentError(
+                "Your account is suspended. Please contact support."
+            )
+
     def _has_active_premium(self, user: User) -> bool:
         if user.subscription_tier != SubscriptionTier.PREMIUM:
             return False
@@ -136,6 +148,8 @@ class ManualPaymentService:
         self, user: User, plan_id: uuid.UUID, bank: ManualBank
     ) -> Payment:
         """Create a pending Payment row for a manual transfer."""
+
+        self._assert_user_active(user)
 
         if self._has_active_premium(user):
             raise ManualPaymentError("You already have active Premium.")
@@ -205,6 +219,8 @@ class ManualPaymentService:
         student_note: Optional[str],
     ) -> Payment:
         """Student submits the bank reference after paying."""
+
+        self._assert_user_active(user)
 
         payment = (
             self.db.query(Payment)
