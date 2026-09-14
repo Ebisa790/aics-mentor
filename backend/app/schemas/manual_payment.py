@@ -24,10 +24,27 @@ class ManualBank(str, Enum):
     AWASH = "awash"
 
 
-# Per-bank reference patterns (loose validation - admin verifies final)
-# CBE: "FT" + alphanumeric, typically 10-16 chars total
-# Telebirr: numeric, typically 10-15 digits
-# Awash: alphanumeric with dashes, e.g. -2DBWYO2M4D-9UIFS
+# Per-bank reference patterns.
+#
+# IMPORTANT: These patterns are deliberately LOOSE first-pass validation.
+# They only catch obvious typos and garbage. They do NOT prove a payment
+# is real.
+#
+# Actual verification happens in two layers:
+#   1. Format check (here) - the regex matches
+#   2. Admin verification - a human matches the reference against the
+#      actual bank statement before approving
+#
+# Because bank formats can drift, we prefer "too loose" over "too tight":
+# a false rejection blocks a real student, whereas a false pass simply
+# sends one more entry to the admin queue.
+#
+# Reference formats (from provider documentation / receipts, as of 2026):
+#   CBE       - "FT" + alphanumeric (e.g. FT24ABC123XYZ). Length varies.
+#   Telebirr  - 8-14 uppercase alphanumeric (e.g. 8E320N1XB4). We allow
+#               up to 20 to be safe.
+#   Awash     - alphanumeric with dashes, format varies by transaction type
+#               (e.g. -2DBWYO2M4D-9UIFS).
 BANK_REFERENCE_PATTERNS = {
     ManualBank.CBE: r"^FT[A-Z0-9]{6,20}$",
     ManualBank.TELEBIRR: r"^[A-Z0-9]{8,20}$",

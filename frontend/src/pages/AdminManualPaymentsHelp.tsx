@@ -43,6 +43,30 @@ export function AdminManualPaymentsHelpPage() {
           </p>
         </header>
 
+        {/* Important framing note */}
+        <section className="rounded-2xl border border-amber-200 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <div className="text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+              <p className="font-bold mb-1">
+                Format is not verification
+              </p>
+              <p>
+                Our system checks that the reference <em>looks like</em>{' '}
+                a valid reference (correct format for the bank). It
+                cannot confirm the payment actually exists. A student
+                could type any string matching the pattern.
+              </p>
+              <p className="mt-2">
+                <strong>Your job is the real verification</strong> —
+                open your bank app, find the transaction, match the
+                reference, amount, and timestamp. Only approve after
+                all three match.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* The 3-step checklist */}
         <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm">
           <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">

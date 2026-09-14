@@ -52,9 +52,9 @@ const bankPatterns: Record<ManualBank, RegExp> = {
 }
 
 const bankFormatHint: Record<ManualBank, string> = {
-  cbe: 'CBE refs start with FT (e.g. FT24ABC123XYZ)',
-  telebirr: 'Uppercase letters and numbers, 8-20 characters',
-  awash: 'Letters, numbers, dashes (e.g. -2DBWYO2M4D-9UIFS)',
+  cbe: 'The FT reference from your CBE receipt (e.g. FT24ABC123XYZ)',
+  telebirr: 'The transaction ID from your Telebirr SMS (e.g. 8E320N1XB4)',
+  awash: 'The receipt code from your Awash receipt (e.g. -2DBWYO2M4D-9UIFS)',
 }
 
 // USSD codes for quick mobile payment.
@@ -715,7 +715,7 @@ export function ManualPaymentModal({
                       selectedBank === 'cbe'
                         ? 'e.g. FT24ABC123XYZ'
                         : selectedBank === 'telebirr'
-                          ? 'e.g. DEV6HKJX7K'
+                          ? 'e.g. 8E320N1XB4'
                           : 'e.g. -2DBWYO2M4D-9UIFS'
                     }
                     disabled={submitting}
@@ -824,9 +824,15 @@ export function ManualPaymentModal({
               )}
 
               {/* Trust line */}
-              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 dark:text-slate-500">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                <span>Verified manually within 24 hours</span>
+              <div className="flex flex-col items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 text-center">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Verified manually within 24 hours</span>
+                </div>
+                <p className="max-w-[320px] leading-relaxed">
+                  We&apos;ll match this reference against our bank
+                  statement before activating Premium.
+                </p>
               </div>
 
               {/* Actions */}

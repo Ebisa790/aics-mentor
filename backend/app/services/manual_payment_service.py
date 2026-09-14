@@ -212,6 +212,13 @@ class ManualPaymentService:
     def _validate_bank_reference_format(
         self, bank: ManualBank, reference: str
     ) -> None:
+        """First-pass check: does the reference look like a valid
+        reference for this bank?
+
+        This is NOT payment verification. It only rejects obvious typos
+        and garbage. The real verification is a human comparing the
+        reference against the actual bank statement in the admin queue.
+        """
         pattern = BANK_REFERENCE_PATTERNS.get(bank)
         if not pattern:
             raise ManualPaymentError(f"Unsupported bank: {bank}")
