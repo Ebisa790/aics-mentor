@@ -71,6 +71,13 @@ const bankUssdHint: Record<ManualBank, string> = {
   awash: 'Dial from the phone registered with Awash',
 }
 
+// localStorage key for in-progress form state.
+// Cleared after successful submit, or on manual clear.
+// Auto-expires after 24 hours so stale data never resurfaces.
+const DRAFT_KEY = 'manual_payment_draft_v1'
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000
+
+
 /**
  * Small 3-step progress indicator shown at the top of the payment flow.
  * Steps light up as the student progresses:
@@ -165,6 +172,77 @@ export function ManualPaymentModal({
   const [note, setNote] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [referenceError, setReferenceError] = useState<string | null>(null)
+
+  // ── Draft persistence helpers ──────────────────────────────
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const saveDraft = (
+    bank: ManualBank | null,
+    ref: string,
+    name: string,
+    phone: string,
+    noteText: string,
+  ) => {
+    try {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          selectedBank: bank,
+          reference: ref,
+          senderName: name,
+          senderPhone: phone,
+          note: noteText,
+          savedAt: Date.now(),
+        }),
+      )
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const loadDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      if (!raw) return null
+      const parsed = JSON.parse(raw)
+      if (!parsed || typeof parsed !== 'object') return null
+      if (Date.now() - (parsed.savedAt || 0) > DRAFT_TTL_MS) {
+        localStorage.removeItem(DRAFT_KEY)
+        return null
+      }
+      return parsed
+    } catch {
+      return null
+    }
+  }
+
+  // Restore draft on open — but don't overwrite a fresh modal state
+  // if the user just opened it after a successful submit.
+  useEffect(() => {
+    if (!isOpen) return
+    const draft = loadDraft()
+    if (!draft) return
+
+    if (draft.selectedBank) setSelectedBank(draft.selectedBank)
+    if (draft.reference) setReference(draft.reference)
+    if (draft.senderName) setSenderName(draft.senderName)
+    if (draft.senderPhone) setSenderPhone(draft.senderPhone)
+    if (draft.note) setNote(draft.note)
+  }, [isOpen])
+
+  // Save draft whenever any field changes.
+  useEffect(() => {
+    if (!isOpen) return
+    if (success) return
+    if (loading) return
+    saveDraft(selectedBank, reference, senderName, senderPhone, note)
+  }, [isOpen, selectedBank, reference, senderName, senderPhone, note, success, loading])
 
   /*
    * Load available banks + plan when the modal opens.
@@ -282,6 +360,7 @@ export function ManualPaymentModal({
       })
 
       setSuccess(true)
+      clearDraft()
       onSuccess?.()
     } catch (err: unknown) {
       console.error('Manual payment submit failed:', err)
