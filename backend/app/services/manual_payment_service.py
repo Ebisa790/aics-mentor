@@ -22,6 +22,7 @@ from app.core.email import (
     send_manual_payment_pending_email,
     send_manual_payment_rejected_email,
 )
+from app.core.telegram import notify_new_manual_payment
 from app.models.payment import (
     Payment,
     PaymentStatus,
@@ -353,6 +354,24 @@ class ManualPaymentService:
             )
         except Exception as e:
             logger.warning(f"Pending email failed: {e}")
+
+        # Telegram ping to admin (best-effort, non-blocking)
+        try:
+            plan = self.db.get(PricingPlan, payment.plan_id)
+            notify_new_manual_payment(
+                student_name=user.full_name or "Student",
+                student_email=user.email,
+                plan_name=plan.name if plan else "Premium",
+                amount=float(payment.amount),
+                currency=payment.currency,
+                bank=bank.value,
+                reference=bank_reference,
+                sender_name=sender_name,
+                sender_phone=sender_phone,
+                note=student_note,
+            )
+        except Exception as e:
+            logger.warning(f"Telegram notify failed: {e}")
 
         return payment
 

@@ -73,6 +73,15 @@ class Settings(BaseSettings):
     MANUAL_TELEBIRR_NAME: str = ""
     MANUAL_AWASH_ACCOUNT: str = ""
     MANUAL_AWASH_NAME: str = ""
+
+    # ============================================================
+    # TELEGRAM ADMIN NOTIFICATIONS
+    # ============================================================
+    # Bot token from @BotFather
+    TELEGRAM_BOT_TOKEN: str = ""
+    # Your personal chat ID (message the bot, then open
+    # https://api.telegram.org/bot<TOKEN>/getUpdates in a browser)
+    TELEGRAM_ADMIN_CHAT_ID: str = ""
     
     # Sentry error monitoring
     SENTRY_DSN: str = ""
