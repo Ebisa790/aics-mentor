@@ -118,6 +118,11 @@ class Payment(Base):
     
     checkout_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     payment_method: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    # Structured audit trail for manual-payment lifecycle events:
+    # initiated, submitted, cancelled, approved, rejected.
+    # NULL for Chapa payments (never used).
+    manual_audit_log: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     
     verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

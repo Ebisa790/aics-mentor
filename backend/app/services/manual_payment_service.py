@@ -136,6 +136,34 @@ class ManualPaymentService:
                 f"Please double-check and try again."
             )
 
+    def _append_audit(
+        self,
+        payment: Payment,
+        event: str,
+        actor_id: Optional[uuid.UUID] = None,
+        **extra,
+    ) -> None:
+        """Append a structured audit event to the payment record.
+
+        Never raises — audit is best-effort. Payment flow continues
+        even if this fails for any reason.
+        """
+        try:
+            log = list(payment.manual_audit_log or [])
+            entry = {
+                "event": event,
+                "at": datetime.now(timezone.utc).isoformat(),
+            }
+            if actor_id is not None:
+                entry["by"] = str(actor_id)
+            for k, v in extra.items():
+                if v is not None:
+                    entry[k] = v
+            log.append(entry)
+            payment.manual_audit_log = log
+        except Exception as e:
+            logger.warning(f"Audit append failed for event={event}: {e}")
+
     def _generate_tx_ref(self, bank: ManualBank) -> str:
         """Unique manual tx_ref, prefixed by bank for easy admin scanning."""
         return f"MANUAL-{bank.value.upper()}-{uuid.uuid4().hex[:12].upper()}"
@@ -194,6 +222,10 @@ class ManualPaymentService:
             checkout_url=None,
             chapa_transaction_id=None,
             payment_method=f"manual_{bank.value}",
+        )
+        self._append_audit(
+            payment, "initiated",
+            actor_id=user.id, bank=bank.value,
         )
         self.db.add(payment)
         self.db.commit()
@@ -293,6 +325,12 @@ class ManualPaymentService:
             sender_name=sender_name,
             sender_phone=sender_phone,
             student_note=student_note,
+        )
+        self._append_audit(
+            payment, "submitted",
+            actor_id=user.id,
+            reference=bank_reference,
+            sender_name=sender_name,
         )
         self.db.add(detail)
         self.db.commit()
@@ -397,6 +435,7 @@ class ManualPaymentService:
         if detail:
             self.db.delete(detail)
 
+        self._append_audit(payment, "cancelled", actor_id=user.id)
         self.db.commit()
         self.db.refresh(payment)
 
@@ -496,7 +535,13 @@ class ManualPaymentService:
 
         if admin_note:
             detail.admin_note = admin_note
-            self.db.commit()
+
+        self._append_audit(
+            payment, "approved",
+            bank_reference=detail.bank_reference,
+            note=admin_note,
+        )
+        self.db.commit()
 
         logger.info(
             f"Manual payment approved: payment_id={payment.id}, "
@@ -541,6 +586,7 @@ class ManualPaymentService:
         if detail:
             detail.admin_note = reason
 
+        self._append_audit(payment, "rejected", reason=reason)
         self.db.commit()
         self.db.refresh(payment)
 
