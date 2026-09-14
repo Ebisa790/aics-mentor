@@ -16,6 +16,7 @@ import {
   type ManualPaymentAdminItem,
   type ManualBank,
 } from '../api'
+import { formatMoney } from '../utils/format'
 
 const bankDisplay: Record<ManualBank, string> = {
   cbe: 'CBE',
@@ -201,7 +202,7 @@ export function AdminManualPaymentsPage() {
 
                     <div className="text-right shrink-0">
                       <div className="text-xl font-black text-slate-900 dark:text-white">
-                        {item.amount} {item.currency}
+                        {formatMoney(item.amount, item.currency)}
                       </div>
                       <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
                         {item.plan_name}

@@ -11,6 +11,7 @@ import {
   Smartphone,
   X,
 } from 'lucide-react'
+import { formatMoney } from '../utils/format'
 import {
   manualPaymentApi,
   type ManualPaymentOptions,
@@ -442,7 +443,7 @@ export function ManualPaymentModal({
                     title="Tap to copy the exact amount"
                   >
                     <span className="text-4xl font-black tracking-tight text-emerald-700 dark:text-emerald-400">
-                      {options.amount}
+                      {formatMoney(options.amount, null, false)}
                     </span>
                     <span className="text-lg font-bold text-emerald-600 dark:text-emerald-500 self-end pb-1.5">
                       {options.currency}

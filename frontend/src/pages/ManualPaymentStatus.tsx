@@ -12,6 +12,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { manualPaymentApi, type ManualPaymentStatusItem, type ManualBank } from '../api'
+import { formatMoney } from '../utils/format'
 
 const bankDisplay: Record<ManualBank, string> = {
   cbe: 'CBE',
@@ -183,7 +184,7 @@ export function ManualPaymentStatusPage() {
 
                     <div className="text-right shrink-0">
                       <div className="text-lg font-black text-slate-900 dark:text-white">
-                        {item.amount} {item.currency}
+                        {formatMoney(item.amount, item.currency)}
                       </div>
                     </div>
                   </div>
