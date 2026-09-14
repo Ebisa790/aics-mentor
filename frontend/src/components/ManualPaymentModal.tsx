@@ -366,25 +366,51 @@ export function ManualPaymentModal({
       console.error('Manual payment submit failed:', err)
 
       if (axios.isAxiosError(err)) {
-        const detail = err.response?.data?.detail
-        if (typeof detail === 'string') {
-          // If the message is about duplicates, show it inline
-          // next to the reference field instead of the top banner.
-          const lower = detail.toLowerCase()
-          if (
-            lower.includes('reference is already in use') ||
-            lower.includes('already submitted this reference') ||
-            lower.includes('already approved') ||
-            lower.includes('already been submitted')
-          ) {
-            setReferenceError(detail)
-          } else {
-            setError(detail)
-          }
-        } else {
-          setError(
+        const status = err.response?.status
+        const data = err.response?.data
+        // Backend may return { detail: "..." } OR { error: "..." }
+        const rawDetail = data?.detail
+        const rawError = data?.error
+
+        // Extract a plain string message from whatever shape we got
+        let message: string | null = null
+        if (typeof rawDetail === 'string') {
+          message = rawDetail
+        } else if (typeof rawError === 'string') {
+          message = rawError
+        } else if (Array.isArray(rawDetail) && rawDetail[0]?.msg) {
+          message = rawDetail[0].msg
+        }
+
+        // Special-case common status codes with clearer copy
+        if (status === 429) {
+          message =
+            'Too many attempts. Please wait a few minutes and try again.'
+        } else if (status === 401) {
+          message = 'Your session expired. Please log in again.'
+        } else if (status === 403) {
+          message = message || 'You are not allowed to do that right now.'
+        } else if (status && status >= 500) {
+          message =
+            message || 'Server error. Please try again in a moment.'
+        }
+
+        if (!message) {
+          message =
             'We could not submit your payment. Please check your connection and try again.'
-          )
+        }
+
+        // Duplicate-reference errors go inline next to the field
+        const lower = message.toLowerCase()
+        if (
+          lower.includes('reference is already in use') ||
+          lower.includes('already submitted this reference') ||
+          lower.includes('already approved') ||
+          lower.includes('already been submitted')
+        ) {
+          setReferenceError(message)
+        } else {
+          setError(message)
         }
       } else if (err instanceof Error) {
         setError(err.message)
