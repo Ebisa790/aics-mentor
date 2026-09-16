@@ -54,3 +54,7 @@ backend/submissions/*.json
 # Build artifacts
 frontend/*.tsbuildinfo
 frontend/*.tsbuildinfo
+
+# One-time migration scripts (contained local DB credentials)
+backend/migrate_*.py
+backend/fix_remaining.py
