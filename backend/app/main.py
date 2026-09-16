@@ -27,6 +27,7 @@ from app.core.logging_middleware import RequestLoggingMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.api.routes import (
     support,
+    dashboard,
     review_queue,
     question_management,
     admin,
@@ -129,6 +130,7 @@ register_error_handlers(app)
 
 # Include API Routers
 app.include_router(auth.router)
+app.include_router(dashboard.router)
 app.include_router(users.router)
 app.include_router(departments.router)
 app.include_router(courses.router)
