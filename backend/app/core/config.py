@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "no-reply@aicsmentor.example"
+    SUPPORT_EMAIL: str = "exitai.ethiopia@gmail.com"
 
     # AI (Groq Integration)
     GROQ_API_KEY: str = ""

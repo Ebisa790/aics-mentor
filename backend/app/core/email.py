@@ -60,7 +60,7 @@ def send_email(
     message["Subject"] = subject
     message["From"] = settings.SMTP_FROM_EMAIL
     message["To"] = to_email
-    message["Reply-To"] = settings.SMTP_FROM_EMAIL
+    message["Reply-To"] = settings.SUPPORT_EMAIL
 
     # Try Brevo HTTP API first (more reliable from cloud services)
     try:
@@ -68,7 +68,7 @@ def send_email(
         brevo_url = "https://api.brevo.com/v3/smtp/email"
         brevo_payload = {
             "sender": {"email": settings.SMTP_FROM_EMAIL, "name": "ExitAI Ethiopia"},
-            "replyTo": {"email": settings.SMTP_FROM_EMAIL, "name": "ExitAI Ethiopia Support"},
+            "replyTo": {"email": settings.SUPPORT_EMAIL, "name": "ExitAI Ethiopia Support"},
             "to": [{"email": to_email}],
             "subject": subject,
             "textContent": body_text,
