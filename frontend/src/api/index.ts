@@ -365,6 +365,18 @@ export const deviceApi = {
 export const supportApi = {
   sendTicket: (payload: { subject: string; message: string; issue_type?: string; email?: string }) =>
     apiClient.post<{ message: string; ticket_id: string; status: string }>('/api/support/tickets', payload).then((res) => res.data),
+
+  myTickets: () =>
+    apiClient.get<{ tickets: Array<{
+      id: string
+      subject: string
+      message: string
+      issue_type: string
+      status: 'open' | 'in_progress' | 'resolved' | 'closed'
+      admin_response: string | null
+      created_at: string
+      updated_at: string | null
+    }> }>('/api/support/tickets').then((res) => res.data),
   
   listTickets: () =>
     apiClient.get<{ tickets: any[] }>('/api/support/tickets').then((res) => res.data),
