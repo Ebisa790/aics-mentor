@@ -60,6 +60,7 @@ def send_email(
     message["Subject"] = subject
     message["From"] = settings.SMTP_FROM_EMAIL
     message["To"] = to_email
+    message["Reply-To"] = settings.SMTP_FROM_EMAIL
 
     # Try Brevo HTTP API first (more reliable from cloud services)
     try:
@@ -67,6 +68,7 @@ def send_email(
         brevo_url = "https://api.brevo.com/v3/smtp/email"
         brevo_payload = {
             "sender": {"email": settings.SMTP_FROM_EMAIL, "name": "ExitAI Ethiopia"},
+            "replyTo": {"email": settings.SMTP_FROM_EMAIL, "name": "ExitAI Ethiopia Support"},
             "to": [{"email": to_email}],
             "subject": subject,
             "textContent": body_text,
@@ -158,28 +160,28 @@ def send_welcome_email(to_email: str, full_name: str) -> bool:
     <body>
         <div class="card">
             <div class="header">
-                <h2>Welcome to ExitAI 🎉</h2>
+                <h2>Welcome to ExitAI</h2>
             </div>
             <p>Hi <strong>{full_name}</strong>,</p>
             <p>Welcome to <strong>ExitAI Ethiopia</strong>! You're now ready to start preparing for the Ethiopian CS Exit Exam.</p>
             <p>What you can do:</p>
             <div class="features">
                 <ul>
-                    <li>📝 Take practice quizzes (1 per 3 hours free)</li>
-                    <li>📚 Preview course notes (20% free)</li>
-                    <li>💎 Upgrade to Premium for full access</li>
+                    <li>Take practice quizzes (1 per 3 hours free)</li>
+                    <li>Preview course notes (20% free)</li>
+                    <li>Upgrade to Premium for full access</li>
                 </ul>
             </div>
             <p><strong>Premium includes:</strong></p>
             <div class="features">
                 <ul>
-                    <li>✅ Unlimited quizzes</li>
-                    <li>🎯 100-question Mock Exam Simulator</li>
-                    <li>📖 Full access to all 16 CS course notes</li>
-                    <li>🤖 AI Tutor & personalized explanations</li>
+                    <li>Unlimited quizzes</li>
+                    <li>100-question Mock Exam Simulator</li>
+                    <li>Full access to all 16 CS course notes</li>
+                    <li>AI Tutor & personalized explanations</li>
                 </ul>
             </div>
-            <p style="text-align: center;"><a href="http://localhost:5173/courses" class="cta">Start Preparing</a></p>
+            <p style="text-align: center;"><a href="{settings.FRONTEND_ORIGIN}/courses" class="cta">Start Preparing</a></p>
             <p>Best regards,<br>ExitAI Ethiopia Team</p>
         </div>
     </body>
@@ -227,14 +229,14 @@ def send_payment_confirmation_email(to_email: str, full_name: str, amount: float
     </head>
     <body>
         <div class="card">
-            <div class="success">✅</div>
+            
             <h2>Payment Confirmed!</h2>
             <p>Hi <strong>{full_name}</strong>,</p>
             <p>Your payment of <strong>{amount} {currency}</strong> for <strong>{plan_name}</strong> has been confirmed.</p>
             <div class="details">
                 <p><strong>Your premium access is now active</strong></p>
             </div>
-            <p><a href="http://localhost:5173/dashboard" class="cta">Go to Dashboard</a></p>
+            <p><a href="{settings.FRONTEND_ORIGIN}/dashboard" class="cta">Go to Dashboard</a></p>
             <p>Thank you for supporting ExitAI Ethiopia.</p>
         </div>
     </body>
@@ -409,7 +411,7 @@ def send_support_ticket_resolved(to_email: str, ticket_id: str) -> bool:
     </head>
     <body>
         <div class="card">
-            <div class="success">✅</div>
+            
             <h2>Ticket Resolved</h2>
             <p>Hello,</p>
             <p>Your support ticket has been resolved.</p>
@@ -533,7 +535,7 @@ def send_manual_payment_approved_email(
     </head>
     <body>
         <div class="card">
-            <div class="success">&#x2705;</div>
+            
             <h2>Premium Activated</h2>
             <p>Hi <strong>{full_name}</strong>,</p>
             <p>Your payment of <strong>{amount} {currency}</strong> for <strong>{plan_name}</strong> has been verified.</p>
