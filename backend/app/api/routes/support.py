@@ -3,61 +3,73 @@ Support Ticket Routes
 Handles user support ticket submissions and management.
 """
 import uuid
-import hashlib
+import logging
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.database import get_db
+from app.core.rate_limit import limiter
+from app.core.telegram import notify_new_support_ticket
 from app.models.user import User, UserRole
 from app.models.support_ticket import SupportTicket, TicketStatus, TicketPriority
 from app.api.deps import get_current_user, get_current_user_optional, require_admin
+from app.schemas.support import SupportTicketCreate, SupportIssueType
 from app.core.email import (
     send_support_ticket_confirmation,
     send_support_ticket_response,
     send_support_ticket_resolved,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/support", tags=["support"])
 
 
 @router.post("/tickets")
+@limiter.limit("5/hour;15/day")
 def create_support_ticket(
-    payload: dict,
+    request: Request,
+    payload: SupportTicketCreate,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
+    """Create a support ticket.
+
+    - Authenticated users: email is taken from their account (client email ignored).
+    - Anonymous users: email is required and used as the contact address.
+    - Rate limited to prevent abuse.
+    - Sends a confirmation email to the submitter.
+    - Sends a Telegram ping to the admin team.
     """
-    Create a support ticket from a user.
-    Allows anonymous and deactivated users to submit tickets.
-    """
-    subject = payload.get("subject", "").strip()
-    message = payload.get("message", "").strip()
-    issue_type = payload.get("issue_type", "other")
-    email = payload.get("email", "").strip()
+    # ── Determine the contact email ──────────────────────────────
+    if current_user:
+        # Trust the authenticated user's email — ignore client input
+        email_to_use = current_user.email
+        user_id = current_user.id
+    else:
+        if not payload.email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email is required for anonymous submissions",
+            )
+        email_to_use = str(payload.email)
 
-    if not subject or not message:
-        raise HTTPException(400, "Subject and message are required")
-
-    # If user is not authenticated, check if email is provided
-    if not current_user and not email:
-        raise HTTPException(status_code=400, detail="Email is required for anonymous submissions")
-
-    # Determine user_id
-    user_id = current_user.id if current_user else None
-    
-    # If anonymous with email, try to find existing user
-    if user_id is None and email:
-        existing_user = db.query(User).filter(User.email == email).first()
+        # Try to link to an existing user first
+        existing_user = (
+            db.query(User).filter(User.email == email_to_use).first()
+        )
         if existing_user:
             user_id = existing_user.id
         else:
-            # Create a temporary user for the ticket
+            # The DB requires a user_id, so create a minimal placeholder.
+            # is_active=False prevents anyone from logging in with this email.
+            import hashlib as _hashlib
             temp_user = User(
-                email=email,
-                hashed_password=hashlib.sha256(email.encode()).hexdigest(),
-                full_name=email.split('@')[0],
+                email=email_to_use,
+                hashed_password=_hashlib.sha256(email_to_use.encode()).hexdigest(),
+                full_name=email_to_use.split("@")[0],
                 role=UserRole.STUDENT,
                 is_active=False,
             )
@@ -66,38 +78,52 @@ def create_support_ticket(
             db.refresh(temp_user)
             user_id = temp_user.id
 
-    # Create the ticket with proper enum values
+    # ── Create the ticket ────────────────────────────────────────
     ticket = SupportTicket(
         user_id=user_id,
-        subject=subject,
-        message=message,
-        issue_type=issue_type,
+        subject=payload.subject.strip(),
+        message=payload.message.strip(),
+        issue_type=payload.issue_type.value,
         status=TicketStatus.OPEN,
         priority=TicketPriority.MEDIUM,
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
-    
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
-    
-    # Send confirmation email
-    if email:
-        try:
-            send_support_ticket_confirmation(
-                to_email=email,
-                ticket_id=str(ticket.id),
-                ticket_subject=subject
-            )
-        except Exception as e:
-            # Don't fail ticket creation if email fails
-            print(f"Failed to send confirmation email: {e}")
-    
+
+    logger.info(
+        f"Support ticket created: id={ticket.id}, "
+        f"email={email_to_use}, type={payload.issue_type.value}"
+    )
+
+    # ── Confirmation email to submitter ──────────────────────────
+    try:
+        send_support_ticket_confirmation(
+            to_email=email_to_use,
+            ticket_id=str(ticket.id),
+            ticket_subject=payload.subject.strip(),
+        )
+    except Exception as e:
+        logger.warning(f"Support confirmation email failed: {e}")
+
+    # ── Telegram ping to admin ───────────────────────────────────
+    try:
+        notify_new_support_ticket(
+            ticket_id=str(ticket.id),
+            email=email_to_use,
+            issue_type=payload.issue_type.value,
+            subject=payload.subject.strip(),
+            message_preview=payload.message.strip()[:200],
+        )
+    except Exception as e:
+        logger.warning(f"Support Telegram notify failed: {e}")
+
     return {
         "message": "Support ticket created successfully",
         "ticket_id": str(ticket.id),
         "status": ticket.status.value,
-        "created_at": ticket.created_at.isoformat()
+        "created_at": ticket.created_at.isoformat(),
     }
 
 

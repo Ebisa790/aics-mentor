@@ -101,3 +101,41 @@ def notify_new_manual_payment(
     lines.append("👉 Review at: /admin/manual-payments")
 
     send_telegram_async("\n".join(lines))
+
+
+
+def notify_new_support_ticket(
+    ticket_id: str,
+    email: str,
+    issue_type: str,
+    subject: str,
+    message_preview: str,
+) -> None:
+    """Admin notification when a new support ticket is created."""
+    # Friendly emoji per issue type — helps you triage at a glance
+    type_emoji = {
+        "payment": "💰",
+        "refund": "💸",
+        "account_reactivation": "🔓",
+        "account_issues": "👤",
+        "technical": "🔧",
+        "content": "📚",
+        "feedback": "💡",
+        "other": "📩",
+    }.get(issue_type.lower(), "📩")
+
+    lines = [
+        f"{type_emoji} <b>New Support Ticket</b>",
+        "",
+        f"<b>Type:</b> {issue_type.replace('_', ' ').title()}",
+        f"<b>From:</b> {email}",
+        f"<b>Subject:</b> {subject}",
+        "",
+        f"<b>Message:</b>",
+        f"<i>{message_preview}</i>",
+        "",
+        f"Ticket ID: <code>{ticket_id[:8]}</code>",
+        "👉 Review at: /admin/support",
+    ]
+
+    send_telegram_async("\n".join(lines))
