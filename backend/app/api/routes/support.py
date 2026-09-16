@@ -127,6 +127,30 @@ def create_support_ticket(
     }
 
 
+@router.get("/admin/stats")
+def get_support_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Return counts by status for the admin dashboard header."""
+    rows = (
+        db.query(SupportTicket.status, func.count(SupportTicket.id))
+        .group_by(SupportTicket.status)
+        .all()
+    )
+    counts = {status.value: 0 for status in TicketStatus}
+    for status, count in rows:
+        counts[status.value] = count
+
+    return {
+        "open": counts.get("open", 0),
+        "in_progress": counts.get("in_progress", 0),
+        "resolved": counts.get("resolved", 0),
+        "closed": counts.get("closed", 0),
+        "total": sum(counts.values()),
+    }
+
+
 @router.get("/tickets")
 def list_user_tickets(
     db: Session = Depends(get_db),

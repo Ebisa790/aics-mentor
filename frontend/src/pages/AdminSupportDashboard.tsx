@@ -34,7 +34,7 @@ export function AdminSupportDashboard() {
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('open')
   const [issueFilter, setIssueFilter] = useState<string>('all')
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null)
   const [stats, setStats] = useState({
@@ -72,7 +72,7 @@ export function AdminSupportDashboard() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('access_token')
-      const response = await fetch(`${API_BASE_URL}/api/support/admin/tickets/stats`, {
+      const response = await fetch(`${API_BASE_URL}/api/support/admin/stats`, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       if (response.ok) {
@@ -137,7 +137,8 @@ export function AdminSupportDashboard() {
     const labels: Record<string, string> = {
       account_reactivation: 'Account Reactivation',
       account_issues: 'Account Issues',
-      payment: 'Payment/Billing',
+      payment: 'Payment',
+      refund: 'Refund Request',
       technical: 'Technical Issue',
       content: 'Course/Content Issue',
       feedback: 'Feedback',
@@ -171,27 +172,40 @@ export function AdminSupportDashboard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
-            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.open}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Open</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <button
+            onClick={() => setStatusFilter('open')}
+            className={`rounded-2xl border p-4 text-center transition ${
+              statusFilter === 'open'
+                ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/40 ring-2 ring-amber-400/30'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-300 dark:hover:border-amber-500/40'
+            }`}
+          >
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.open}</p>
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5">Open</p>
+          </button>
+          <button
+            onClick={() => setStatusFilter('in_progress')}
+            className={`rounded-2xl border p-4 text-center transition ${
+              statusFilter === 'in_progress'
+                ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-300 dark:border-blue-500/40 ring-2 ring-blue-400/30'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/40'
+            }`}
+          >
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.in_progress}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">In Progress</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.resolved}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Resolved</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
-            <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{stats.closed}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Closed</p>
-          </div>
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5">In Progress</p>
+          </button>
+          <button
+            onClick={() => setStatusFilter('resolved')}
+            className={`rounded-2xl border p-4 text-center transition ${
+              statusFilter === 'resolved'
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/40 ring-2 ring-emerald-400/30'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-500/40'
+            }`}
+          >
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.resolved}</p>
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5">Resolved</p>
+          </button>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 mb-6 flex flex-wrap gap-3">
@@ -218,7 +232,8 @@ export function AdminSupportDashboard() {
             <option value="all">All Types</option>
             <option value="account_reactivation">Account Reactivation</option>
             <option value="account_issues">Account Issues</option>
-            <option value="payment">Payment/Billing</option>
+            <option value="payment">Payment</option>
+            <option value="refund">Refund Request</option>
             <option value="technical">Technical</option>
             <option value="content">Course/Content</option>
             <option value="feedback">Feedback</option>
@@ -240,8 +255,14 @@ export function AdminSupportDashboard() {
             <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
               <MessageSquare className="w-8 h-8 text-slate-400" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">No tickets found</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">All support tickets will appear here.</p>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              {statusFilter === 'open' ? "No open tickets — you're all caught up" : 'No tickets found'}
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              {statusFilter === 'open'
+                ? 'New support requests will appear here.'
+                : 'Try a different filter or check back later.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -279,8 +300,7 @@ export function AdminSupportDashboard() {
                       <option value="open">Open</option>
                       <option value="in_progress">In Progress</option>
                       <option value="resolved">Resolved</option>
-                      <option value="closed">Closed</option>
-                    </select>
+                                          </select>
                     {expandedTicket === ticket.id ? (
                       <ChevronUp className="w-4 h-4 text-slate-400" />
                     ) : (
@@ -317,7 +337,9 @@ export function AdminSupportDashboard() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              updateTicketStatus(ticket.id, 'resolved')
+                              if (window.confirm('Mark this ticket as resolved? The student will be notified.')) {
+                                updateTicketStatus(ticket.id, 'resolved')
+                              }
                             }}
                             className="px-4 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-500"
                           >
