@@ -183,6 +183,8 @@ def submit_manual_payment(
             sender_name=payload.sender_name,
             sender_phone=payload.sender_phone,
             student_note=payload.student_note,
+            accepted_terms=payload.accepted_terms,
+            confirmed_amount=payload.confirmed_amount,
         )
     except ManualPaymentError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

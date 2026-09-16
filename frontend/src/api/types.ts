@@ -431,6 +431,9 @@ export interface ManualPaymentSubmitRequest {
   sender_name?: string
   sender_phone?: string
   student_note?: string
+  // Confirmation gates — required by the backend.
+  accepted_terms: boolean
+  confirmed_amount: string
 }
 
 export interface ManualPaymentSubmitResponse {

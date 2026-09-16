@@ -341,10 +341,20 @@ class ManualPaymentService:
         sender_name: Optional[str],
         sender_phone: Optional[str],
         student_note: Optional[str],
+        accepted_terms: bool = False,
+        confirmed_amount: str = "",
     ) -> Payment:
         """Student submits the bank reference after paying."""
 
         self._assert_user_active(user)
+
+        # ── Confirmation gates ────────────────────────────────
+        # Backend is the final authority — even if a malicious
+        # client skips the frontend checkboxes, we reject here.
+        if not accepted_terms:
+            raise ManualPaymentError(
+                "You must confirm both statements before submitting."
+            )
 
         payment = (
             self.db.query(Payment)
@@ -369,6 +379,25 @@ class ManualPaymentService:
 
         # Validate reference format
         self._validate_bank_reference_format(bank, bank_reference)
+
+        # ── Amount confirmation ───────────────────────────────
+        # The student must type the exact amount they sent. This
+        # acts as a second confirmation gate and creates an audit
+        # trail we can reference if there's a later dispute.
+        try:
+            typed_amount = float(confirmed_amount.replace(",", "").strip())
+        except (ValueError, AttributeError):
+            raise ManualPaymentError(
+                "Please type the amount you sent (e.g. 500)."
+            )
+
+        expected_amount = float(payment.amount)
+        if abs(typed_amount - expected_amount) > 0.01:
+            raise ManualPaymentError(
+                f"The amount you typed ({typed_amount:g} {payment.currency}) "
+                f"doesn't match the plan price "
+                f"({expected_amount:g} {payment.currency})."
+            )
 
         # Check the reference hasn't been submitted before
         from app.models.payment import ManualPaymentDetail
@@ -417,6 +446,14 @@ class ManualPaymentService:
             sender_name=sender_name,
             sender_phone=sender_phone,
             student_note=student_note,
+        )
+        # Record the student's explicit confirmation BEFORE storing
+        # the detail — this proves they claimed the payment.
+        self._append_audit(
+            payment, "terms_accepted",
+            actor_id=user.id,
+            confirmed_amount=confirmed_amount,
+            expected_amount=str(payment.amount),
         )
         self._append_audit(
             payment, "submitted",

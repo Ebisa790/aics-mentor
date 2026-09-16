@@ -173,6 +173,11 @@ export function ManualPaymentModal({
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [referenceError, setReferenceError] = useState<string | null>(null)
 
+  // Confirmation gates
+  const [confirmSent, setConfirmSent] = useState(false)
+  const [confirmUnderstood, setConfirmUnderstood] = useState(false)
+  const [confirmAmount, setConfirmAmount] = useState('')
+
   // ── Draft persistence helpers ──────────────────────────────
   const clearDraft = () => {
     try {
@@ -324,6 +329,14 @@ export function ManualPaymentModal({
   const step3Done = referenceIsValid
   const currentStep: 1 | 2 | 3 = !step1Done ? 1 : !step3Done ? 2 : 3
 
+  // Confirmation gate validity
+  const typedAmountNum = parseFloat(confirmAmount.replace(/,/g, '').trim())
+  const amountMatches =
+    !!options &&
+    !isNaN(typedAmountNum) &&
+    Math.abs(typedAmountNum - Number(options.amount)) < 0.01
+  const gatesPassed = confirmSent && confirmUnderstood && amountMatches
+
   const handleCopy = async (text: string, field: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -350,13 +363,15 @@ export function ManualPaymentModal({
         bank: selectedBank,
       })
 
-      // 2) Submit the bank reference
+      // 2) Submit the bank reference + confirmation gates
       await manualPaymentApi.submit({
         tx_ref: initiated.tx_ref,
         bank_reference: reference.trim(),
         sender_name: senderName.trim() || undefined,
         sender_phone: senderPhone.trim() || undefined,
         student_note: note.trim() || undefined,
+        accepted_terms: confirmSent && confirmUnderstood,
+        confirmed_amount: confirmAmount.trim(),
       })
 
       setSuccess(true)
@@ -791,6 +806,73 @@ export function ManualPaymentModal({
                       <span>{referenceError}</span>
                     </p>
                   )}
+
+                  {/* Confirmation gates */}
+                  <div className="mt-4 space-y-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 p-3.5">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                      Before you submit
+                    </p>
+
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={confirmSent}
+                        onChange={(e) => setConfirmSent(e.target.checked)}
+                        disabled={submitting}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600"
+                      />
+                      <span className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                        I have sent{' '}
+                        <strong className="text-slate-900 dark:text-white">
+                          {options ? `${options.amount} ${options.currency}` : ''}
+                        </strong>{' '}
+                        to the account shown above, from my own bank account.
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={confirmUnderstood}
+                        onChange={(e) => setConfirmUnderstood(e.target.checked)}
+                        disabled={submitting}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600"
+                      />
+                      <span className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                        I understand that submitting a <strong>fake or reused
+                        reference</strong> will result in a permanent ban.
+                      </span>
+                    </label>
+
+                    <div className="pt-1">
+                      <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Type the amount you sent to confirm{' '}
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={confirmAmount}
+                        onChange={(e) => setConfirmAmount(e.target.value)}
+                        placeholder={options ? String(options.amount) : '500'}
+                        disabled={submitting}
+                        className={`w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 disabled:opacity-50 dark:bg-slate-950 dark:text-white ${
+                          confirmAmount.length === 0
+                            ? 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700'
+                            : amountMatches
+                              ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500 dark:border-emerald-500/60'
+                              : 'border-amber-400 focus:border-amber-500 focus:ring-amber-500 dark:border-amber-500/60'
+                        }`}
+                      />
+                      {confirmAmount.length > 0 && !amountMatches && (
+                        <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                          <AlertCircle className="h-3 w-3" />
+                          Amount doesn't match. Please type exactly{' '}
+                          {options ? `${options.amount}` : ''}.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -875,7 +957,7 @@ export function ManualPaymentModal({
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={submitting || !referenceIsValid}
+                  disabled={submitting || !referenceIsValid || !gatesPassed}
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting ? (

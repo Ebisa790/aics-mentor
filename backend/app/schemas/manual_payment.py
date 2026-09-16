@@ -115,6 +115,19 @@ class ManualPaymentSubmitRequest(BaseModel):
     sender_phone: Optional[str] = Field(None, max_length=20)
     student_note: Optional[str] = Field(None, max_length=1000)
 
+    # Confirmation gates — the student must explicitly acknowledge
+    # these before the backend will accept the submission.
+    accepted_terms: bool = Field(
+        ...,
+        description="True if the student ticked both confirmation checkboxes.",
+    )
+    confirmed_amount: str = Field(
+        ...,
+        min_length=1,
+        max_length=20,
+        description="The amount the student typed, as a string (e.g. '500').",
+    )
+
     @field_validator("bank_reference")
     @classmethod
     def strip_whitespace(cls, v: str) -> str:
