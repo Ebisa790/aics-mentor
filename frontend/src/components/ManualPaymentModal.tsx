@@ -46,13 +46,13 @@ const bankMeta: Record<ManualBank, { label: string; icon: any; hint: string }> =
 // Client-side format hints matching backend validation.
 // Users see green/amber feedback as they type — fewer rejections.
 const bankPatterns: Record<ManualBank, RegExp> = {
-  cbe: /^FT[A-Z0-9]{8,16}$/,
+  cbe: /^(FT[A-Z0-9]{8,16}|[A-Za-z0-9]{15,25})$/,
   telebirr: /^[A-Z0-9]{8,20}$/,
   awash: /^\d{14,16}$/,
 }
 
 const bankFormatHint: Record<ManualBank, string> = {
-  cbe: 'The FT reference from your CBE receipt (12-16 characters, e.g. FT26265HR71H)',
+  cbe: 'From your CBE SMS: tap the receipt link, then find the FT reference (e.g. FT26265HR71H). Or paste the SMS link code directly.',
   telebirr: 'The transaction ID from your Telebirr SMS (e.g. 8E320N1XB4)',
   awash: 'The Transaction ID from your Awash SMS or receipt (14-16 digits, e.g. 260922130393530)',
 }
