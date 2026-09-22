@@ -8,7 +8,6 @@ import {
   Lock,
   Pin,
   Terminal,
-  TrendingUp,
   AlertTriangle,
   BookOpen,
   Target,
@@ -158,7 +157,6 @@ export function DashboardPage() {
     navigate('/tutor')
   }
 
-  const openCount = dashboard?.recent_activity.length ?? 0
   const streak = dashboard?.streak_days ?? 0
   const lastActivity = dashboard?.last_activity
   const weakest = dashboard?.weakest_subjects ?? []
@@ -316,47 +314,6 @@ export function DashboardPage() {
           </div>
         )}
       </section>
-
-      {/* =========================================================
-          RECENT ACTIVITY (compact, only if exists)
-      ========================================================= */}
-      {!loadingDashboard && openCount > 0 && (
-        <section className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
-            Recent activity
-          </div>
-
-          <ul className="mt-3 space-y-2">
-            {dashboard?.recent_activity.map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
-                <div className="min-w-0 flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600" />
-                  <span className="truncate text-slate-700 dark:text-slate-300">
-                    {a.type}: <span className="font-medium text-slate-900 dark:text-white">{a.label}</span>
-                  </span>
-                </div>
-                <div className="shrink-0 text-right">
-                  <span
-                    className={`text-xs font-semibold ${
-                      a.score >= 70
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : a.score >= 50
-                        ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-rose-600 dark:text-rose-400'
-                    }`}
-                  >
-                    {a.score}%
-                  </span>
-                  <span className="ml-2 text-[11px] text-slate-400">
-                    {a.relative_when}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {/* =========================================================
           TOOLS — Mock Exam hero, others supporting
