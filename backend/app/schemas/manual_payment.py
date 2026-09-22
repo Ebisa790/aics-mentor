@@ -46,7 +46,7 @@ class ManualBank(str, Enum):
 #   Awash     - alphanumeric with dashes, format varies by transaction type
 #               (e.g. -2DBWYO2M4D-9UIFS).
 BANK_REFERENCE_PATTERNS = {
-    ManualBank.CBE: r"^FT[A-Z0-9]{6,20}$",
+    ManualBank.CBE: r"^FT[A-Z0-9]{8,16}$",
     ManualBank.TELEBIRR: r"^[A-Z0-9]{8,20}$",
     ManualBank.AWASH: r"^[A-Z0-9\-]{6,30}$",
 }

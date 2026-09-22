@@ -46,13 +46,13 @@ const bankMeta: Record<ManualBank, { label: string; icon: any; hint: string }> =
 // Client-side format hints matching backend validation.
 // Users see green/amber feedback as they type — fewer rejections.
 const bankPatterns: Record<ManualBank, RegExp> = {
-  cbe: /^FT[A-Z0-9]{6,20}$/,
+  cbe: /^FT[A-Z0-9]{8,16}$/,
   telebirr: /^[A-Z0-9]{8,20}$/,
   awash: /^[A-Z0-9\-]{6,30}$/,
 }
 
 const bankFormatHint: Record<ManualBank, string> = {
-  cbe: 'The FT reference from your CBE receipt (e.g. FT24ABC123XYZ)',
+  cbe: 'The FT reference from your CBE receipt (12-16 characters, e.g. FT26265HR71H)',
   telebirr: 'The transaction ID from your Telebirr SMS (e.g. 8E320N1XB4)',
   awash: 'The receipt code from your Awash receipt (e.g. -2DBWYO2M4D-9UIFS)',
 }
@@ -754,7 +754,7 @@ export function ManualPaymentModal({
                     }}
                     placeholder={
                       selectedBank === 'cbe'
-                        ? 'e.g. FT24ABC123XYZ'
+                        ? 'e.g. FT26265HR71H'
                         : selectedBank === 'telebirr'
                           ? 'e.g. 8E320N1XB4'
                           : 'e.g. -2DBWYO2M4D-9UIFS'
