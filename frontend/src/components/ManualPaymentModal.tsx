@@ -48,13 +48,13 @@ const bankMeta: Record<ManualBank, { label: string; icon: any; hint: string }> =
 const bankPatterns: Record<ManualBank, RegExp> = {
   cbe: /^FT[A-Z0-9]{8,16}$/,
   telebirr: /^[A-Z0-9]{8,20}$/,
-  awash: /^[A-Z0-9\-]{6,30}$/,
+  awash: /^\d{14,16}$/,
 }
 
 const bankFormatHint: Record<ManualBank, string> = {
   cbe: 'The FT reference from your CBE receipt (12-16 characters, e.g. FT26265HR71H)',
   telebirr: 'The transaction ID from your Telebirr SMS (e.g. 8E320N1XB4)',
-  awash: 'The receipt code from your Awash receipt (e.g. -2DBWYO2M4D-9UIFS)',
+  awash: 'The Transaction ID from your Awash SMS or receipt (14-16 digits, e.g. 260922130393530)',
 }
 
 // USSD codes for quick mobile payment.
@@ -757,7 +757,7 @@ export function ManualPaymentModal({
                         ? 'e.g. FT26265HR71H'
                         : selectedBank === 'telebirr'
                           ? 'e.g. 8E320N1XB4'
-                          : 'e.g. -2DBWYO2M4D-9UIFS'
+                          : 'e.g. 260922130393530'
                     }
                     disabled={submitting}
                     className={`w-full rounded-xl border bg-white px-3 py-2.5 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 disabled:opacity-50 dark:bg-slate-950 dark:text-white ${

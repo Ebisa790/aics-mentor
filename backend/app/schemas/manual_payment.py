@@ -48,7 +48,7 @@ class ManualBank(str, Enum):
 BANK_REFERENCE_PATTERNS = {
     ManualBank.CBE: r"^FT[A-Z0-9]{8,16}$",
     ManualBank.TELEBIRR: r"^[A-Z0-9]{8,20}$",
-    ManualBank.AWASH: r"^[A-Z0-9\-]{6,30}$",
+    ManualBank.AWASH: r"^\d{14,16}$",
 }
 
 
