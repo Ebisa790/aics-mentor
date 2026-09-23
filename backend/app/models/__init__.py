@@ -15,4 +15,6 @@ from app.models.flashcard import Flashcard  # noqa: F401
 from app.models.payment import Payment, PaymentStatus, PricingPlan, Subscription, PlanDurationType, SubscriptionStatus  # noqa: F401
 from app.models.attempt import DrillAttempt  # noqa: F401
 
+from app.models.exam_blueprint import ExamBlueprintItem  # noqa: F401
+from app.models.payment import ManualPaymentDetail, DeletedPaymentLog  # noqa: F401
 from app.core.database import Base

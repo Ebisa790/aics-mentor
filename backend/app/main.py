@@ -43,6 +43,7 @@ from app.api.routes import (
     courses,
     departments,
     exams,
+    exam_blueprint,
     materials,
    
     quizzes,
@@ -147,6 +148,7 @@ app.include_router(question_management.router)
 app.include_router(review_queue.router)
 app.include_router(support.router)
 app.include_router(exams.router)
+app.include_router(exam_blueprint.router)
 app.include_router(admin_users.router) 
 app.include_router(announcements.router)
 app.include_router(drills.router, prefix="/api")

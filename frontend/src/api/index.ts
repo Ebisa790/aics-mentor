@@ -602,3 +602,36 @@ export const adminApi = {
       )
       .then((res) => res.data),
 }
+
+
+// ============================================================
+// Exam Blueprint (MoE Exit Exam structure)
+// ============================================================
+
+export const examBlueprintApi = {
+  get: () =>
+    apiClient
+      .get<{
+        summary: {
+          total_items: number
+          total_courses: number
+          total_themes: number
+          cognitive_totals: Record<string, number>
+        }
+        items: Array<{
+          id: string
+          theme: string
+          course_name: string
+          credit_hours: number
+          test_items: number
+          cognitive_remember: number
+          cognitive_understand: number
+          cognitive_apply: number
+          cognitive_analyze: number
+          cognitive_evaluate: number
+          cognitive_create: number
+          course_id: string | null
+        }>
+      }>('/api/exam-blueprint')
+      .then((res) => res.data),
+}

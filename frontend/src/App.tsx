@@ -13,6 +13,7 @@ import { ForgotPasswordPage } from './pages/ForgotPassword'
 import { ResetPasswordPage } from './pages/ResetPassword'
 import { PricingPage } from './pages/Pricing'
 import { DashboardPage } from './pages/Dashboard'
+import { ExamBlueprintPage } from './pages/ExamBlueprint'
 import { CoursesPage } from './pages/Courses'
 import { CourseDetailPage } from './pages/CourseDetail'
 import { CourseNotesPage } from './pages/CourseNotesPage'
@@ -64,6 +65,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/exam-blueprint" element={<ExamBlueprintPage />} />
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/courses/:courseId" element={<CourseDetailPage />} />
               <Route path="/courses/:courseId/notes" element={<CourseNotesPage />} />
