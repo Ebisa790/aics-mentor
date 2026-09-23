@@ -17,8 +17,6 @@ class ExamBlueprintItemOut(BaseModel):
     cognitive_evaluate: int
     cognitive_create: int
     course_id: Optional[uuid.UUID] = None
-    general_objective: Optional[str] = None
-    learning_outcomes: Optional[list[str]] = None
 
     model_config = ConfigDict(from_attributes=True)
 

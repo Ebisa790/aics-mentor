@@ -631,8 +631,6 @@ export const examBlueprintApi = {
           cognitive_evaluate: number
           cognitive_create: number
           course_id: string | null
-          general_objective: string | null
-          learning_outcomes: string[] | null
         }>
       }>('/api/exam-blueprint')
       .then((res) => res.data),

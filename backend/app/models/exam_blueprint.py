@@ -7,7 +7,7 @@ from the Ministry of Education's official Test Blueprint.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Integer, Text, DateTime, func
+from sqlalchemy import String, Integer, Text, DateTime, func, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -46,6 +46,12 @@ class ExamBlueprintItem(Base):
     cognitive_analyze: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     cognitive_evaluate: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     cognitive_create: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # General course objective (1-2 sentences from MoE blueprint)
+    general_objective: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # List of specific learning outcomes (MoE blueprint requirements)
+    learning_outcomes: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # Optional: link to the actual course in our platform (for practice links)
     course_id: Mapped[uuid.UUID | None] = mapped_column(
