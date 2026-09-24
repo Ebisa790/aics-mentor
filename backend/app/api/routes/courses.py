@@ -15,6 +15,7 @@ from app.models.quiz import Question
 from app.core.database import get_db
 from app.models.user import SubscriptionTier, UserRole
 from app.core.premium import is_premium_or_admin, truncate_content_for_preview
+from app.core.rate_limit import limiter
 from app.api.deps import require_admin, get_current_user
 from app.models.course import Course, Topic, CourseNotes
 from app.models.user import User
@@ -1127,6 +1128,89 @@ def get_notes_for_review(
         "versions": result,
         "latest_version": notes[0].version if notes else 0
     }
+
+
+# -------------------------------------------------------------------
+# AI Study Assistant (Notes Ask)
+# -------------------------------------------------------------------
+
+@router.post("/{course_id}/notes/ask")
+@limiter.limit("20/minute")
+def ask_about_notes(
+    request: Request,
+    course_id: uuid.UUID,
+    payload: AskNoteQuestionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    AI Study Assistant: answer a student's question about a selected excerpt
+    from their course notes. Premium / admin only.
+    """
+    if not is_premium_or_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI Study Assistant is a Premium feature.",
+        )
+
+    course = db.get(Course, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    question = (payload.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required.")
+    if len(question) > 500:
+        raise HTTPException(
+            status_code=400, detail="Question is too long (500 char max)."
+        )
+
+    excerpt = (payload.selected_text or "").strip()
+    if not excerpt:
+        excerpt = (payload.page_content or "").strip()
+    excerpt = excerpt[:3000]
+
+    if not excerpt:
+        raise HTTPException(
+            status_code=400, detail="Select some text in your notes first."
+        )
+
+    system_instruction = (
+        f"You are an expert tutor for {course.name} "
+        f"({course.code or 'CS'}) preparing students for the Ethiopian CS Exit Exam. "
+        f"Answer the student's question using ONLY the provided excerpt from their notes. "
+        f"Be concise (under 200 words), clear, and use simple language. "
+        f"If the excerpt is insufficient, say so briefly and give the general principle. "
+        f"Do not invent facts outside the excerpt."
+    )
+    user_prompt = (
+        f"EXCERPT FROM THE STUDENT'S NOTES:\n"
+        f"\"\"\"\n{excerpt}\n\"\"\"\n\n"
+        f"STUDENT'S QUESTION:\n{question}\n\n"
+        f"Answer clearly for an exit-exam student."
+    )
+
+    try:
+        answer = generate_ai_content(
+            prompt=user_prompt,
+            system_instruction=system_instruction,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"AI ask failed for course {course_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI service is temporarily unavailable. Please try again.",
+        )
+
+    if not answer or not answer.strip():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI returned an empty answer. Please try again.",
+        )
+
+    return {"answer": answer.strip()}
 
 
 @router.post("/{course_id}/notes/approve")
