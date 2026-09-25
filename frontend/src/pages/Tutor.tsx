@@ -203,6 +203,7 @@ export function TutorPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [streamingText, setStreamingText] = useState<string>('')
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -225,7 +226,7 @@ export function TutorPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isSending])
+  }, [messages, isSending, streamingText])
 
   const loadConversation = async (id: string) => {
     try {
@@ -263,32 +264,57 @@ export function TutorPage() {
     setMessages((prev) => [...prev, optimisticUserMessage])
     setInput('')
     setIsSending(true)
+    setStreamingText('')
 
+    // Try streaming first. On ANY failure, fall back to non-streaming.
     try {
-      const response = await tutorApi.chat({
+      const response = await tutorApi.chatStream({
         conversation_id: conversationId,
         course_id: courseId || undefined,
         mode,
         message: text,
+        onMeta: (meta) => {
+          // Learn the conversation id as soon as it exists on the server
+          if (!conversationId) {
+            setConversationId(meta.conversation_id)
+          }
+        },
+        onDelta: (chunk) => {
+          setStreamingText((prev) => prev + chunk)
+        },
       })
 
-      setConversationId(response.conversation_id)
       setMessages((prev) => [...prev, response.reply])
-
+      setStreamingText('')
       fetchConversations()
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
+    } catch (streamErr) {
+      // Streaming failed — fall back to the non-streaming endpoint
+      setStreamingText('')
+      try {
+        const response = await tutorApi.chat({
+          conversation_id: conversationId,
+          course_id: courseId || undefined,
+          mode,
+          message: text,
+        })
+        setMessages((prev) => [...prev, response.reply])
+        if (!conversationId && response.conversation_id) {
+          setConversationId(response.conversation_id)
+        }
+        fetchConversations()
+      } catch {
+        // Both failed — surface a local error message
+        const errorMessage: ChatMessage = {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content:
-            "I couldn't connect to the study assistant. Please check your connection and try again.",
+          content: 'Sorry, the tutor is unavailable right now. Please try again in a moment.',
           created_at: new Date().toISOString(),
-        },
-      ])
+        }
+        setMessages((prev) => [...prev, errorMessage])
+      }
     } finally {
       setIsSending(false)
+      setStreamingText('')
     }
   }
 
@@ -534,7 +560,20 @@ export function TutorPage() {
               ))
             )}
 
-            {isSending && (
+            {isSending && streamingText && (
+              <div className="flex justify-start items-start gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+
+                <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 whitespace-pre-wrap leading-relaxed max-w-[80%]">
+                  {streamingText}
+                  <span className="inline-block w-2 h-3.5 ml-0.5 align-middle bg-indigo-500 animate-pulse" />
+                </div>
+              </div>
+            )}
+
+            {isSending && !streamingText && (
               <div className="flex justify-start items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
                   <GraduationCap className="w-4 h-4" />
