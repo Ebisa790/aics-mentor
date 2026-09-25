@@ -121,6 +121,7 @@ export function TutorPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   const bottomRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     courseApi
@@ -141,6 +142,15 @@ export function TutorPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isSending, streamingText])
+
+  // Auto-grow the input textarea based on content
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    const maxHeight = 160 // ~6 rows
+    el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px'
+  }, [input])
 
   const loadConversation = async (id: string) => {
     try {
@@ -235,6 +245,20 @@ export function TutorPage() {
   const handleSend = (e: FormEvent) => {
     e.preventDefault()
     sendMessage(input)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter sends (without Shift). Shift+Enter inserts a newline.
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (!isSending && input.trim()) {
+        sendMessage(input)
+      }
+    }
+    // Escape clears the input
+    if (e.key === 'Escape') {
+      setInput('')
+    }
   }
 
   return (
@@ -468,13 +492,16 @@ export function TutorPage() {
           {/* Input Form */}
           <form
             onSubmit={handleSend}
-            className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700"
+            className="flex items-end gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700"
           >
-            <input
-              className="flex-1 text-xs sm:text-sm py-3 px-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              placeholder="Ask a question..."
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              className="flex-1 resize-none text-xs sm:text-sm py-3 px-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all leading-relaxed"
+              placeholder="Ask a question... (Enter to send, Shift+Enter for new line)"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
 
             <button
