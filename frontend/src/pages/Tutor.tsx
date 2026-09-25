@@ -2,7 +2,11 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { courseApi, tutorApi } from '../api'
 import { useAuth } from '../context/AuthContext'
-import { Crown, Plus, Trash2, PanelLeft, PanelRight, MessageCircle, GraduationCap } from 'lucide-react'
+import { Crown, Plus, Trash2, PanelLeft, PanelRight, MessageCircle, GraduationCap} from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 import type {
   ChatMessage,
   Course,
@@ -20,23 +24,9 @@ function cleanAIResponse(content: string): string {
 
   let cleaned = content
 
-  // Remove <think> blocks
+  // Remove <think> blocks (some models emit them)
   cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '')
   cleaned = cleaned.replace(/<\/?think>/gi, '')
-
-  // Remove markdown bold
-  cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1')
-
-  // Remove markdown italic
-  cleaned = cleaned.replace(/\*(.*?)\*/g, '$1')
-
-  // Remove markdown headers
-  cleaned = cleaned.replace(/^#{1,6}\s+/gm, '')
-
-  // Remove markdown table separators
-  cleaned = cleaned.replace(/\|/g, ' ')
-
-  cleaned = cleaned.replace(/^[-\s]+$/gm, '')
 
   return cleaned.trim()
 }
@@ -44,72 +34,16 @@ function cleanAIResponse(content: string): string {
 function FormattedMessageContent({ content }: { content: string }) {
   if (!content) return null
 
-  const lines = content.split('\n')
-
   return (
-    <div className="space-y-2 text-sm leading-relaxed select-text">
-      {lines.map((line, idx) => {
-        const trimmed = line.trim()
-
-        if (!trimmed) {
-          return <div key={idx} className="h-1" />
-        }
-
-        if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
-          const cleanText = trimmed.replace(/^[*\-]\s+/, '')
-
-          return (
-            <li
-              key={idx}
-              className="ml-4 list-disc marker:text-slate-400 pl-1"
-            >
-              {renderBoldText(cleanText)}
-            </li>
-          )
-        }
-
-        if (trimmed.startsWith('#')) {
-          const headerText = trimmed.replace(/^#+\s+/, '')
-
-          return (
-            <h4
-              key={idx}
-              className="font-semibold text-base mt-3 mb-1 text-slate-900 dark:text-white"
-            >
-              {renderBoldText(headerText)}
-            </h4>
-          )
-        }
-
-        return (
-          <p key={idx} className="text-slate-700 dark:text-slate-300">
-            {renderBoldText(trimmed)}
-          </p>
-        )
-      })}
+    <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-headings:mt-3 prose-headings:mb-1.5 prose-headings:text-slate-900 dark:prose-headings:text-white prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-li:text-slate-700 dark:prose-li:text-slate-300 prose-code:rounded prose-code:bg-slate-100 dark:prose-code:bg-slate-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[0.85em] prose-code:font-mono prose-code:text-rose-600 dark:prose-code:text-rose-400 prose-code:before:content-none prose-code:after:content-none prose-pre:rounded-xl prose-pre:bg-slate-950 prose-pre:p-3 prose-pre:my-3 prose-blockquote:border-l-4 prose-blockquote:border-indigo-400 prose-blockquote:pl-3 prose-blockquote:italic prose-table:text-xs prose-table:my-3 prose-th:bg-slate-100 dark:prose-th:bg-slate-800 prose-th:px-2 prose-th:py-1.5 prose-th:text-left prose-td:px-2 prose-td:py-1.5 prose-td:border-t prose-td:border-slate-200 dark:prose-td:border-slate-700">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   )
-}
-
-function renderBoldText(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g)
-
-  return parts.map((part, index) => {
-    if (
-      (part.startsWith('**') && part.endsWith('**')) ||
-      (part.startsWith('*') && part.endsWith('*'))
-    ) {
-      const inner = part.replace(/^\*+|\*+$/g, '')
-
-      return (
-        <strong key={index} className="font-semibold text-slate-900 dark:text-white">
-          {inner}
-        </strong>
-      )
-    }
-
-    return part
-  })
 }
 
 function ChatMessageCard({ message }: { message: ChatMessage }) {
