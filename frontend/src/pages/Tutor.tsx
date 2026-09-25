@@ -14,6 +14,13 @@ import type {
   Conversation,
 } from '../api/types'
 
+function truncateTitle(title: string, max = 40): string {
+  if (!title) return 'Untitled Session'
+  const clean = title.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  return clean.slice(0, max).trimEnd() + '...'
+}
+
 const MODES: { value: TutorMode; label: string }[] = [
   { value: 'explanation', label: 'Explain' },
   { value: 'beginner', label: 'Beginner' },
@@ -343,8 +350,9 @@ export function TutorPage() {
                 <button
                   onClick={() => loadConversation(conv.id)}
                   className="flex-1 text-left truncate pr-2"
+                  title={conv.title || 'Untitled Session'}
                 >
-                  {conv.title || 'Untitled Session'}
+                  {truncateTitle(conv.title || 'Untitled Session', 40)}
                 </button>
 
                 <button
