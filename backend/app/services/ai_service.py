@@ -148,6 +148,98 @@ def generate_ai_content(
     )
 
 
+def stream_ai_content(
+    prompt: str,
+    system_instruction: Optional[str] = None,
+):
+    """
+    Stream AI content chunk-by-chunk.
+    Mirrors generate_ai_content's provider/model fallback, but yields text deltas.
+
+    Usage:
+        for chunk in stream_ai_content(prompt, system_instruction):
+            yield chunk
+    """
+    default_system_instruction = (
+        "You are an expert Computer Science tutor helping Ethiopian students prepare for their CS Exit Exam. "
+        "Answer clearly and educationally."
+    )
+    active_system_instruction = system_instruction or default_system_instruction
+
+    groq_models = [
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.6-27b",
+        "allam-2-7b",
+    ]
+
+    # --- Groq primary ---
+    groq_client = get_groq_client()
+    if groq_client:
+        for groq_model in groq_models:
+            try:
+                stream = groq_client.chat.completions.create(
+                    model=groq_model,
+                    messages=[
+                        {"role": "system", "content": active_system_instruction},
+                        {"role": "user", "content": _truncate_for_ai(prompt)},
+                    ],
+                    temperature=0.4,
+                    max_tokens=2048,
+                    stream=True,
+                )
+                got_any = False
+                for chunk in stream:
+                    try:
+                        delta = chunk.choices[0].delta.content or ""
+                    except (IndexError, AttributeError):
+                        delta = ""
+                    if delta:
+                        got_any = True
+                        yield delta
+                if got_any:
+                    logger.info(f"Groq streaming succeeded with {groq_model}")
+                    return
+            except Exception as e:
+                logger.warning(f"Groq streaming {groq_model} failed: {e}")
+                continue
+
+    # --- OpenRouter fallback ---
+    client = get_openrouter_client()
+    if client:
+        try:
+            stream = client.chat.completions.create(
+                model="openrouter/free",
+                messages=[
+                    {"role": "system", "content": active_system_instruction},
+                    {"role": "user", "content": _truncate_for_ai(prompt)},
+                ],
+                temperature=0.4,
+                max_tokens=2048,
+                stream=True,
+            )
+            got_any = False
+            for chunk in stream:
+                try:
+                    delta = chunk.choices[0].delta.content or ""
+                except (IndexError, AttributeError):
+                    delta = ""
+                if delta:
+                    got_any = True
+                    yield delta
+            if got_any:
+                logger.info("OpenRouter streaming succeeded")
+                return
+        except Exception as e:
+            logger.warning(f"OpenRouter streaming failed: {e}")
+
+    # If we reach here with no chunks yielded, raise
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="All AI providers failed. Please try again later."
+    )
+
+
 def generate_notes_with_ai(
     prompt: str, 
     system_instruction: Optional[str] = None, 

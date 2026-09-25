@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File,Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
@@ -24,7 +25,8 @@ from app.services.ai_service import (
     generate_notes_with_ai,
     extract_course_module_outlines,
     generate_ai_content,
-    filter_source_for_course
+    filter_source_for_course,
+    stream_ai_content,
 )
 from app.schemas.course import (
     CourseCreate,
@@ -1234,6 +1236,97 @@ def ask_about_notes(
         )
 
     return {"answer": answer.strip()}
+
+
+# -------------------------------------------------------------------
+# AI Study Assistant (streaming variant)
+# -------------------------------------------------------------------
+
+@router.post("/{course_id}/notes/ask/stream")
+@limiter.limit("20/minute")
+def ask_about_notes_stream(
+    request: Request,
+    course_id: uuid.UUID,
+    payload: AskNoteQuestionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Same as /notes/ask, but streams the response token-by-token.
+    Validation errors (premium, course not found, missing question, etc.)
+    return normal JSON — only the successful path streams.
+    """
+    if not is_premium_or_admin(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI Study Assistant is a Premium feature.",
+        )
+
+    course = db.get(Course, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    question = (payload.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required.")
+    if len(question) > 500:
+        raise HTTPException(
+            status_code=400, detail="Question is too long (500 char max)."
+        )
+
+    excerpt = (payload.selected_text or "").strip()
+    if not excerpt:
+        excerpt = (payload.page_content or "").strip()
+    excerpt = excerpt[:3000]
+
+    if not excerpt:
+        raise HTTPException(
+            status_code=400, detail="Select some text in your notes first."
+        )
+
+    module_title = (payload.module_title or "").strip()[:200]
+    history = payload.history or []
+
+    history_lines = []
+    for turn in history[-3:]:
+        if not isinstance(turn, dict):
+            continue
+        q = str(turn.get("q") or "").strip()[:300]
+        a = str(turn.get("a") or "").strip()[:500]
+        if q and a:
+            history_lines.append(f"Q: {q}\nA: {a}")
+    history_text = "\n\n".join(history_lines)
+    if history_text:
+        history_text = f"\n\nPRIOR CONVERSATION (for context only):\n{history_text}"
+
+    module_context = f"MODULE: {module_title}\n" if module_title else ""
+
+    system_instruction = (
+        f"You are an expert tutor for {course.name} "
+        f"({course.code or 'CS'}) preparing students for the Ethiopian CS Exit Exam. "
+        f"Answer the student's question using ONLY the provided excerpt from their notes. "
+        f"Be concise (under 200 words), clear, and use simple language. "
+        f"If the excerpt is insufficient, say so briefly and give the general principle. "
+        f"Do not invent facts outside the excerpt."
+    )
+    user_prompt = (
+        f"{module_context}"
+        f"EXCERPT FROM THE STUDENT'S NOTES:\n"
+        f"\"\"\"\n{excerpt}\n\"\"\"\n"
+        f"{history_text}\n\n"
+        f"STUDENT'S CURRENT QUESTION:\n{question}\n\n"
+        f"Answer clearly for an exit-exam student. If this is a follow-up, "
+        f"build on the prior conversation."
+    )
+
+    return StreamingResponse(
+        stream_ai_content(prompt=user_prompt, system_instruction=system_instruction),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "X-Accel-Buffering": "no",
+            "Cache-Control": "no-cache",
+        },
+    )
 
 
 @router.post("/{course_id}/notes/approve")
