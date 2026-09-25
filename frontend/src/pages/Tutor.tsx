@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { courseApi, tutorApi } from '../api'
 import { useAuth } from '../context/AuthContext'
-import { Crown, Plus, Trash2, PanelLeft, PanelRight, BookOpen, MessageCircle, GraduationCap } from 'lucide-react'
+import { Crown, Plus, Trash2, PanelLeft, PanelRight, MessageCircle, GraduationCap } from 'lucide-react'
 import type {
   ChatMessage,
   Course,
@@ -15,26 +15,6 @@ const MODES: { value: TutorMode; label: string }[] = [
   { value: 'beginner', label: 'Beginner' },
   { value: 'advanced', label: 'Advanced' },
 ]
-
-const QUICK_PROMPTS = [
-  {
-    title: 'Database Normalization',
-    prompt: 'Explain Database Normalization (1NF, 2NF, 3NF)',
-  },
-  {
-    title: 'TCP vs UDP Protocols',
-    prompt: 'What is the key difference between TCP and UDP?',
-  },
-  {
-    title: "Dijkstra's Algorithm",
-    prompt: "Give me an example of Dijkstra's Shortest Path Algorithm",
-  },
-  {
-    title: 'Virtual Memory',
-    prompt: 'How do virtual memory and page tables work in OS?',
-  },
-]
-
 function cleanAIResponse(content: string): string {
   if (!content) return ''
 
@@ -518,47 +498,9 @@ export function TutorPage() {
 
           {/* Message Workspace */}
           <div className="flex-1 overflow-y-auto space-y-4 pr-1 sm:pr-2 my-1">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[80%] text-center px-4 my-auto">
-                <div className="w-16 h-16 rounded-3xl bg-indigo-600 text-white flex items-center justify-center mb-5 shadow-lg shadow-indigo-500/20">
-                  <GraduationCap className="w-8 h-8" />
-                </div>
-
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-                  Study Assistant
-                </h2>
-
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mb-8 leading-relaxed">
-                  Ask any question or pick a topic below to get started.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl mb-6">
-                  {QUICK_PROMPTS.map((item, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => sendMessage(item.prompt)}
-                      className="text-left p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all group"
-                    >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <BookOpen className="w-4 h-4 text-indigo-500" />
-                        <span className="font-semibold text-xs text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          {item.title}
-                        </span>
-                      </div>
-
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                        {item.prompt}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              messages.map((m) => (
-                <ChatMessageCard key={m.id} message={m} />
-              ))
-            )}
+            {messages.map((m) => (
+              <ChatMessageCard key={m.id} message={m} />
+            ))}
 
             {isSending && streamingText && (
               <div className="flex justify-start items-start gap-2">
