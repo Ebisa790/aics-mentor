@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { courseApi, tutorApi } from '../api'
 import { useAuth } from '../context/AuthContext'
-import { Crown, Plus, Trash2, PanelLeft, PanelRight, MessageCircle, GraduationCap} from 'lucide-react'
+import { Crown, Plus, Trash2, PanelLeft, PanelRight, MessageCircle, GraduationCap,Copy,Check} from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -48,6 +48,17 @@ function FormattedMessageContent({ content }: { content: string }) {
 
 function ChatMessageCard({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard not available — fail silently
+    }
+  }
 
   return (
     <div
@@ -64,7 +75,7 @@ function ChatMessageCard({ message }: { message: ChatMessage }) {
       )}
 
       <div
-        className={`relative px-4 py-3 rounded-2xl max-w-[85%] sm:max-w-[78%] shadow-sm transition-all ${
+        className={`relative px-4 py-3 rounded-2xl max-w-[85%] sm:max-w-[78%] shadow-sm transition-all group ${
           isUser
             ? 'bg-indigo-600 text-white rounded-br-md'
             : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-md'
@@ -81,16 +92,43 @@ function ChatMessageCard({ message }: { message: ChatMessage }) {
         )}
 
         <div
-          className={`text-[10px] mt-1.5 opacity-60 text-right ${
-            isUser ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'
+          className={`mt-1.5 flex items-center justify-end gap-2 ${
+            isUser ? '' : 'opacity-60 group-hover:opacity-100 transition-opacity'
           }`}
         >
-          {new Date(
-            message.created_at || Date.now(),
-          ).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+          {!isUser && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              title="Copy answer"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3 h-3" />
+                  <span>Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+          )}
+
+          <span
+            className={`text-[10px] ${
+              isUser ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'
+            }`}
+          >
+            {new Date(
+              message.created_at || Date.now(),
+            ).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
         </div>
       </div>
 
