@@ -45,6 +45,8 @@ class AskNoteQuestionRequest(BaseModel):
     question: str
     selected_text: Optional[str] = None
     page_content: Optional[str] = None
+    module_title: Optional[str] = None
+    history: Optional[list[dict]] = None
 
 
 MAX_UPLOAD_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB limit
@@ -1175,6 +1177,24 @@ def ask_about_notes(
             status_code=400, detail="Select some text in your notes first."
         )
 
+    module_title = (payload.module_title or "").strip()[:200]
+    history = payload.history or []
+
+    # Build conversation history context (last 3 Q&A pairs, capped for token budget)
+    history_lines = []
+    for turn in history[-3:]:
+        if not isinstance(turn, dict):
+            continue
+        q = str(turn.get("q") or "").strip()[:300]
+        a = str(turn.get("a") or "").strip()[:500]
+        if q and a:
+            history_lines.append(f"Q: {q}\nA: {a}")
+    history_text = "\n\n".join(history_lines)
+    if history_text:
+        history_text = f"\n\nPRIOR CONVERSATION (for context only):\n{history_text}"
+
+    module_context = f"MODULE: {module_title}\n" if module_title else ""
+
     system_instruction = (
         f"You are an expert tutor for {course.name} "
         f"({course.code or 'CS'}) preparing students for the Ethiopian CS Exit Exam. "
@@ -1184,10 +1204,13 @@ def ask_about_notes(
         f"Do not invent facts outside the excerpt."
     )
     user_prompt = (
+        f"{module_context}"
         f"EXCERPT FROM THE STUDENT'S NOTES:\n"
-        f"\"\"\"\n{excerpt}\n\"\"\"\n\n"
-        f"STUDENT'S QUESTION:\n{question}\n\n"
-        f"Answer clearly for an exit-exam student."
+        f"\"\"\"\n{excerpt}\n\"\"\"\n"
+        f"{history_text}\n\n"
+        f"STUDENT'S CURRENT QUESTION:\n{question}\n\n"
+        f"Answer clearly for an exit-exam student. If this is a follow-up, "
+        f"build on the prior conversation."
     )
 
     try:
