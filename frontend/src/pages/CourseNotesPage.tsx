@@ -71,6 +71,8 @@ export function CourseNotesPage() {
   const [aiQuestion, setAiQuestion] = useState<string>('')
   const [aiAnswer, setAiAnswer] = useState<string>('')
   const [aiLoading, setAiLoading] = useState<boolean>(false)
+  const [aiHistory, setAiHistory] = useState<Array<{ q: string; a: string }>>([])
+  const [aiError, setAiError] = useState<string | null>(null)
 
 
   const [showCompletionToast, setShowCompletionToast] = useState<boolean>(false)
@@ -200,11 +202,12 @@ export function CourseNotesPage() {
   }
 
   const handleAskAI = async () => {
-    if (!aiQuestion.trim() || !selectedText) return
+    if (!aiQuestion.trim()) return
     try {
       setAiLoading(true)
-      
+      setAiError(null)
       setAiAnswer('')
+
       const token = localStorage.getItem('access_token')
       const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/ask`, {
         method: 'POST',
@@ -216,13 +219,35 @@ export function CourseNotesPage() {
           question: aiQuestion,
           selected_text: selectedText,
           page_content: pages[currentPage] || '',
+          module_title: tableOfContents[currentPage]?.title || '',
+          history: aiHistory,
         }),
       })
-      if (!response.ok) throw new Error('Failed to get AI answer.')
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          setAiError('AI Study Assistant is a Premium feature.')
+        } else if (response.status === 429) {
+          setAiError('Too many requests. Please wait a moment and try again.')
+        } else if (response.status === 503) {
+          setAiError('AI is temporarily unavailable. Please try again.')
+        } else {
+          setAiError('Could not get an answer. Please try again.')
+        }
+        return
+      }
+
       const data = await response.json()
-      setAiAnswer(cleanAIAnswer(data.answer))
+      const cleaned = cleanAIAnswer(data.answer)
+      setAiAnswer(cleaned)
+
+      // Save to history (keep last 3)
+      setAiHistory((prev) => [
+        ...prev.slice(-2),
+        { q: aiQuestion, a: cleaned },
+      ])
     } catch (err) {
-      
+      setAiError('Network error. Check your connection and try again.')
     } finally {
       setAiLoading(false)
     }
@@ -508,6 +533,7 @@ export function CourseNotesPage() {
 
       {/* Main Card */}
       <NotesBody
+        aiError={aiError}
         notes={notes}
         pages={pages}
         tableOfContents={tableOfContents}

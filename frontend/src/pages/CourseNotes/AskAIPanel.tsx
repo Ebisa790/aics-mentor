@@ -4,7 +4,7 @@
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Sparkles, X, Copy, Check } from 'lucide-react'
+import { Sparkles, X, Copy, Check, AlertCircle } from 'lucide-react'
 
 interface AskAIPanelProps {
   isOpen: boolean
@@ -15,6 +15,7 @@ interface AskAIPanelProps {
   setAiQuestion: (q: string) => void
   aiAnswer: string
   aiLoading: boolean
+  aiError: string | null
   copied: boolean
   onAsk: () => void
   onCopyAnswer: () => void
@@ -30,6 +31,7 @@ export function AskAIPanel({
   setAiQuestion,
   aiAnswer,
   aiLoading,
+  aiError,
   copied,
   onAsk,
   onCopyAnswer,
@@ -122,6 +124,17 @@ export function AskAIPanel({
                 {q}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Error state */}
+        {aiError && !aiLoading && (
+          <div className="rounded-xl p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertCircle className="w-4 h-4 text-rose-500" />
+              <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Couldn't get an answer</p>
+            </div>
+            <p className="text-xs text-rose-600 dark:text-rose-400 leading-relaxed">{aiError}</p>
           </div>
         )}
 

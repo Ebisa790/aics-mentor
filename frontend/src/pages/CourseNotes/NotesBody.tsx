@@ -51,6 +51,7 @@ interface NotesBodyProps {
   setAiQuestion: (q: string) => void
   aiAnswer: string
   aiLoading: boolean
+  aiError: string | null
   copied: boolean
   onAsk: () => void
   onCopyAnswer: () => void
@@ -89,6 +90,7 @@ export function NotesBody({
   setAiQuestion,
   aiAnswer,
   aiLoading,
+  aiError,
   copied,
   onAsk,
   onCopyAnswer,
@@ -189,6 +191,7 @@ export function NotesBody({
               setAiQuestion={setAiQuestion}
               aiAnswer={aiAnswer}
               aiLoading={aiLoading}
+              aiError={aiError}
               copied={copied}
               onAsk={onAsk}
               onCopyAnswer={onCopyAnswer}
