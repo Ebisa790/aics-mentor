@@ -481,6 +481,108 @@ export const tutorApi = {
 
   deleteConversation: (id: string) =>
     apiClient.delete(`/api/tutor/conversations/${id}`).then((res) => res.data),
+
+  /**
+   * SSE-streaming variant of chat().
+   * Calls `/api/tutor/chat/stream`, invokes callbacks as events arrive,
+   * and resolves with the same shape as chat() when done.
+   *
+   * Requires `import.meta.env.VITE_API_URL` to point at the backend.
+   * Uses raw fetch (axios can't stream responses in browsers).
+   */
+  chatStream: (payload: {
+    conversation_id?: string
+    course_id?: string
+    mode: TutorMode
+    message: string
+    onMeta?: (data: { conversation_id: string }) => void
+    onDelta?: (text: string) => void
+    onError?: (detail: string) => void
+  }): Promise<{ conversation_id: string; reply: ChatMessage }> => {
+    const { onMeta, onDelta, onError, ...body } = payload
+    const baseUrl = import.meta.env.VITE_API_URL || ''
+    const token = localStorage.getItem('access_token')
+
+    return new Promise((resolve, reject) => {
+      // We deliberately use fetch (not apiClient) because axios buffers the response.
+      fetch(`${baseUrl}/api/tutor/chat/stream`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify(body),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            if (response.status === 403) {
+              throw new Error('AI Study Assistant is a Premium feature.')
+            }
+            throw new Error(`Tutor stream failed (${response.status})`)
+          }
+          if (!response.body) {
+            throw new Error('Response has no body — streaming not supported.')
+          }
+
+          const reader = response.body.getReader()
+          const decoder = new TextDecoder()
+          let buffer = ''
+          let finalResult: { conversation_id: string; reply: ChatMessage } | null = null
+
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+
+            // SSE frames are separated by 
+
+
+            const frames = buffer.split(String.fromCharCode(10) + String.fromCharCode(10))
+            buffer = frames.pop() ?? ''  // keep incomplete tail
+
+            for (const frame of frames) {
+              const line = frame.trim()
+              if (!line.startsWith('data:')) continue
+              const jsonStr = line.slice(5).trim()
+              if (!jsonStr) continue
+
+              let evt: any
+              try {
+                evt = JSON.parse(jsonStr)
+              } catch {
+                continue
+              }
+
+              if (evt.type === 'meta' && onMeta) {
+                onMeta({ conversation_id: evt.conversation_id })
+              } else if (evt.type === 'delta' && onDelta) {
+                onDelta(evt.text || '')
+              } else if (evt.type === 'done') {
+                finalResult = {
+                  conversation_id: evt.conversation_id,
+                  reply: evt.reply,
+                }
+              } else if (evt.type === 'error') {
+                const detail = evt.detail || 'AI returned an error.'
+                if (onError) onError(detail)
+                throw new Error(detail)
+              }
+            }
+          }
+
+          if (finalResult) {
+            resolve(finalResult)
+          } else {
+            throw new Error('Stream ended without a final message.')
+          }
+        })
+        .catch((err) => {
+          reject(err)
+        })
+    })
+  },
 }
 
 export const materialApi = {
