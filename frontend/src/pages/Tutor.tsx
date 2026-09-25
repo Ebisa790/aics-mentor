@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { courseApi, tutorApi } from '../api'
 import { useAuth } from '../context/AuthContext'
-import { Crown, Plus, Trash2, PanelLeft, PanelRight, MessageCircle, GraduationCap,Copy,Check} from 'lucide-react'
+import { Crown, Plus, Trash2, PanelLeft, PanelRight, MessageCircle, GraduationCap, Copy, Check, Send, Loader2, BookOpen, Sparkles } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -466,42 +466,68 @@ export function TutorPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <select
-                className="py-1.5 px-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                value={courseId}
-                onChange={(e) => {
-                  setCourseId(e.target.value)
-                  setConversationId(undefined)
-                  setMessages([])
-                }}
-              >
-                <option value="">All Courses</option>
+              <div className="relative">
+                <BookOpen className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
 
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                <select
+                  className="appearance-none py-1.5 pl-8 pr-7 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors cursor-pointer"
+                  value={courseId}
+                  onChange={(e) => {
+                    setCourseId(e.target.value)
+                    setConversationId(undefined)
+                    setMessages([])
+                  }}
+                >
+                  <option value="">All Courses</option>
 
-              <select
-                className="py-1.5 px-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                value={mode}
-                onChange={(e) =>
-                  setMode(e.target.value as TutorMode)
-                }
-              >
-                {MODES.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative">
+                <Sparkles className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+
+                <select
+                  className="appearance-none py-1.5 pl-8 pr-7 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-colors cursor-pointer"
+                  value={mode}
+                  onChange={(e) =>
+                    setMode(e.target.value as TutorMode)
+                  }
+                >
+                  {MODES.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </header>
 
           {/* Message Workspace */}
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1 sm:pr-2 my-1">
+          <div className="flex-1 overflow-y-auto space-y-5 pr-2 sm:pr-3 my-2">
+            {messages.length === 0 && !isSending && (
+              <div className="flex h-full items-center justify-center px-4">
+                <div className="text-center max-w-sm">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60">
+                    <Sparkles className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white mb-1">
+                    Ask anything
+                  </h2>
+
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Pick a course above for focused answers, or ask a general CS question to get started.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {messages.map((m) => (
               <ChatMessageCard key={m.id} message={m} />
             ))}
@@ -553,9 +579,20 @@ export function TutorPage() {
             <button
               type="submit"
               disabled={isSending || !input.trim()}
-              className="shrink-0 text-xs sm:text-sm px-6 py-3 rounded-2xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+              className="shrink-0 inline-flex items-center justify-center gap-2 text-xs sm:text-sm px-5 py-3 rounded-2xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Send message"
             >
-              {isSending ? 'Sending...' : 'Send'}
+              {isSending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="hidden sm:inline">Sending</span>
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  <span className="hidden sm:inline">Send</span>
+                </>
+              )}
             </button>
           </form>
         </main>
