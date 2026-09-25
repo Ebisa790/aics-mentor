@@ -472,6 +472,14 @@ export function CourseNotesPage() {
         timeRemaining={timeRemaining}
         onGoToFlashcards={() => navigate(`/courses/${courseId}/flashcards`)}
         onGoToReview={() => navigate(`/admin/courses/${courseId}/notes/review`)}
+        onOpenAskAI={() => {
+          if (!isPremium) {
+            setShowCompletionToast(true)
+            setTimeout(() => setShowCompletionToast(false), 3000)
+            return
+          }
+          setShowAskAI(true)
+        }}
         onToggleFullscreen={toggleFullscreenMode}
         isDarkMode={isDarkMode}
         setIsDarkMode={setIsDarkMode}
