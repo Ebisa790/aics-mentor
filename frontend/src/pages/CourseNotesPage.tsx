@@ -209,20 +209,87 @@ export function CourseNotesPage() {
       setAiAnswer('')
 
       const token = localStorage.getItem('access_token')
-      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/notes/ask`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: aiQuestion,
-          selected_text: selectedText,
-          page_content: pages[currentPage] || '',
-          module_title: tableOfContents[currentPage]?.title || '',
-          history: aiHistory,
-        }),
+      const body = JSON.stringify({
+        question: aiQuestion,
+        selected_text: selectedText,
+        page_content: pages[currentPage] || '',
+        module_title: tableOfContents[currentPage]?.title || '',
+        history: aiHistory,
       })
+
+      // ---- Try streaming endpoint first ----
+      let streamed = false
+      try {
+        const streamResponse = await fetch(
+          `${API_BASE_URL}/api/courses/${courseId}/notes/ask/stream`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body,
+          }
+        )
+
+        if (streamResponse.ok && streamResponse.body) {
+          const reader = streamResponse.body.getReader()
+          const decoder = new TextDecoder()
+          let accumulated = ''
+
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            const chunk = decoder.decode(value, { stream: true })
+            if (chunk) {
+              accumulated += chunk
+              setAiAnswer(accumulated)   // live update
+            }
+          }
+
+          // Flush any remaining buffered bytes
+          accumulated += decoder.decode()
+
+          if (accumulated.trim()) {
+            const cleaned = cleanAIAnswer(accumulated)
+            setAiAnswer(cleaned)
+            setAiHistory((prev) => [
+              ...prev.slice(-2),
+              { q: aiQuestion, a: cleaned },
+            ])
+            streamed = true
+          }
+        } else if (streamResponse.status === 403) {
+          setAiError('AI Study Assistant is a Premium feature.')
+          return
+        } else if (streamResponse.status === 429) {
+          setAiError('Too many requests. Please wait a moment and try again.')
+          return
+        } else if (streamResponse.status === 400) {
+          setAiError('Invalid request. Please try again.')
+          return
+        }
+        // If stream failed for other reasons, fall through to non-streaming
+      } catch (streamErr) {
+        // Network or read error mid-stream — fall through to non-streaming retry
+        console.warn('Streaming failed, falling back to non-streaming:', streamErr)
+      }
+
+      if (streamed) return
+
+      // ---- Fallback: non-streaming endpoint ----
+      const response = await fetch(
+        `${API_BASE_URL}/api/courses/${courseId}/notes/ask`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body,
+        }
+      )
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -240,8 +307,6 @@ export function CourseNotesPage() {
       const data = await response.json()
       const cleaned = cleanAIAnswer(data.answer)
       setAiAnswer(cleaned)
-
-      // Save to history (keep last 3)
       setAiHistory((prev) => [
         ...prev.slice(-2),
         { q: aiQuestion, a: cleaned },
