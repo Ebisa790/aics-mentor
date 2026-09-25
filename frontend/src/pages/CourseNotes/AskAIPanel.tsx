@@ -139,7 +139,8 @@ export function AskAIPanel({
         )}
 
         {/* AI Answer */}
-        {aiLoading && (
+        {/* Loading (before any tokens arrive) */}
+        {aiLoading && !aiAnswer && (
           <div className="rounded-xl p-4 bg-slate-50 dark:bg-slate-800 space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -149,6 +150,20 @@ export function AskAIPanel({
               <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse w-full" />
               <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse w-3/4" />
               <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse w-1/2" />
+            </div>
+          </div>
+        )}
+
+        {/* Streaming (tokens arriving) */}
+        {aiLoading && aiAnswer && (
+          <div className={`rounded-xl p-4 ${isDarkMode ? 'bg-indigo-950/40 border border-indigo-900/50' : 'bg-indigo-50 border border-indigo-100'}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+              <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300">AI Answer (streaming...)</p>
+            </div>
+            <div className={`text-sm leading-relaxed whitespace-pre-wrap ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+              {aiAnswer}
+              <span className="inline-block w-2 h-4 ml-0.5 align-middle bg-indigo-500 animate-pulse" />
             </div>
           </div>
         )}
