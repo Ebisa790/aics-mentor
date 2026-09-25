@@ -738,37 +738,66 @@ export function Quiz() {
                     </span>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900">
-                      <span className="mb-1 block text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                        Your Selected Answer
-                      </span>
+                  <div className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {(['A', 'B', 'C', 'D'] as const).map((opt) => {
+                      const choices = ga.question?.choices || {}
+                      const rawText = choices[opt] ?? choices[opt.toLowerCase()] ?? ''
+                      const optionText = String(rawText || '').trim() || `Option ${opt}`
+                      const studentPick = (ga.student_answer || '').toUpperCase()
+                      const correctPick = (ga.question?.correct_answer || '').toUpperCase()
+                      const isUserPick = studentPick === opt
+                      const isCorrectOpt = correctPick === opt
 
-                      <span
-                        className={`font-mono text-xs font-black ${
-                          isCorrect
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-rose-600 dark:text-rose-400'
-                        }`}
-                      >
-                        {ga.student_answer
-                          ? ga.student_answer.toUpperCase()
-                          : '(Unanswered)'}
-                      </span>
-                    </div>
+                      let style =
+                        'border-slate-200 bg-slate-50/50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300'
+                      if (isCorrectOpt) {
+                        style =
+                          'border-emerald-300 bg-emerald-50/80 text-emerald-950 font-medium ring-1 ring-emerald-400 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-700'
+                      } else if (isUserPick && !isCorrect) {
+                        style =
+                          'border-rose-300 bg-rose-50/80 text-rose-950 font-medium ring-1 ring-rose-400 dark:border-rose-700 dark:bg-rose-950/30 dark:text-rose-200 dark:ring-rose-700'
+                      }
 
-                    {!isCorrect &&
-                      ga.question?.correct_answer && (
-                        <div className="rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900">
-                          <span className="mb-1 block text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                            Correct Choice
+                      let badgeStyle = 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                      if (isCorrectOpt) {
+                        badgeStyle = 'bg-emerald-600 text-white'
+                      } else if (isUserPick && !isCorrect) {
+                        badgeStyle = 'bg-rose-600 text-white'
+                      }
+
+                      return (
+                        <div
+                          key={opt}
+                          className={`flex items-center gap-3 rounded-xl border p-3 text-xs transition-all ${style}`}
+                        >
+                          <span
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md font-bold ${badgeStyle}`}
+                          >
+                            {opt}
                           </span>
 
-                          <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400">
-                            {ga.question.correct_answer.toUpperCase()}
-                          </span>
+                          <span className="flex-1 leading-snug">{optionText}</span>
+
+                          {isCorrectOpt && (
+                            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                              Correct
+                            </span>
+                          )}
+
+                          {isUserPick && !isCorrectOpt && (
+                            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+                              Your Answer
+                            </span>
+                          )}
+
+                          {isUserPick && isCorrectOpt && (
+                            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                              Your Answer
+                            </span>
+                          )}
                         </div>
-                      )}
+                      )
+                    })}
                   </div>
 
                   {ga.ai_feedback ? (
