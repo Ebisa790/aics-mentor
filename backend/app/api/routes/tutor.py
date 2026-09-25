@@ -1,8 +1,11 @@
+import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.ai_client import get_groq_client
@@ -31,6 +34,11 @@ MODE_INSTRUCTIONS = {
         "wider course. Balance rigor with clarity."
     ),
 }
+
+
+def _sse_event(payload: dict) -> str:
+    """Format a dict as a single Server-Sent Event message."""
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
 def _build_system_prompt(user: User, course: Course | None, mode: TutorMode) -> str:
@@ -209,6 +217,188 @@ def chat(
             status_code=status.HTTP_502_BAD_GATEWAY, 
             detail="The AI tutor couldn't process that request. Please try again."
         )
+
+
+# -------------------------------------------------------------------
+# Streaming variant of /chat (SSE)
+# -------------------------------------------------------------------
+
+@router.post("/chat/stream")
+@limiter.limit("30/minute")
+def chat_stream(
+    request: Request,
+    payload: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    SSE streaming variant of /chat.
+
+    Events:
+      - {"type":"meta", "conversation_id": "..."}
+      - {"type":"delta", "text": "..."}   (repeated)
+      - {"type":"done", "conversation_id":"...", "reply": {...MessageOut...}}
+      - {"type":"error", "detail": "..."}
+    """
+    from app.models.user import SubscriptionTier, UserRole
+
+    is_premium_or_admin = (
+        current_user.subscription_tier == SubscriptionTier.PREMIUM
+        or current_user.role == UserRole.ADMIN
+    )
+    if not is_premium_or_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI Study Assistant is a Premium feature. Please upgrade to continue.",
+        )
+
+    client = get_groq_client()
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI tutor is not configured (missing GROQ_API_KEY)",
+        )
+
+    # --- Same conversation setup as /chat ---
+    course = None
+    if payload.course_id:
+        course = db.get(Course, payload.course_id)
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+    if payload.conversation_id:
+        conversation = db.get(AIConversation, payload.conversation_id)
+        if not conversation or conversation.student_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if course and not conversation.course_id:
+            conversation.course_id = course.id
+    else:
+        conversation = AIConversation(
+            student_id=current_user.id,
+            course_id=course.id if course else None,
+            title=payload.message[:80],
+        )
+        db.add(conversation)
+        db.flush()
+
+    conversation.updated_at = datetime.now(timezone.utc)
+
+    user_message = AIMessage(
+        conversation_id=conversation.id,
+        role=MessageRole.USER,
+        content=payload.message,
+        mode=payload.mode,
+    )
+    db.add(user_message)
+    db.flush()
+
+    history_desc = (
+        db.query(AIMessage)
+        .filter(AIMessage.conversation_id == conversation.id)
+        .order_by(AIMessage.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    history = list(reversed(history_desc))
+
+    system_prompt = _build_system_prompt(current_user, course, payload.mode)
+    groq_messages = [{"role": "system", "content": system_prompt}]
+    groq_messages += [
+        {"role": "user" if m.role == MessageRole.USER else "assistant", "content": m.content}
+        for m in history
+    ]
+
+    # Capture values we need inside the generator (avoid late-binding surprises)
+    conversation_id = conversation.id
+    user_id = current_user.id
+    mode = payload.mode
+
+    def event_generator():
+        # Emit meta first so frontend has the conversation id immediately
+        yield _sse_event({"type": "meta", "conversation_id": str(conversation_id)})
+
+        groq_models = [
+            "qwen/qwen3.6-27b",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "allam-2-7b",
+        ]
+        accumulated = ""
+
+        for model_name in groq_models:
+            try:
+                stream = client.chat.completions.create(
+                    model=model_name,
+                    messages=groq_messages,
+                    temperature=0.5,
+                    max_tokens=1500,
+                    stream=True,
+                )
+                started = False
+                for chunk in stream:
+                    try:
+                        delta = chunk.choices[0].delta.content or ""
+                    except (IndexError, AttributeError):
+                        delta = ""
+                    if delta:
+                        started = True
+                        accumulated += delta
+                        yield _sse_event({"type": "delta", "text": delta})
+                if started:
+                    logger.info(f"Tutor streaming using model: {model_name}")
+                    break
+            except Exception as e:
+                logger.warning(f"Tutor stream {model_name} failed: {e}")
+                continue
+
+        if not accumulated.strip():
+            yield _sse_event({"type": "error", "detail": "All AI models failed."})
+            return
+
+        # Strip think blocks (same as /chat)
+        reply_text = re.sub(r"<think>[\s\S]*?</think>", "", accumulated, flags=re.IGNORECASE)
+        reply_text = re.sub(r"</?think>", "", reply_text, flags=re.IGNORECASE).strip()
+
+        # Persist assistant message AFTER streaming completes
+        try:
+            assistant_message = AIMessage(
+                conversation_id=conversation_id,
+                role=MessageRole.ASSISTANT,
+                content=reply_text,
+                mode=mode,
+            )
+            db.add(assistant_message)
+
+            # Increment user AI usage metric
+            user_row = db.get(User, user_id)
+            if user_row is not None:
+                user_row.ai_usage_count = (user_row.ai_usage_count or 0) + 1
+
+            db.commit()
+            db.refresh(assistant_message)
+
+            yield _sse_event({
+                "type": "done",
+                "conversation_id": str(conversation_id),
+                "reply": MessageOut.model_validate(assistant_message).model_dump(mode="json"),
+            })
+        except Exception as e:
+            logger.error(f"Failed to persist tutor assistant message: {e}", exc_info=True)
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            yield _sse_event({"type": "error", "detail": "Failed to save response."})
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.get("/conversations", response_model=list[ConversationOut])
