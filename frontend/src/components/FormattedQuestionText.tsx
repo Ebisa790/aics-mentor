@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
@@ -248,6 +249,87 @@ function parseQuestion(text: string): Segment[] {
   return result;
 }
 
+interface CodeBlockProps {
+  content: string;
+  language: string;
+}
+
+function CodeBlock({ content, language }: CodeBlockProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard may be unavailable — fail silently
+    }
+  };
+
+  const lineCount = content.split("\n").length;
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-slate-700 my-2">
+      <div className="bg-slate-800 px-3 py-1.5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            {language || "code"}
+          </span>
+          {lineCount > 1 && (
+            <span className="text-[10px] text-slate-500">
+              {lineCount} lines
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className={`text-[10px] font-bold uppercase tracking-wider transition-colors ${
+            copied
+              ? "text-emerald-400"
+              : "text-slate-400 hover:text-white"
+          }`}
+        >
+          {copied ? "Copied!" : "Copy Code"}
+        </button>
+      </div>
+
+      <div className="relative">
+        <div
+          className="absolute left-0 top-0 bottom-0 w-10 bg-slate-900/80 border-r border-slate-800 select-none pointer-events-none flex flex-col items-end pt-3 pr-2"
+          aria-hidden="true"
+        >
+          {Array.from({ length: lineCount }).map((_, i) => (
+            <span
+              key={i}
+              className="font-mono text-[11px] leading-[1.5] text-slate-600"
+            >
+              {i + 1}
+            </span>
+          ))}
+        </div>
+
+        <SyntaxHighlighter
+          language={language || "text"}
+          style={vscDarkPlus}
+          customStyle={{
+            margin: 0,
+            padding: "12px 16px 12px 48px",
+            fontSize: "13px",
+            lineHeight: "1.5",
+            borderRadius: 0,
+            backgroundColor: "#1e1e1e",
+          }}
+          wrapLongLines={false}
+        >
+          {content}
+        </SyntaxHighlighter>
+      </div>
+    </div>
+  );
+}
+
 export function FormattedQuestionText({ text }: FormattedQuestionTextProps) {
   if (!text) return null;
 
@@ -258,37 +340,11 @@ export function FormattedQuestionText({ text }: FormattedQuestionTextProps) {
       {segments.map((seg, idx) => {
         if (seg.type === "code") {
           return (
-            <div
+            <CodeBlock
               key={idx}
-              className="rounded-xl overflow-hidden border border-slate-700 my-2"
-            >
-              <div className="bg-slate-800 px-3 py-1.5 flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {seg.language || "code"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard.writeText(seg.content)}
-                  className="text-[10px] text-slate-400 hover:text-white transition-colors"
-                >
-                  Copy Code
-                </button>
-              </div>
-              <SyntaxHighlighter
-                language={seg.language || "text"}
-                style={vscDarkPlus}
-                customStyle={{
-                  margin: 0,
-                  padding: "12px 16px",
-                  fontSize: "13px",
-                  borderRadius: "0 0 12px 12px",
-                  backgroundColor: "#1e1e1e",
-                }}
-                wrapLongLines={false}
-              >
-                {seg.content}
-              </SyntaxHighlighter>
-            </div>
+              content={seg.content}
+              language={seg.language || "text"}
+            />
           );
         }
 
