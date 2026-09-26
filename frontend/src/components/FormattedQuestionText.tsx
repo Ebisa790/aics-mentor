@@ -81,6 +81,59 @@ function detectCodeBlockEnd(lines: string[], i: number): number {
   return j;
 }
 
+function detectLanguage(code: string): string {
+  const c = code;
+
+  // SQL — strong keywords
+  if (/\b(SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE|DROP\s+TABLE|FROM\s+\w+\s+WHERE)\b/i.test(c)) {
+    return "sql";
+  }
+
+  // Java — public class, System.out, package, import java
+  if (/(public\s+(static\s+)?(class|void|int|String|boolean))|(System\.out\.print)|(import\s+java\.)|(public\s+static\s+void\s+main)/.test(c)) {
+    return "java";
+  }
+
+  // C / C++ — #include, cout, cin, std::, printf/scanf
+  if (/(#include\s*[<"])|(\bcout\s*<<)|(\bcin\s*>>)|(\bstd::)|(using\s+namespace\s+std)|(\bprintf\s*\()|(\bscanf\s*\()|(\bmalloc\s*\()|(\bnullptr\b)|(\bstd::string\b)/.test(c)) {
+    return "cpp";
+  }
+
+  // JavaScript / TypeScript — function, const, let, arrow, console.log
+  if (/(\bfunction\s+\w+\s*\()|(\bconst\s+\w+\s*=)|(\blet\s+\w+\s*=)|(\bvar\s+\w+\s*=)|(=>\s*\{)|(\bconsole\.log\s*\()|(\bdocument\.)|(\bwindow\.)/.test(c)) {
+    return "javascript";
+  }
+
+  // Python — def, elif, print(, import, from, self, indented block
+  if (/(^\s*def\s+\w+\s*\()/m.test(c)) {
+    return "python";
+  }
+  if (/(^\s*class\s+\w+\s*[:(])/m.test(c)) {
+    return "python";
+  }
+  if (/(^\s*elif\s+)/m.test(c)) {
+    return "python";
+  }
+  if (/(^\s*print\s*\()/m.test(c)) {
+    return "python";
+  }
+  if (/(^\s*import\s+\w+$)/m.test(c)) {
+    return "python";
+  }
+  if (/(^\s*from\s+\w+\s+import\s+)/m.test(c)) {
+    return "python";
+  }
+  if (/(^\s*self\.)/m.test(c)) {
+    return "python";
+  }
+  // Python-specific structures
+  if (/(\bTrue\b)|(\bFalse\b)|(\bNone\b)|(\belif\b)|(\bexcept\b)|(\blambda\b)/.test(c)) {
+    return "python";
+  }
+
+  return "text";
+}
+
 interface Segment {
   type: "text" | "code";
   content: string;
@@ -134,7 +187,7 @@ function parseQuestion(text: string): Segment[] {
       if (end > 0) {
         flushText();
         const codeText = lines.slice(i, end).join("\n");
-        result.push({ type: "code", content: codeText, language: "text" });
+        result.push({ type: "code", content: codeText, language: detectLanguage(codeText) });
         i = end;
       } else {
         textBuffer.push(lines[i]);
