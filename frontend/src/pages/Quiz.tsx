@@ -89,6 +89,9 @@ export function Quiz() {
 
   const submittedRef = useRef(false)
 
+  // Derived from quiz state — declared early so keyboard shortcuts can use it
+  const questions: Question[] = quiz?.questions ?? []
+
   const handleApiError = useCallback((err: any) => {
     const status = err?.response?.status
     const errorDetail = err?.response?.data?.detail
@@ -401,6 +404,76 @@ export function Quiz() {
     }
   }
 
+  // === Keyboard shortcuts: A/B/C/D select, ←/→ navigate, F flag ===
+  // Runs on every render (before any early return) to satisfy React's Rules of Hooks.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore keystrokes when user is typing in an input
+      const target = e.target as HTMLElement | null
+      if (target) {
+        const tag = target.tagName
+        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) {
+          return
+        }
+      }
+
+      // Ignore when exam is not in active taking state
+      if (result || isLoading || isSubmitting || isRestarting || isGeneratingNew || showReviewModal) {
+        return
+      }
+
+      const currentQ = questions[activeQuestionIdx]
+      if (!currentQ || !currentQ.choices) return
+
+      const key = e.key.toUpperCase()
+
+      // A / B / C / D — select option
+      if (key === "A" || key === "B" || key === "C" || key === "D") {
+        const choiceKeys = Object.keys(currentQ.choices).map((k) => k.toUpperCase())
+        if (choiceKeys.includes(key)) {
+          e.preventDefault()
+          setAnswers((prev) => {
+            const updated = { ...prev, [currentQ.id]: key }
+            answersRef.current = updated
+            return updated
+          })
+        }
+        return
+      }
+
+      // F — toggle flag
+      if (key === "F") {
+        e.preventDefault()
+        setFlagged((prev) => ({
+          ...prev,
+          [currentQ.id]: !prev[currentQ.id],
+        }))
+        return
+      }
+
+      // ArrowRight — next question
+      if (e.key === "ArrowRight") {
+        e.preventDefault()
+        if (activeQuestionIdx < questions.length - 1) {
+          setActiveQuestionIdx(activeQuestionIdx + 1)
+        }
+        return
+      }
+
+      // ArrowLeft — previous question
+      if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        if (activeQuestionIdx > 0) {
+          setActiveQuestionIdx(activeQuestionIdx - 1)
+        }
+        return
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [questions, activeQuestionIdx, result, isLoading, isSubmitting, isRestarting, isGeneratingNew, showReviewModal])
+
   const handleManualSubmit = () => {
     // Open review modal instead of submitting immediately
     setShowReviewModal(true)
@@ -527,7 +600,6 @@ export function Quiz() {
     )
   }
 
-  const questions: Question[] = quiz.questions ?? []
 
   if (result) {
     const weakTopics = result.weak_topics ?? []
