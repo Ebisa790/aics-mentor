@@ -1,3 +1,4 @@
+import logging
 """
 Question Management Routes
 Handles question coverage reporting, export prompts, and bulk operations.
@@ -16,6 +17,9 @@ from app.models.quiz import Question
 from app.models.course_material import CourseMaterial
 from app.models.exam_question import ExamQuestion, ReviewStatus
 from app.api.deps import require_admin
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter(prefix="/api/admin/questions", tags=["admin-questions"])
 
@@ -195,124 +199,122 @@ def bulk_import_questions(
 ):
     """Import questions from ChatGPT -> Sends to EXAM_QUESTIONS review queue."""
     from datetime import datetime
-    
+
     questions_data = payload.get("questions", [])
     course_id = payload.get("course_id")
-    
+
     if not questions_data:
         raise HTTPException(400, "No questions provided")
-    
+
     if not course_id:
         raise HTTPException(400, "course_id required")
-    
-    course = db.get(Course, uuid.UUID(course_id))
+
+    try:
+        course_uuid = uuid.UUID(str(course_id))
+    except (ValueError, TypeError):
+        raise HTTPException(400, "course_id is not a valid UUID")
+
+    course = db.get(Course, course_uuid)
     if not course:
         raise HTTPException(404, "Course not found")
-    
-    # Map difficulty to exam_difficulty enum values
-    # The exam_questions table uses: EASY, MEDIUM, HARD
+
+    # Map any casing / synonym to the lowercase values the DB enum stores.
+    # ExamDifficulty enum has: easy / medium / hard
     diff_map = {
-        "easy": "EASY",
-        "medium": "MEDIUM", 
-        "hard": "HARD",
-        "EASY": "EASY",
-        "MEDIUM": "MEDIUM",
-        "HARD": "HARD",
+        "easy": "easy",
+        "medium": "medium",
+        "hard": "hard",
         "beginner": "easy",
         "intermediate": "medium",
-        "advanced": "hard"
+        "advanced": "hard",
     }
-    
+
     created = 0
-    for q in questions_data:
-        diff_value = q.get("difficulty", "medium")
-        mapped_diff = diff_map.get(diff_value.lower(), "intermediate")
-        
-        # Create exam question with GENERATED status (needs review)
-        exam_question = ExamQuestion(
-            course_id=course.id,
-            question_text=q.get("question_text", ""),
-            option_a=q.get("option_a", ""),
-            option_b=q.get("option_b", ""),
-            option_c=q.get("option_c", ""),
-            option_d=q.get("option_d", ""),
-            correct_option=q.get("correct_option", "A"),
-            explanation=q.get("explanation", ""),
-            difficulty=mapped_diff,
-            review_status=ReviewStatus.GENERATED,  # Needs admin review
-            is_ai_generated=True,
-            created_by_id=admin_user.id,
-            created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-        )
-        db.add(exam_question)
-        created += 1
-    
-    db.commit()
-    
-    return {
-        "message": f"Added {created} questions to review queue for {course.name}",
-        "created": created,
-        "course": course.name,
-        "queue_url": "/admin/review-queue"
-    }
-    
-    questions_data = payload.get("questions", [])
-    course_id = payload.get("course_id")
-    
-    if not questions_data:
-        raise HTTPException(400, "No questions provided")
-    
-    if not course_id:
-        raise HTTPException(400, "course_id required")
-    
-    course = db.get(Course, uuid.UUID(course_id))
-    if not course:
-        raise HTTPException(404, "Course not found")
-    
-    created = 0
-    for q in questions_data:
-        # Map difficulty to enum values
-        diff_map = {
-            "easy": "beginner",
-            "medium": "intermediate", 
-            "hard": "advanced",
-            "easy": "beginner",
-            "MEDIUM": "intermediate",
-            "HARD": "advanced"
-        }
-        diff_value = q.get("difficulty", "medium")
-        mapped_diff = diff_map.get(diff_value.lower(), "intermediate")
-        
-        from datetime import datetime
-        new_question = Question(
-            course_id=course.id,
-            prompt=q.get("question_text", ""),
-            question_type="multiple_choice",
-            difficulty=mapped_diff,
-            created_at=datetime.utcnow(),
+    row_errors: list[dict] = []
+    total = len(questions_data)
+
+    for idx, q in enumerate(questions_data, start=1):
+        try:
+            if not isinstance(q, dict):
+                row_errors.append({"row": idx, "reason": "Not a JSON object"})
+                continue
+
+            raw_diff = str(q.get("difficulty", "medium")).strip().lower()
+            mapped_diff = diff_map.get(raw_diff, "medium")
+
+            question_text = (q.get("question_text") or "").strip()
+            option_a = (q.get("option_a") or "").strip()
+            option_b = (q.get("option_b") or "").strip()
+            option_c = (q.get("option_c") or "").strip()
+            option_d = (q.get("option_d") or "").strip()
+            explanation = (q.get("explanation") or "").strip()
+            correct_option = str(q.get("correct_option", "A")).strip().upper()
+
+            # Validate required (non-nullable) fields before insert
+            missing = []
+            if not question_text: missing.append("question_text")
+            if not option_a: missing.append("option_a")
+            if not option_b: missing.append("option_b")
+            if not option_c: missing.append("option_c")
+            if not option_d: missing.append("option_d")
+            if not explanation: missing.append("explanation")
+            if missing:
+                row_errors.append({
+                    "row": idx,
+                    "reason": f"Missing required field(s): {', '.join(missing)}",
+                })
+                continue
+
+            if correct_option not in ("A", "B", "C", "D"):
+                row_errors.append({
+                    "row": idx,
+                    "reason": f"correct_option '{correct_option}' is not A/B/C/D",
+                })
+                continue
+
+            exam_question = ExamQuestion(
+                course_id=course.id,
+                question_text=question_text,
+                option_a=option_a,
+                option_b=option_b,
+                option_c=option_c,
+                option_d=option_d,
+                correct_option=correct_option,
+                explanation=explanation,
+                difficulty=mapped_diff,
+                review_status=ReviewStatus.GENERATED,
+                is_ai_generated=True,
+                created_by_id=admin_user.id,
+                created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow(),
-            choices={
-                "A": q.get("option_a", ""),
-                "B": q.get("option_b", ""),
-                "C": q.get("option_c", ""),
-                "D": q.get("option_d", "")
-            },
-            correct_answer=q.get("correct_option", "A"),
-            explanation=q.get("explanation", "")
-        )
-        db.add(new_question)
-        created += 1
-    
-    db.commit()
-    
+            )
+            db.add(exam_question)
+            created += 1
+        except Exception as e:
+            row_errors.append({"row": idx, "reason": str(e)})
+
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Bulk import commit failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Failed to save questions: {str(e)}")
+
+    # Response
+    if row_errors:
+        message = f"Imported {created} of {total} questions to review queue for {course.name}"
+    else:
+        message = f"Imported all {created} questions to review queue for {course.name}"
+
     return {
-        "message": f"Imported {created} questions",
-        "created": created
+        "message": message,
+        "created": created,
+        "total": total,
+        "errors": row_errors,
+        "course": course.name,
+        "queue_url": "/admin/review-queue",
     }
 
-
-# ============================== Question Stats by Course ==============================
 
 @router.get("/course/{course_id}/stats", dependencies=[Depends(require_admin)])
 def get_course_question_stats(
