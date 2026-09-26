@@ -187,7 +187,7 @@ export function AdminQuestionCoverage() {
   if (error || !data) {
     return (
       <div className="text-center py-20">
-        <p className="text-red-600">{error}</p>
+        <pre className="whitespace-pre-wrap text-sm text-red-600 dark:text-red-400 font-sans leading-relaxed">{error}</pre>
         <button onClick={fetchCoverage} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl">Retry</button>
       </div>
     )
