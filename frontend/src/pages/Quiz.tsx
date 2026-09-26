@@ -529,6 +529,74 @@ export function Quiz() {
 
   const questions: Question[] = quiz.questions ?? []
 
+  // === A/B/C/D keyboard shortcuts, arrow navigation, F to flag ===
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't hijack typing in an input, textarea, or contenteditable
+      const target = e.target as HTMLElement | null
+      if (target) {
+        const tag = target.tagName
+        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) {
+          return
+        }
+      }
+
+      // Don't act when a modal, result screen, or non-exam view is active
+      if (result || isLoading || isSubmitting || showReviewModal) return
+
+      const currentQ = questions[activeQuestionIdx]
+      if (!currentQ) return
+
+      // A / B / C / D → select option
+      const key = e.key.toUpperCase()
+      if (key === "A" || key === "B" || key === "C" || key === "D") {
+        const choices = currentQ.choices || {}
+        const choiceKeys = Object.keys(choices).map((k) => k.toUpperCase())
+        if (choiceKeys.includes(key)) {
+          e.preventDefault()
+          setAnswers((prev) => {
+            const updated = { ...prev, [currentQ.id]: key }
+            answersRef.current = updated
+            return updated
+          })
+        }
+        return
+      }
+
+      // F → toggle flag
+      if (key === "F") {
+        e.preventDefault()
+        setFlagged((prev) => ({
+          ...prev,
+          [currentQ.id]: !prev[currentQ.id],
+        }))
+        return
+      }
+
+      // ArrowRight → next question
+      if (e.key === "ArrowRight") {
+        e.preventDefault()
+        if (activeQuestionIdx < questions.length - 1) {
+          setActiveQuestionIdx(activeQuestionIdx + 1)
+        }
+        return
+      }
+
+      // ArrowLeft → previous question
+      if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        if (activeQuestionIdx > 0) {
+          setActiveQuestionIdx(activeQuestionIdx - 1)
+        }
+        return
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [result, isLoading, isSubmitting, showReviewModal, activeQuestionIdx, questions])
+
+
   if (result) {
     const weakTopics = result.weak_topics ?? []
     const gradedAnswers = result.graded_answers ?? []
