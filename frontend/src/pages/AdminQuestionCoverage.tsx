@@ -114,12 +114,43 @@ export function AdminQuestionCoverage() {
         })
       })
       
-      if (!response.ok) throw new Error('Failed to import')
+      if (!response.ok) {
+        let errBody: any = null
+        try { errBody = await response.json() } catch { /* non-JSON response */ }
+
+        const detail = errBody?.detail
+        let message = `Import failed (HTTP ${response.status})`
+
+        if (typeof detail === 'string') {
+          message = detail
+        } else if (detail && typeof detail === 'object') {
+          if (Array.isArray(detail.errors) && detail.errors.length > 0) {
+            const header = detail.message || 'Validation failed'
+            message = `${header}:\n\n${detail.errors.join('\n')}`
+          } else if (Array.isArray(detail)) {
+            // FastAPI default: list of { loc, msg, type }
+            message = detail
+              .map((e: any) => {
+                const loc = Array.isArray(e?.loc) ? e.loc.join('.') : 'field'
+                const msg = e?.msg || 'validation error'
+                return `${loc}: ${msg}`
+              })
+              .join('\n')
+          } else if (detail.message) {
+            message = detail.message
+          }
+        } else if (errBody?.message) {
+          message = errBody.message
+        }
+
+        throw new Error(message)
+      }
       setShowPasteModal(false)
       setPastedQuestions('')
       fetchCoverage()
     } catch (err) {
-      setError('Invalid JSON or failed to import')
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg)
     } finally {
       setPasting(false)
     }
