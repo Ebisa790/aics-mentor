@@ -93,12 +93,20 @@ function detectCodeBlockEnd(lines: string[], i: number): number {
 }
 
 function detectLanguage(code: string): string {
+  // Moved PHP before SQL so $var + SELECT combo detects as PHP
   const c = code;
+
+  // PHP — $variable, $_GET, <?php, echo, foreach, Laravel-ish
+  if (/(\$\w+\s*=)|(\$_GET\[)|(\$_POST\[)|(\$_SESSION\[)|(<\?php)|(\becho\s+["\'])|(\bforeach\s*\()|(\$this->)|(\bpublic\s+function\s+\w+)/.test(c)) {
+    return "php";
+  }
 
   // SQL — strong keywords
   if (/\b(SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE|DROP\s+TABLE|FROM\s+\w+\s+WHERE)\b/i.test(c)) {
     return "sql";
   }
+
+
 
   // Java — public class, System.out, package, import java
   if (/(public\s+(static\s+)?(class|void|int|String|boolean))|(System\.out\.print)|(import\s+java\.)|(public\s+static\s+void\s+main)/.test(c)) {
@@ -142,10 +150,7 @@ function detectLanguage(code: string): string {
     return "python";
   }
 
-  // PHP — $variable, $_GET, <?php, echo, foreach, Laravel-ish
-  if (/(\$\w+\s*=)|(\$_GET\[)|(\$_POST\[)|(\$_SESSION\[)|(<\?php)|(\becho\s+["\'])|(\bforeach\s*\()|(\$this->)|(\bpublic\s+function\s+\w+)/.test(c)) {
-    return "php";
-  }
+
 
   // Go — package main, func main, :=, fmt.Print
   if (/(^\s*package\s+\w+$)/m.test(c) || /(^\s*func\s+\w+\s*\()/m.test(c) || /(:=\s*)/.test(c) || /(\bfmt\.(Print|Printf|Println)\s*\()/.test(c)) {
