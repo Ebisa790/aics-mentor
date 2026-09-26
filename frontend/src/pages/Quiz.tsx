@@ -74,6 +74,7 @@ export function Quiz() {
   const [isRestarting, setIsRestarting] = useState(false)
   const [isGeneratingNew, setIsGeneratingNew] = useState(false)
   const [autoSubmitted, setAutoSubmitted] = useState(false)
+  const [showReviewModal, setShowReviewModal] = useState(false)
   const [cooldownError, setCooldownError] = useState<string | null>(null)
 
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(
@@ -401,13 +402,18 @@ export function Quiz() {
   }
 
   const handleManualSubmit = () => {
-    if (
-      window.confirm(
-        'Are you sure you want to submit your quiz?',
-      )
-    ) {
-      doSubmit(false)
-    }
+    // Open review modal instead of submitting immediately
+    setShowReviewModal(true)
+  }
+
+  const confirmAndSubmit = () => {
+    setShowReviewModal(false)
+    doSubmit(false)
+  }
+
+  const jumpToQuestion = (idx: number) => {
+    setActiveQuestionIdx(idx)
+    setShowReviewModal(false)
   }
 
   if (isLoading || isRestarting || isGeneratingNew) {
@@ -1163,6 +1169,156 @@ export function Quiz() {
           </div>
         </aside>
       </div>
+
+  {/* Review Before Submit Modal */}
+  {showReviewModal && questions.length > 0 && (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+      onClick={() => setShowReviewModal(false)}
+    >
+      <div
+        className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="border-b border-slate-100 px-6 py-5 dark:border-slate-800">
+          <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+            Review Before Submitting
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+            Once you submit, you cannot change your answers.
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-center dark:border-emerald-900/40 dark:bg-emerald-950/20">
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+              {Object.keys(answers).length}
+            </div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+              Answered
+            </div>
+          </div>
+
+          <div
+            className={`rounded-2xl border p-3 text-center ${
+              questions.length - Object.keys(answers).length > 0
+                ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20'
+                : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950'
+            }`}
+          >
+            <div
+              className={`text-2xl font-black ${
+                questions.length - Object.keys(answers).length > 0
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              {questions.length - Object.keys(answers).length}
+            </div>
+            <div
+              className={`text-[10px] font-bold uppercase tracking-wider ${
+                questions.length - Object.keys(answers).length > 0
+                  ? 'text-amber-700 dark:text-amber-500'
+                  : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              Unanswered
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-center dark:border-amber-900/40 dark:bg-amber-950/20">
+            <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
+              {Object.values(flagged).filter(Boolean).length}
+            </div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-500">
+              Flagged
+            </div>
+          </div>
+        </div>
+
+        {/* Jump lists */}
+        <div className="max-h-[40vh] space-y-4 overflow-y-auto px-6 py-4">
+          {/* Unanswered */}
+          {questions.length - Object.keys(answers).length > 0 && (
+            <div>
+              <div className="mb-2 text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                Unanswered questions — click to jump
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {questions.map((q, idx) => {
+                  const isAnswered = !!answers[q.id]
+                  if (isAnswered) return null
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => jumpToQuestion(idx)}
+                      className="h-9 w-9 rounded-xl border border-amber-300 bg-amber-50 text-xs font-bold text-amber-700 transition-all hover:bg-amber-100 active:scale-95 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
+                    >
+                      {idx + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Flagged */}
+          {Object.values(flagged).filter(Boolean).length > 0 && (
+            <div>
+              <div className="mb-2 text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                Flagged questions — click to jump
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {questions.map((q, idx) => {
+                  if (!flagged[q.id]) return null
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => jumpToQuestion(idx)}
+                      className="h-9 w-9 rounded-xl border border-indigo-300 bg-indigo-50 text-xs font-bold text-indigo-700 transition-all hover:bg-indigo-100 active:scale-95 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-400"
+                    >
+                      {idx + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {questions.length === Object.keys(answers).length &&
+            Object.values(flagged).filter(Boolean).length === 0 && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-xs font-bold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-400">
+                All questions answered. Ready to submit!
+              </div>
+            )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 border-t border-slate-100 px-6 py-4 dark:border-slate-800 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setShowReviewModal(false)}
+            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            Back to Exam
+          </button>
+          <button
+            type="button"
+            onClick={confirmAndSubmit}
+            disabled={isSubmitting}
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white transition-all hover:bg-emerald-500 active:scale-95 disabled:opacity-50"
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Exam'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+
     </div>
   )
 }
