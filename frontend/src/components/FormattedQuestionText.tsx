@@ -39,6 +39,16 @@ const STRONG_CODE_START: RegExp[] = [
   /^\s*String\s+\w+/,
   /^\s*\/\//,
   /^\s*\/\*/,
+  // PHP / general scripting
+  /^\s*\$\w+\s*=/,              // $page = ...
+  /^\s*\$_GET\[/,                // $_GET[...]
+  /^\s*\$_POST\[/,               // $_POST[...]
+  /^\s*\$_SESSION\[/,            // $_SESSION[...]
+  /^\s*<\?php/,                   // <?php
+  /^\s*echo\s+/,                  // echo ...
+  /^\s*foreach\s*\(/,            // foreach (...)
+  /^\s*require(_once)?\s/,        // require / require_once
+  /^\s*include(_once)?\s/,        // include / include_once
 ];
 
 function isIndentedBlock(line: string): boolean {
@@ -129,6 +139,44 @@ function detectLanguage(code: string): string {
   // Python-specific structures
   if (/(\bTrue\b)|(\bFalse\b)|(\bNone\b)|(\belif\b)|(\bexcept\b)|(\blambda\b)/.test(c)) {
     return "python";
+  }
+
+  // PHP — $variable, $_GET, <?php, echo, foreach, Laravel-ish
+  if (/(\$\w+\s*=)|(\$_GET\[)|(\$_POST\[)|(\$_SESSION\[)|(<\?php)|(\becho\s+["\'])|(\bforeach\s*\()|(\$this->)|(\bpublic\s+function\s+\w+)/.test(c)) {
+    return "php";
+  }
+
+  // Go — package main, func main, :=, fmt.Print
+  if (/(^\s*package\s+\w+$)/m.test(c) || /(^\s*func\s+\w+\s*\()/m.test(c) || /(:=\s*)/.test(c) || /(\bfmt\.(Print|Printf|Println)\s*\()/.test(c)) {
+    return "go";
+  }
+
+  // Rust — fn main, let mut, println!, use std::
+  if (/(\bfn\s+\w+\s*\()/.test(c) || /(\blet\s+mut\s+)/.test(c) || /(println!\s*\()/.test(c) || /(\buse\s+std::)/.test(c)) {
+    return "rust";
+  }
+
+  // C# — using System, Console.Write, public void, namespace
+  if (/(\busing\s+System\b)/.test(c) || /(\bConsole\.(Write|WriteLine)\s*\()/.test(c) || /(\bnamespace\s+\w+)/.test(c)) {
+    return "csharp";
+  }
+
+  // Ruby — def / end pairs, puts, require
+  if (/(^\s*def\s+\w+[\s!(])/m.test(c) && /(^\s*end\s*$)/m.test(c)) {
+    return "ruby";
+  }
+  if (/(\bputs\s+["\'])/.test(c) || /(^\s*require\s+["\'])/m.test(c)) {
+    return "ruby";
+  }
+
+  // HTML / markup — tags with attributes
+  if (/(<[a-zA-Z][^>]*>)|(&lt;[a-zA-Z])|(<div\s)|(<span\s)|(<html)|(<body)/.test(c)) {
+    return "html";
+  }
+
+  // CSS — selector { property: value; }
+  if (/(^\s*[.#]?[a-zA-Z][\w-]*\s*\{[^}]*:[^}]*;)/m.test(c)) {
+    return "css";
   }
 
   return "text";
