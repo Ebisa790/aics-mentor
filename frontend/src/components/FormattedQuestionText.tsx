@@ -50,6 +50,19 @@ const STRONG_CODE_START: RegExp[] = [
   /^\s*foreach\s*\(/,            // foreach (...)
   /^\s*require(_once)?\s/,        // require / require_once
   /^\s*include(_once)?\s/,        // include / include_once
+
+  // ---- CSS, HTML, JSON, Shell, SQL, YAML, markup ----
+  /^\s*[.#]?[a-zA-Z][\w-]*\s*\{\s*$/,      // .parent {  /  #id {  /  body {
+  /^\s*@media\s/,                    // @media ...
+  /^\s*@import\s/,                   // @import ...
+  /^\s*<[a-zA-Z][^>]*>\s*$/,          // <div> or <html> on its own line
+  /^\s*<!DOCTYPE\s/i,                // <!DOCTYPE html>
+  /^\s*\{\s*"/,                     // {"key": ... (JSON)
+  /^\s*[a-zA-Z_][\w-]*:\s+\S/,      // key: value (YAML — careful)
+  /^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE)\s+/i, // SQL
+  /^\s*(sudo|cd|ls|mkdir|rm|cp|mv|cat|grep|chmod|chown|apt|yum|brew)\s/, // Shell
+  /^\s*#!\//,                        // shebang
+  /^\s*(BEGIN|END|PROCEDURE|FUNCTION|DECLARE)\b/i, // pseudo-code
 ];
 
 function isIndentedBlock(line: string): boolean {
@@ -180,9 +193,31 @@ function detectLanguage(code: string): string {
     return "html";
   }
 
-  // CSS — selector { property: value; }
-  if (/(^\s*[.#]?[a-zA-Z][\w-]*\s*\{[^}]*:[^}]*;)/m.test(c)) {
-    return "css";
+  // CSS — selector { ... } even when multiline
+  if (/(^\s*[.#]?[a-zA-Z][\w-]*\s*\{)/m.test(c) && /(:[^\n]*;)|(^\s*[.#]?[a-zA-Z][\w-]*\s*\{)/m.test(c)) {
+    // Stronger check: look for common CSS properties or the { ... } block structure
+    if (/(display|margin|padding|color|background|width|height|font-|border|position|flex|grid|gap|top|left|right|bottom|overflow|z-index)\s*:/i.test(c)) {
+      return "css";
+    }
+    // Also catch pure nested { } structure with selectors
+    if (/(^\s*[.#]?[a-zA-Z][\w-]*\s*\{)/m.test(c) && /(^\s*\})/m.test(c)) {
+      return "css";
+    }
+  }
+
+  // Shell / Bash — shebang, sudo, cd, common commands
+  if (/(^#!\/(usr\/)?bin\/(bash|sh|zsh))/.test(c) || /(^\s*\$\s+\w)/m.test(c) || /\b(sudo|apt-get|yum install|brew install)\b/.test(c)) {
+    return "bash";
+  }
+
+  // JSON — starts with { or [ and has "key": pattern
+  if (/^\s*[\[{]/.test(c) && /"\w+"\s*:/.test(c)) {
+    return "json";
+  }
+
+  // YAML — key: value pairs with consistent indentation
+  if (/^[a-zA-Z_][\w-]*:\s/m.test(c) && /^\s{2,}[a-zA-Z_][\w-]*:\s/m.test(c)) {
+    return "yaml";
   }
 
   return "text";
