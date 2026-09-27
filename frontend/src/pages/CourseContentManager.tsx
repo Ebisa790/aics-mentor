@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { marked } from 'marked'
 import { adminApi, courseApi } from '../api'
@@ -291,6 +291,8 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [focusedIdx, setFocusedIdx] = useState(0)
+  const focusedCardRef = useRef<HTMLDivElement | null>(null)
 
   const load = async (isMounted = true) => {
     try {
@@ -510,6 +512,86 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
     }
   }
 
+  // ---- Keyboard shortcuts + focus management ----
+  useEffect(() => {
+    if (focusedIdx >= filteredQuestions.length) {
+      setFocusedIdx(Math.max(0, filteredQuestions.length - 1))
+    }
+  }, [filteredQuestions.length, focusedIdx])
+
+  useEffect(() => {
+    setFocusedIdx(0)
+  }, [statusFilter, difficultyFilter, aiFilter, searchQuery, courseId])
+
+  useEffect(() => {
+    focusedCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [focusedIdx])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target) {
+        const tag = target.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return
+      }
+      if (editingId !== null || rejectingId !== null) return
+      if (filteredQuestions.length === 0) return
+
+      const focusedQ = paginatedQuestions[focusedIdx]
+      if (!focusedQ) return
+
+      const key = e.key
+
+      if (key === 'j' || key === 'J' || key === 'ArrowDown') {
+        e.preventDefault()
+        if (focusedIdx < paginatedQuestions.length - 1) {
+          setFocusedIdx(focusedIdx + 1)
+        } else if (currentPage < totalPages) {
+          setCurrentPage(currentPage + 1)
+          setFocusedIdx(0)
+        }
+        return
+      }
+      if (key === 'k' || key === 'K' || key === 'ArrowUp') {
+        e.preventDefault()
+        if (focusedIdx > 0) {
+          setFocusedIdx(focusedIdx - 1)
+        } else if (currentPage > 1) {
+          setCurrentPage(currentPage - 1)
+          setFocusedIdx(PAGE_SIZE - 1)
+        }
+        return
+      }
+      if (key === 'a' || key === 'A') {
+        e.preventDefault()
+        handleApprove(focusedQ.id)
+        return
+      }
+      if (key === 'r' || key === 'R') {
+        e.preventDefault()
+        setRejectingId(focusedQ.id)
+        return
+      }
+      if (key === 'd' || key === 'D') {
+        e.preventDefault()
+        handleDelete(focusedQ.id)
+        return
+      }
+      if (key === 'e' || key === 'E') {
+        e.preventDefault()
+        startEdit(focusedQ)
+        return
+      }
+      if (key === 'x' || key === 'X' || key === ' ') {
+        e.preventDefault()
+        toggleSelectOne(focusedQ.id)
+        return
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [focusedIdx, filteredQuestions, paginatedQuestions, editingId, rejectingId, currentPage, totalPages])
+
   const canEdit = (s: ReviewStatus) => s === 'generated' || s === 'under_review'
   const canDelete = (_s: ReviewStatus) => true
   const canArchive = (s: ReviewStatus) => s === 'approved' || s === 'rejected'
@@ -632,6 +714,16 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
             + New question
           </button>
         )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 rounded-xl bg-canvas/60 border border-border text-[10px] font-mono text-ink/60">
+        <span className="font-semibold uppercase tracking-wider text-ink/40">Shortcuts:</span>
+        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">A</kbd> Approve</span>
+        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">R</kbd> Reject</span>
+        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">D</kbd> Delete</span>
+        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">E</kbd> Edit</span>
+        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">X</kbd> Select</span>
+        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">J</kbd>/<kbd className="px-1.5 py-0.5 rounded bg-white border border-border">K</kbd> Navigate</span>
       </div>
 
       {editingId && (
@@ -811,8 +903,13 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
           {filteredQuestions.length === 0 ? (
             <div className="card p-4 text-sm text-ink/50">No questions match this status filter.</div>
           ) : (
-            paginatedQuestions.map((q) => (
-              <div key={q.id} className="card p-4">
+            paginatedQuestions.map((q, idx) => (
+              <div
+                key={q.id}
+                ref={focusedIdx === idx ? focusedCardRef : null}
+                onClick={() => setFocusedIdx(idx)}
+                className={`card p-4 cursor-pointer transition-shadow ${focusedIdx === idx ? 'ring-2 ring-indigo-500 ring-inset' : ''}`}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0 text-ink">
                     <FormattedQuestionText text={q.question_text} />
