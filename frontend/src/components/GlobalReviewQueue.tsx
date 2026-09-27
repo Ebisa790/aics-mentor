@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { apiClient } from '../api/client'
+import { FormattedQuestionText } from './FormattedQuestionText'
 
 export interface Question {
   id: string
@@ -155,6 +156,50 @@ export function GlobalReviewQueue() {
     }
   }
 
+  // Single delete — permanently removes the question from the review queue
+  const handleDelete = async (questionId: string) => {
+    if (!window.confirm('Delete this question permanently? This cannot be undone.')) return
+
+    setProcessingId(questionId)
+    setErrorMessage(null)
+    try {
+      await apiClient.delete(`/api/admin/questions/${questionId}`)
+      setData((prev) => ({
+        ...prev,
+        count: Math.max(0, prev.count - 1),
+        questions: prev.questions.filter((q) => q.id !== questionId),
+      }))
+      setSelectedIds((prev) => prev.filter((id) => id !== questionId))
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.detail || 'Failed to delete question.')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  // Batch delete
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!window.confirm(`Delete ${selectedIds.length} question(s) permanently? This cannot be undone.`)) return
+
+    setIsSubmittingBatch(true)
+    setErrorMessage(null)
+    try {
+      await apiClient.post('/api/admin/questions/bulk-delete', { ids: selectedIds })
+
+      setData((prev) => ({
+        ...prev,
+        count: Math.max(0, prev.count - selectedIds.length),
+        questions: prev.questions.filter((q) => !selectedIds.includes(q.id)),
+      }))
+      setSelectedIds([])
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.detail || 'Batch delete failed.')
+    } finally {
+      setIsSubmittingBatch(false)
+    }
+  }
+
   // Inline edit handlers
   const startEdit = (q: Question) => {
     setEditingId(q.id)
@@ -276,6 +321,14 @@ export function GlobalReviewQueue() {
             {selectedIds.length} question(s) selected
           </span>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={handleBatchDelete}
+              className="border border-danger/50 text-white bg-danger px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-danger/90 transition-colors disabled:opacity-50"
+            >
+              Delete Selected
+            </button>
             <button
               type="button"
               disabled={isBusy}
@@ -421,7 +474,9 @@ export function GlobalReviewQueue() {
                   </div>
                 ) : (
                   <>
-                    <p className="font-medium text-ink pl-7">{q.question_text}</p>
+                    <div className="pl-7 text-ink">
+                      <FormattedQuestionText text={q.question_text} />
+                    </div>
 
                     {/* Options Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm pl-7">
@@ -477,10 +532,20 @@ export function GlobalReviewQueue() {
                     <button
                       type="button"
                       disabled={isBusy}
-                      onClick={() => handleAction(q.id, 'reject')}
-                      className="border border-danger/30 text-danger px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-danger/5 transition-colors disabled:opacity-50"
+                      onClick={() => handleDelete(q.id)}
+                      className="border border-danger/50 text-danger px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-danger/10 transition-colors disabled:opacity-50"
+                      title="Delete permanently"
                     >
-                      {isItemProcessing ? 'Processing...' : 'Reject'}
+                      {isItemProcessing ? 'Processing...' : 'Delete'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => handleAction(q.id, 'reject')}
+                      className="border border-amber-500/30 text-amber-700 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-amber-500/5 transition-colors disabled:opacity-50"
+                      title="Mark as rejected (keeps in system)"
+                    >
+                      Reject
                     </button>
                     <button
                       type="button"
