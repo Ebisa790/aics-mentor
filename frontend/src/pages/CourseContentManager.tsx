@@ -279,6 +279,8 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | 'all'>('all')
   const [viewDuplicatesOnly, setViewDuplicatesOnly] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard'>('all')
+  const [aiFilter, setAiFilter] = useState<'all' | 'ai' | 'human'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const PAGE_SIZE = 20
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -315,10 +317,19 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
     }
   }, [courseId, statusFilter])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [difficultyFilter, aiFilter, searchQuery])
+
   const filteredQuestions = questions.filter((q) => {
     const matchesStatus = statusFilter === 'all' || q.review_status === statusFilter
     const matchesSearch = !searchQuery || q.question_text.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesStatus && matchesSearch
+    const matchesDifficulty = difficultyFilter === 'all' || q.difficulty === difficultyFilter
+    const matchesAi =
+      aiFilter === 'all' ||
+      (aiFilter === 'ai' && q.is_ai_generated) ||
+      (aiFilter === 'human' && !q.is_ai_generated)
+    return matchesStatus && matchesSearch && matchesDifficulty && matchesAi
   })
 
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE)
@@ -482,6 +493,27 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
               {f.label}
             </button>
           ))}
+
+          <select
+            value={difficultyFilter}
+            onChange={(e) => setDifficultyFilter(e.target.value as typeof difficultyFilter)}
+            className="text-xs px-2.5 py-1 rounded-full border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-indigo-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300"
+          >
+            <option value="all">Difficulty: All</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+
+          <select
+            value={aiFilter}
+            onChange={(e) => setAiFilter(e.target.value as typeof aiFilter)}
+            className="text-xs px-2.5 py-1 rounded-full border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-indigo-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300"
+          >
+            <option value="all">Source: All</option>
+            <option value="ai">AI Generated</option>
+            <option value="human">Manually Added</option>
+          </select>
 
           {duplicateGroups.length > 0 && (
             <button
