@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
@@ -62,7 +62,7 @@ const STRONG_CODE_START: RegExp[] = [
   /^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE)\s+/i, // SQL
   /^\s*(sudo|cd|ls|mkdir|rm|cp|mv|cat|grep|chmod|chown|apt|yum|brew)\s/, // Shell
   /^\s*#!\//,                        // shebang
-   /^\s*(BEGIN|END|PROCEDURE|FUNCTION|DECLARE)\b/i, // pseudo-code
+  /^\s*(BEGIN|END|PROCEDURE|FUNCTION|DECLARE)\b/i, // pseudo-code
 
   // ---- Extended C++ patterns (exit-exam critical) ----
   // Preprocessor
@@ -160,14 +160,12 @@ function detectLanguage(code: string): string {
     return "sql";
   }
 
-
-
   // Java — public class, System.out, package, import java
   if (/(public\s+(static\s+)?(class|void|int|String|boolean))|(System\.out\.print)|(import\s+java\.)|(public\s+static\s+void\s+main)/.test(c)) {
     return "java";
   }
 
-   // C / C++ — comprehensive coverage for exit-exam questions
+  // C / C++ — comprehensive coverage for exit-exam questions
   if (
     /#include\s*[<"]/.test(c) ||
     /\busing\s+namespace\s+std\b/.test(c) ||
@@ -221,8 +219,6 @@ function detectLanguage(code: string): string {
     return "python";
   }
 
-
-
   // Go — package main, func main, :=, fmt.Print
   if (/(^\s*package\s+\w+$)/m.test(c) || /(^\s*func\s+\w+\s*\()/m.test(c) || /(:=\s*)/.test(c) || /(\bfmt\.(Print|Printf|Println)\s*\()/.test(c)) {
     return "go";
@@ -253,11 +249,9 @@ function detectLanguage(code: string): string {
 
   // CSS — selector { ... } even when multiline
   if (/(^\s*[.#]?[a-zA-Z][\w-]*\s*\{)/m.test(c) && /(:[^\n]*;)|(^\s*[.#]?[a-zA-Z][\w-]*\s*\{)/m.test(c)) {
-    // Stronger check: look for common CSS properties or the { ... } block structure
     if (/(display|margin|padding|color|background|width|height|font-|border|position|flex|grid|gap|top|left|right|bottom|overflow|z-index)\s*:/i.test(c)) {
       return "css";
     }
-    // Also catch pure nested { } structure with selectors
     if (/(^\s*[.#]?[a-zA-Z][\w-]*\s*\{)/m.test(c) && /(^\s*\})/m.test(c)) {
       return "css";
     }
@@ -428,6 +422,43 @@ function CodeBlock({ content, language }: CodeBlockProps) {
   );
 }
 
+/**
+ * Renders inline `code` spans inside prose.
+ * Handles single backticks only — triple backticks are already
+ * extracted as code blocks in Pass 1 of parseQuestion.
+ */
+function renderInlineCode(text: string): ReactNode {
+  // Match single backticks not preceded or followed by another backtick,
+  // and not spanning a newline (inline code should stay on one line).
+  const regex = /(?<!`)`([^`\n]+)`(?!`)/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    parts.push(
+      <code
+        key={`ic-${key++}`}
+        className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-100 font-mono text-[0.85em] border border-slate-700"
+      >
+        {match[1]}
+      </code>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex === 0) return text;
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+}
+
 export function FormattedQuestionText({ text }: FormattedQuestionTextProps) {
   if (!text) return null;
 
@@ -451,7 +482,7 @@ export function FormattedQuestionText({ text }: FormattedQuestionTextProps) {
             key={idx}
             className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap"
           >
-            {seg.content}
+            {renderInlineCode(seg.content)}
           </div>
         );
       })}
