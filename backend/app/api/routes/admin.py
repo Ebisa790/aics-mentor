@@ -955,18 +955,31 @@ def get_pending_ai_questions(
 
 @router.delete("/questions/{question_id}", status_code=204, dependencies=[Depends(require_admin)])
 def delete_question(
-    question_id: uuid.UUID, 
+    question_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)  # <-- Added missing security guard!
+    current_user: User = Depends(require_admin),
 ):
+    """
+    Delete a question permanently.
+
+    Auto-archives an approved question first, then hard-deletes.
+    Also removes any promoted copy in the active student quiz bank.
+    """
     question = db.get(ExamQuestion, question_id)
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
+
+    # If approved, mark as archived first
     if question.review_status == ReviewStatus.APPROVED:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot delete an approved question — archive it instead.",
-        )
+        question.review_status = ReviewStatus.ARCHIVED
+        db.flush()
+
+    # Also remove promoted quiz-bank copy if present
+    if question.promoted_question_id:
+        db.query(Question).filter(
+            Question.id == question.promoted_question_id
+        ).delete(synchronize_session=False)
+
     db.delete(question)
     db.commit()
 
