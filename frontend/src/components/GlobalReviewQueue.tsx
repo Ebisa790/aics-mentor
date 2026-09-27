@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { apiClient } from '../api/client'
 import { FormattedQuestionText } from './FormattedQuestionText'
 
@@ -34,6 +34,10 @@ export function GlobalReviewQueue() {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedCourse, setSelectedCourse] = useState<string>('all')
+
+  // Focused question (for keyboard navigation)
+  const [focusedIdx, setFocusedIdx] = useState<number>(0)
+  const focusedCardRef = useRef<HTMLDivElement | null>(null)
 
   // Inline Editing
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -228,6 +232,95 @@ export function GlobalReviewQueue() {
     }
   }
 
+  // === Keyboard shortcuts + focus management ===
+  // Clamp focusedIdx when the filtered list shrinks
+  useEffect(() => {
+    if (focusedIdx >= filteredQuestions.length) {
+      setFocusedIdx(Math.max(0, filteredQuestions.length - 1))
+    }
+  }, [filteredQuestions.length, focusedIdx])
+
+  // Reset focus to the top when filters change
+  useEffect(() => {
+    setFocusedIdx(0)
+  }, [searchQuery, selectedCourse])
+
+  // Smooth-scroll focused card into view
+  useEffect(() => {
+    focusedCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [focusedIdx])
+
+  // Keyboard shortcuts:
+  //   J / ArrowDown  → next question
+  //   K / ArrowUp    → previous question
+  //   A              → approve focused
+  //   R              → reject focused
+  //   D              → delete focused
+  //   E              → edit focused
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignore while typing
+      const target = e.target as HTMLElement | null
+      if (target) {
+        const tag = target.tagName
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) {
+          return
+        }
+      }
+
+      // Ignore if editing or busy
+      if (editingId !== null) return
+      if (isSubmittingBatch || processingId !== null || isSavingEdit) return
+      if (filteredQuestions.length === 0) return
+
+      const focusedQ = filteredQuestions[focusedIdx]
+      if (!focusedQ) return
+
+      const key = e.key
+
+      if (key === "j" || key === "J" || key === "ArrowDown") {
+        e.preventDefault()
+        setFocusedIdx((i) => Math.min(filteredQuestions.length - 1, i + 1))
+        return
+      }
+      if (key === "k" || key === "K" || key === "ArrowUp") {
+        e.preventDefault()
+        setFocusedIdx((i) => Math.max(0, i - 1))
+        return
+      }
+      if (key === "a" || key === "A") {
+        e.preventDefault()
+        handleAction(focusedQ.id, "approve")
+        return
+      }
+      if (key === "r" || key === "R") {
+        e.preventDefault()
+        handleAction(focusedQ.id, "reject")
+        return
+      }
+      if (key === "d" || key === "D") {
+        e.preventDefault()
+        handleDelete(focusedQ.id)
+        return
+      }
+      if (key === "e" || key === "E") {
+        e.preventDefault()
+        startEdit(focusedQ)
+        return
+      }
+    }
+
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [
+    focusedIdx,
+    filteredQuestions,
+    editingId,
+    isSubmittingBatch,
+    processingId,
+    isSavingEdit,
+  ])
+
   if (loading) return <div className="p-6 text-sm text-ink/50">Loading global review items...</div>
 
   const allVisibleSelected =
@@ -360,18 +453,34 @@ export function GlobalReviewQueue() {
           No questions match your filter query.
         </div>
       ) : (
-        /* Questions List */
-        <div className="divide-y divide-border max-h-[650px] overflow-y-auto">
-          {filteredQuestions.map((q) => {
+        <>
+          {/* Keyboard hint bar */}
+          <div className="px-6 py-2 bg-canvas/60 border-b border-border text-[10px] font-mono text-ink/60 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="font-semibold uppercase tracking-wider text-ink/40">Shortcuts:</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">A</kbd> Approve</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">R</kbd> Reject</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">D</kbd> Delete</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">E</kbd> Edit</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">J</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-white border border-border">K</kbd> Navigate</span>
+          </div>
+
+          {/* Questions List */}
+          <div className="divide-y divide-border max-h-[650px] overflow-y-auto">
+          {filteredQuestions.map((q, idx) => {
             const isSelected = selectedIds.includes(q.id)
             const isItemProcessing = processingId === q.id
             const isEditing = editingId === q.id
+            const isFocused = idx === focusedIdx
 
             return (
               <div
                 key={q.id}
-                className={`p-6 space-y-3 transition ${
+                ref={isFocused ? focusedCardRef : null}
+                onClick={() => setFocusedIdx(idx)}
+                className={`p-6 space-y-3 transition cursor-pointer ${
                   isSelected ? 'bg-accent-light/20 border-l-4 border-l-accent' : 'hover:bg-canvas/40'
+                } ${
+                  isFocused && !isEditing ? 'ring-2 ring-indigo-500 ring-inset bg-indigo-50/30 dark:bg-indigo-950/20' : ''
                 }`}
               >
                 {/* Item Meta Header */}
@@ -560,7 +669,8 @@ export function GlobalReviewQueue() {
               </div>
             )
           })}
-        </div>
+          </div>
+        </>
       )}
     </div>
   )
