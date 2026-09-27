@@ -13,7 +13,7 @@ import type {
 } from '../api/types'
 import { AIDraftModal } from '../components/AIDraftModal'
 import { FormattedQuestionText } from '../components/FormattedQuestionText'
-import { Archive, CheckCircle2, XCircle, Pencil, Trash2 } from 'lucide-react'
+import { Archive, CheckCircle2, XCircle, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface DuplicateGroup {
   count?: number
@@ -814,7 +814,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
             disabled={currentPage === 1}
             className="px-3 py-1 border border-slate-300 rounded-lg text-xs disabled:opacity-50"
           >
-            ?
+            <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-xs text-slate-600">
             Page {currentPage} of {totalPages}
@@ -824,7 +824,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
             disabled={currentPage === totalPages}
             className="px-3 py-1 border border-slate-300 rounded-lg text-xs disabled:opacity-50"
           >
-            ?
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       )}
