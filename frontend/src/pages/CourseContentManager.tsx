@@ -290,6 +290,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
   const [rejectionReason, setRejectionReason] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const load = async (isMounted = true) => {
     try {
@@ -319,6 +320,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
 
   useEffect(() => {
     setCurrentPage(1)
+    setSelectedIds([])
   }, [difficultyFilter, aiFilter, searchQuery])
 
   const filteredQuestions = questions.filter((q) => {
@@ -458,12 +460,97 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
     await load()
   }
 
+  // ---- Bulk selection ----
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
+  const toggleSelectAllVisible = () => {
+    const visibleIds = filteredQuestions.map((q) => q.id)
+    const allSelected =
+      visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id))
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)))
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])))
+    }
+  }
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Delete ${selectedIds.length} question(s) permanently? This cannot be undone.`)) return
+    setIsSaving(true)
+    setError(null)
+    try {
+      await adminApi.bulkDeleteQuestions(selectedIds)
+      setSelectedIds([])
+      await load()
+    } catch {
+      setError('Bulk delete failed.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleBatchApprove = async () => {
+    if (selectedIds.length === 0) return
+    if (!confirm(`Approve ${selectedIds.length} question(s)?`)) return
+    setIsSaving(true)
+    setError(null)
+    try {
+      await adminApi.batchReviewQuestions(selectedIds, 'approve')
+      setSelectedIds([])
+      await load()
+    } catch {
+      setError('Bulk approve failed.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const canEdit = (s: ReviewStatus) => s === 'generated' || s === 'under_review'
   const canDelete = (_s: ReviewStatus) => true
   const canArchive = (s: ReviewStatus) => s === 'approved' || s === 'rejected'
 
   return (
     <div className="space-y-6">
+
+      {selectedIds.length > 0 && (
+        <div className="sticky top-2 z-20 flex items-center justify-between gap-3 rounded-2xl border border-indigo-300 bg-indigo-50 px-4 py-2.5 shadow-lg dark:border-indigo-800 dark:bg-indigo-950/80">
+          <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-200">
+            {selectedIds.length} question{selectedIds.length === 1 ? '' : 's'} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="text-xs px-3 py-1.5 rounded-lg bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={handleBatchApprove}
+              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-500 transition-colors disabled:opacity-50"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Approve Selected
+            </button>
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={handleBatchDelete}
+              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-500 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex gap-1.5 flex-wrap items-center">
           <input
@@ -514,6 +601,16 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
             <option value="ai">AI Generated</option>
             <option value="human">Manually Added</option>
           </select>
+
+          <label className="inline-flex items-center gap-1.5 text-xs font-medium text-ink/70 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={filteredQuestions.length > 0 && filteredQuestions.every((q) => selectedIds.includes(q.id))}
+              onChange={toggleSelectAllVisible}
+              className="w-3.5 h-3.5 rounded cursor-pointer accent-indigo-600"
+            />
+            Select visible ({filteredQuestions.length})
+          </label>
 
           {duplicateGroups.length > 0 && (
             <button
@@ -650,6 +747,12 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
                   {group.questions?.map((q: ExamQuestion, idx: number) => (
                     <div key={q.id} className="p-3 bg-background border border-border rounded-lg space-y-2">
                       <div className="flex items-start justify-between gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(q.id)}
+                          onChange={() => toggleSelectOne(q.id)}
+                          className="mt-1 w-4 h-4 rounded cursor-pointer accent-indigo-600 shrink-0"
+                        />
                         <div>
                           <span className="text-[10px] font-mono text-ink/40">Entry #{idx + 1} · ID: {q.id.slice(0, 8)}</span>
                           <p className="text-sm font-medium mt-0.5">{q.question_text}</p>

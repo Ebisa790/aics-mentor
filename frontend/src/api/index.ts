@@ -650,6 +650,11 @@ export const adminApi = {
   listDuplicates: (courseId: string) =>
     apiClient.get<DuplicateGroup[]>(`/api/admin/courses/${courseId}/duplicates`).then((res) => res.data),
 
+  batchReviewQuestions: (ids: string[], action: 'approve' | 'reject') =>
+    apiClient
+      .patch('/api/admin/questions/batch-review', { question_ids: ids, action })
+      .then((res) => res.data),
+
   bulkDeleteQuestions: (ids: string[]) =>
     apiClient.post<BulkDeleteResponse>('/api/admin/questions/bulk-delete', { ids }).then((res) => res.data),
 
