@@ -13,7 +13,7 @@ import type {
 } from '../api/types'
 import { AIDraftModal } from '../components/AIDraftModal'
 import { FormattedQuestionText } from '../components/FormattedQuestionText'
-import { Archive, CheckCircle2, XCircle, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Archive, CheckCircle2, XCircle, Pencil, Trash2, ChevronLeft, ChevronRight, ClipboardCheck, Plus, Search } from 'lucide-react'
 
 interface DuplicateGroup {
   count?: number
@@ -901,7 +901,27 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
         /* VIEW MODE B: STANDARD QUESTION LIST */
         <div className="space-y-2">
           {filteredQuestions.length === 0 ? (
-            <div className="card p-4 text-sm text-ink/50">No questions match this status filter.</div>
+            questions.length === 0 ? (
+              <div className="card p-12 text-center">
+                <ClipboardCheck className="w-12 h-12 mx-auto text-ink/30 mb-3" />
+                <h3 className="text-base font-semibold text-ink mb-1">No questions yet</h3>
+                <p className="text-sm text-ink/50 mb-4">Add your first question to get started.</p>
+                <button
+                  type="button"
+                  onClick={startNew}
+                  className="btn-primary text-sm px-4 py-2 inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  New Question
+                </button>
+              </div>
+            ) : (
+              <div className="card p-8 text-center">
+                <Search className="w-10 h-10 mx-auto text-ink/30 mb-3" />
+                <h3 className="text-base font-semibold text-ink mb-1">No matches</h3>
+                <p className="text-sm text-ink/50">Try adjusting your search or filters.</p>
+              </div>
+            )
           ) : (
             paginatedQuestions.map((q, idx) => (
               <div
@@ -1062,6 +1082,19 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
       )}
 
       {showAIModal && <AIDraftModal courseId={courseId} type="question" onClose={() => setShowAIModal(false)} onApply={handleAIApply} />}
+
+      {/* Floating New Question FAB */}
+      {editingId === null && selectedIds.length === 0 && (
+        <button
+          type="button"
+          onClick={startNew}
+          className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-indigo-600 text-white text-sm font-bold shadow-2xl shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-500/40 active:scale-95 transition-all"
+          title="Add a new question"
+        >
+          <Plus className="w-5 h-5" />
+          <span className="hidden sm:inline">New Question</span>
+        </button>
+      )}
     </div>
   )
 }
