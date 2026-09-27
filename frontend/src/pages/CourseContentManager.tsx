@@ -13,6 +13,7 @@ import type {
 } from '../api/types'
 import { AIDraftModal } from '../components/AIDraftModal'
 import { FormattedQuestionText } from '../components/FormattedQuestionText'
+import { Archive, CheckCircle2, XCircle, Pencil, Trash2 } from 'lucide-react'
 
 interface DuplicateGroup {
   count?: number
@@ -384,9 +385,18 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this question?')) return
-    await adminApi.deleteQuestion(id)
-    await load()
+    const target = questions.find((x: ExamQuestion) => x.id === id)
+    const isApproved = target?.review_status === 'approved'
+    const msg = isApproved
+      ? 'This question is APPROVED and live for students. It will be archived and then permanently removed from the exam bank. This cannot be undone. Continue?'
+      : 'Are you sure you want to delete this question? This cannot be undone.'
+    if (!confirm(msg)) return
+    try {
+      await adminApi.deleteQuestion(id)
+      await load()
+    } catch (err) {
+      console.error('Delete failed:', err)
+    }
   }
 
   const handleBulkDelete = async (ids: string[]) => {
@@ -438,7 +448,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
   }
 
   const canEdit = (s: ReviewStatus) => s === 'generated' || s === 'under_review'
-  const canDelete = (s: ReviewStatus) => s !== 'approved'
+  const canDelete = (_s: ReviewStatus) => true
   const canArchive = (s: ReviewStatus) => s === 'approved' || s === 'rejected'
 
   return (
@@ -621,19 +631,34 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
                         {q.difficulty} {q.is_ai_generated && <span className="text-accent-dark">·  AI{q.ai_topic ? `: ${q.ai_topic}` : ''}</span>}
                       </div>
 
-                      <div className="flex gap-3 text-xs font-medium pt-2 border-t border-border/50">
+                      <div className="flex flex-wrap gap-2 text-xs font-semibold pt-2 border-t border-border/50">
                         {(q.review_status === 'generated' || q.review_status === 'under_review') && (
-                          <button type="button" onClick={() => handleApprove(q.id)} className="text-accent-dark hover:underline">
-                            Approve Keep
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(q.id)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors dark:bg-emerald-950/40 dark:text-emerald-300"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Keep This One
                           </button>
                         )}
                         {canArchive(q.review_status) && (
-                          <button type="button" onClick={() => handleArchive(q.id)} className="text-ink/60 hover:text-ink">
+                          <button
+                            type="button"
+                            onClick={() => handleArchive(q.id)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-300"
+                          >
+                            <Archive className="w-3.5 h-3.5" />
                             Archive
                           </button>
                         )}
                         {canDelete(q.review_status) && (
-                          <button type="button" onClick={() => handleDelete(q.id)} className="text-danger hover:underline ml-auto">
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(q.id)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors dark:bg-red-950/40 dark:text-red-300 ml-auto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                             Delete Duplicate
                           </button>
                         )}
@@ -723,29 +748,54 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex gap-3 text-xs font-medium mt-3">
+                  <div className="flex flex-wrap gap-2 text-xs font-semibold mt-3">
                     {(q.review_status === 'generated' || q.review_status === 'under_review') && (
                       <>
-                        <button type="button" onClick={() => handleApprove(q.id)} className="text-accent-dark hover:underline">
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(q.id)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors dark:bg-emerald-950/40 dark:text-emerald-300"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
                           Approve
                         </button>
-                        <button type="button" onClick={() => setRejectingId(q.id)} className="text-danger hover:underline">
+                        <button
+                          type="button"
+                          onClick={() => setRejectingId(q.id)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors dark:bg-amber-950/40 dark:text-amber-300"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
                           Reject
                         </button>
                       </>
                     )}
                     {canEdit(q.review_status) && (
-                      <button type="button" onClick={() => startEdit(q)} className="text-ink/60 hover:text-ink">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(q)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
                         Edit
                       </button>
                     )}
                     {canArchive(q.review_status) && (
-                      <button type="button" onClick={() => handleArchive(q.id)} className="text-ink/60 hover:text-ink">
+                      <button
+                        type="button"
+                        onClick={() => handleArchive(q.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-300"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
                         Archive
                       </button>
                     )}
                     {canDelete(q.review_status) && (
-                      <button type="button" onClick={() => handleDelete(q.id)} className="text-danger hover:underline">
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(q.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors dark:bg-red-950/40 dark:text-red-300"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                         Delete
                       </button>
                     )}
