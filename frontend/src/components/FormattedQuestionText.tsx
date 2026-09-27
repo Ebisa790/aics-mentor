@@ -62,7 +62,48 @@ const STRONG_CODE_START: RegExp[] = [
   /^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE)\s+/i, // SQL
   /^\s*(sudo|cd|ls|mkdir|rm|cp|mv|cat|grep|chmod|chown|apt|yum|brew)\s/, // Shell
   /^\s*#!\//,                        // shebang
-  /^\s*(BEGIN|END|PROCEDURE|FUNCTION|DECLARE)\b/i, // pseudo-code
+   /^\s*(BEGIN|END|PROCEDURE|FUNCTION|DECLARE)\b/i, // pseudo-code
+
+  // ---- Extended C++ patterns (exit-exam critical) ----
+  // Preprocessor
+  /^\s*#define\s+/,
+  /^\s*#ifdef\s+/,
+  /^\s*#ifndef\s+/,
+  /^\s*#pragma\s+/,
+  // Namespaces / using
+  /^\s*namespace\s+\w+/,
+  /^\s*using\s+std::/,
+  // std:: library usage
+  /^\s*std::/,
+  // Return types and declarations (catches: void main, bool ok, char c, long n, unsigned int i, auto x, ...)
+  /^\s*(void|bool|char|short|long|unsigned|signed|auto)\s+\w+/,
+  /^\s*const\s+(int|float|double|char|bool|long|short|unsigned|signed|auto|string)\b/,
+  /^\s*string\s+\w+\s*[=;(]/,
+  /^\s*main\s*\(/,
+  // Struct / access / virtual
+  /^\s*struct\s+\w+/,
+  /^\s*(public|private|protected)\s*:/,
+  /^\s*virtual\s+/,
+  // Templates & STL
+  /^\s*template\s*</,
+  /^\s*vector\s*</,
+  // Control flow
+  /^\s*switch\s*\(/,
+  /^\s*case\s+(\d+|'[^']*'|"[^"]*"|[A-Z_][A-Z0-9_]*)\s*:/,
+  /^\s*default\s*:/,
+  /^\s*break\s*;/,
+  /^\s*continue\s*;/,
+  /^\s*do\s*\{/,
+  // Exceptions
+  /^\s*try\s*\{/,
+  /^\s*catch\s*\(/,
+  /^\s*throw\s+/,
+  // Memory
+  /^\s*new\s+\w+\s*[\(\[]/,
+  /^\s*delete(\[\])?\s+\w+\s*;/,
+  // C legacy IO
+  /^\s*puts\s*\(/,
+  /^\s*gets\s*\(/,
 ];
 
 function isIndentedBlock(line: string): boolean {
@@ -126,8 +167,25 @@ function detectLanguage(code: string): string {
     return "java";
   }
 
-  // C / C++ — #include, cout, cin, std::, printf/scanf
-  if (/(#include\s*[<"])|(\bcout\s*<<)|(\bcin\s*>>)|(\bstd::)|(using\s+namespace\s+std)|(\bprintf\s*\()|(\bscanf\s*\()|(\bmalloc\s*\()|(\bnullptr\b)|(\bstd::string\b)/.test(c)) {
+   // C / C++ — comprehensive coverage for exit-exam questions
+  if (
+    /#include\s*[<"]/.test(c) ||
+    /\busing\s+namespace\s+std\b/.test(c) ||
+    /\bstd::/.test(c) ||
+    /\bcout\s*<</.test(c) ||
+    /\bcin\s*>>/.test(c) ||
+    /\b(printf|scanf|malloc|calloc|realloc|free|puts|gets)\s*\(/.test(c) ||
+    /\bnullptr\b/.test(c) ||
+    /\b(void|bool|char|short|long|unsigned|signed|auto)\s+main\s*\(/.test(c) ||
+    /\bstruct\s+\w+\s*\{/.test(c) ||
+    /\btemplate\s*</.test(c) ||
+    /\b(vector|map|set|list|deque|queue|stack)\s*</.test(c) ||
+    /\bnamespace\s+\w+\s*\{/.test(c) ||
+    /\b(public|private|protected)\s*:/.test(c) ||
+    /\bvirtual\s+\w+/.test(c) ||
+    /\bdelete(\[\])?\s+\w+\s*;/.test(c) ||
+    /\bnew\s+\w+\s*[\(\[]/.test(c)
+  ) {
     return "cpp";
   }
 
