@@ -1,8 +1,6 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import katex from "katex";
-import "katex/dist/katex.min.css";
 
 interface FormattedQuestionTextProps {
   text: string;
@@ -348,12 +346,6 @@ interface CodeBlockProps {
   language: string;
 }
 
-/**
- * Code block with:
- *  - fixed line-number gutter (does not scroll horizontally)
- *  - horizontally scrollable code area (long lines no longer clipped)
- *  - aligned line heights (20px) between gutter and code
- */
 function CodeBlock({ content, language }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
@@ -368,7 +360,6 @@ function CodeBlock({ content, language }: CodeBlockProps) {
   };
 
   const lineCount = content.split("\n").length;
-  const LINE_HEIGHT = "20px";
 
   return (
     <div className="rounded-xl overflow-hidden border border-slate-700 my-2">
@@ -396,227 +387,76 @@ function CodeBlock({ content, language }: CodeBlockProps) {
         </button>
       </div>
 
-      <div className="flex">
-        {/* Fixed line-number gutter — does NOT scroll */}
+      <div className="relative">
         <div
-          className="flex-shrink-0 w-10 bg-slate-900/80 border-r border-slate-800 select-none pt-3 pr-2 flex flex-col items-end"
+          className="absolute left-0 top-0 bottom-0 w-10 bg-slate-900/80 border-r border-slate-800 select-none pointer-events-none flex flex-col items-end pt-3 pr-2"
           aria-hidden="true"
         >
           {Array.from({ length: lineCount }).map((_, i) => (
             <span
               key={i}
-              className="font-mono text-[11px] text-slate-600 block"
-              style={{ lineHeight: LINE_HEIGHT, height: LINE_HEIGHT }}
+              className="font-mono text-[11px] leading-[1.5] text-slate-600"
             >
               {i + 1}
             </span>
           ))}
         </div>
 
-        {/* Code area — scrolls horizontally on long lines */}
-        <div className="flex-1 min-w-0 overflow-x-auto">
-          <SyntaxHighlighter
-            language={language || "text"}
-            style={vscDarkPlus}
-            customStyle={{
-              margin: 0,
-              padding: "12px 16px",
-              fontSize: "13px",
-              lineHeight: LINE_HEIGHT,
-              borderRadius: 0,
-              backgroundColor: "#1e1e1e",
-            }}
-            wrapLongLines={false}
-          >
-            {content}
-          </SyntaxHighlighter>
-        </div>
+        <SyntaxHighlighter
+          language={language || "text"}
+          style={vscDarkPlus}
+          customStyle={{
+            margin: 0,
+            padding: "12px 16px 12px 48px",
+            fontSize: "13px",
+            lineHeight: "1.5",
+            borderRadius: 0,
+            backgroundColor: "#1e1e1e",
+          }}
+          wrapLongLines={false}
+        >
+          {content}
+        </SyntaxHighlighter>
       </div>
     </div>
   );
 }
 
 /**
- * Renders a LaTeX math expression via KaTeX.
- * Falls back to raw text if KaTeX throws.
+ * Renders inline `code` spans inside prose.
+ * Handles single backticks only — triple backticks are already
+ * extracted as code blocks in Pass 1 of parseQuestion.
  */
-function MathNode({ expr, display }: { expr: string; display: boolean }) {
-  const html = useMemo(() => {
-    try {
-      return katex.renderToString(expr, {
-        throwOnError: false,
-        displayMode: display,
-      });
-    } catch {
-      return null;
-    }
-  }, [expr, display]);
-
-  if (html === null) {
-    return (
-      <span className="font-mono text-slate-400">
-        {display ? `$$${expr}$$` : `$${expr}$`}
-      </span>
-    );
-  }
-
-  if (display) {
-    return (
-      <div
-        className="my-2 overflow-x-auto text-center"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
-  }
-  return <span dangerouslySetInnerHTML={{ __html: html }} />;
-}
-
-/**
- * Parses inline tokens within a single line/paragraph.
- * Priority (first match wins at each position):
- *   1. $$...$$   display math
- *   2. $...$     inline math
- *   3. `...`     inline code
- *   4. **...**   bold
- *   5. *...*     italic (word-boundary anchored)
- *   6. _..._     italic (word-boundary anchored)
- */
-function renderInlineNodes(text: string): ReactNode[] {
-  const nodes: ReactNode[] = [];
-  const regex =
-    /\$\$([\s\S]+?)\$\$|\$([^\$\n]+?)\$|`([^`\n]+?)`|(?<=^|\s)\*\*([^*\n]+?)\*\*(?=\s|$|[.,;:!?])|(?<=^|\s)\*([^*\n]+?)\*(?=\s|$|[.,;:!?])|(?<=^|\s)_([^_\n]+?)_(?=\s|$|[.,;:!?])/g;
-
-  let last = 0;
-  let m: RegExpExecArray | null;
+function renderInlineCode(text: string): ReactNode {
+  // Match single backticks not preceded or followed by another backtick,
+  // and not spanning a newline (inline code should stay on one line).
+  const regex = /(?<!`)`([^`\n]+)`(?!`)/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
   let key = 0;
 
-  while ((m = regex.exec(text)) !== null) {
-    if (m.index > last) nodes.push(text.slice(last, m.index));
-
-    if (m[1] !== undefined) {
-      nodes.push(<MathNode key={`m-${key++}`} expr={m[1]} display={true} />);
-    } else if (m[2] !== undefined) {
-      nodes.push(<MathNode key={`m-${key++}`} expr={m[2]} display={false} />);
-    } else if (m[3] !== undefined) {
-      nodes.push(
-        <code
-          key={`c-${key++}`}
-          className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-100 font-mono text-[0.85em] border border-slate-700"
-        >
-          {m[3]}
-        </code>
-      );
-    } else if (m[4] !== undefined) {
-      nodes.push(
-        <strong key={`b-${key++}`} className="font-semibold text-white">
-          {m[4]}
-        </strong>
-      );
-    } else if (m[5] !== undefined) {
-      nodes.push(
-        <em key={`i-${key++}`} className="italic">
-          {m[5]}
-        </em>
-      );
-    } else if (m[6] !== undefined) {
-      nodes.push(
-        <em key={`i-${key++}`} className="italic">
-          {m[6]}
-        </em>
-      );
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
     }
-    last = m.index + m[0].length;
-  }
-
-  if (last < text.length) nodes.push(text.slice(last));
-  return nodes;
-}
-
-/**
- * Splits a text segment into block-level elements:
- *   - paragraphs (consecutive non-list, non-blank lines)
- *   - unordered lists (lines starting with "- " or "* ")
- *   - ordered lists   (lines starting with "1. ")
- * Each block runs its lines through the inline renderer.
- */
-function renderRichText(text: string): ReactNode[] {
-  const lines = text.split("\n");
-  const blocks: ReactNode[] = [];
-  let paragraphLines: string[] = [];
-  let list: { type: "ul" | "ol"; items: string[] } | null = null;
-  let key = 0;
-
-  const flushParagraph = () => {
-    if (paragraphLines.length === 0) return;
-    const joined = paragraphLines.join("\n");
-    blocks.push(
-      <div key={`p-${key++}`} className="whitespace-pre-wrap">
-        {renderInlineNodes(joined)}
-      </div>
+    parts.push(
+      <code
+        key={`ic-${key++}`}
+        className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-100 font-mono text-[0.85em] border border-slate-700"
+      >
+        {match[1]}
+      </code>
     );
-    paragraphLines = [];
-  };
-
-  const flushList = () => {
-    if (!list) return;
-    const items = list.items;
-    const type = list.type;
-    list = null;
-    if (type === "ol") {
-      blocks.push(
-        <ol key={`l-${key++}`} className="list-decimal list-inside space-y-1 pl-1">
-          {items.map((item, i) => (
-            <li key={i}>{renderInlineNodes(item)}</li>
-          ))}
-        </ol>
-      );
-    } else {
-      blocks.push(
-        <ul key={`l-${key++}`} className="list-disc list-inside space-y-1 pl-1">
-          {items.map((item, i) => (
-            <li key={i}>{renderInlineNodes(item)}</li>
-          ))}
-        </ul>
-      );
-    }
-  };
-
-  for (const line of lines) {
-    if (!line.trim()) {
-      flushParagraph();
-      flushList();
-      continue;
-    }
-
-    const olMatch = /^\s*\d+\.\s+(.*)$/.exec(line);
-    if (olMatch) {
-      flushParagraph();
-      if (!list || list.type !== "ol") {
-        flushList();
-        list = { type: "ol", items: [] };
-      }
-      list.items.push(olMatch[1]);
-      continue;
-    }
-
-    const ulMatch = /^\s*[-*]\s+(.*)$/.exec(line);
-    if (ulMatch) {
-      flushParagraph();
-      if (!list || list.type !== "ul") {
-        flushList();
-        list = { type: "ul", items: [] };
-      }
-      list.items.push(ulMatch[1]);
-      continue;
-    }
-
-    if (list) flushList();
-    paragraphLines.push(line);
+    lastIndex = match.index + match[0].length;
   }
 
-  flushParagraph();
-  flushList();
-  return blocks;
+  if (lastIndex === 0) return text;
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
 }
 
 export function FormattedQuestionText({ text }: FormattedQuestionTextProps) {
@@ -640,9 +480,9 @@ export function FormattedQuestionText({ text }: FormattedQuestionTextProps) {
         return (
           <div
             key={idx}
-            className="text-sm sm:text-base leading-relaxed space-y-2"
+            className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap"
           >
-            {renderRichText(seg.content)}
+            {renderInlineCode(seg.content)}
           </div>
         );
       })}
