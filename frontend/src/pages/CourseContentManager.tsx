@@ -12,6 +12,7 @@ import type {
   ReviewStatus,
 } from '../api/types'
 import { AIDraftModal } from '../components/AIDraftModal'
+import { FormattedQuestionText } from '../components/FormattedQuestionText'
 
 interface DuplicateGroup {
   count?: number
@@ -653,14 +654,54 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
             paginatedQuestions.map((q) => (
               <div key={q.id} className="card p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="text-sm font-medium">{q.question_text}</div>
+                  <div className="flex-1 min-w-0 text-ink">
+                    <FormattedQuestionText text={q.question_text} />
+                  </div>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${REVIEW_BADGE[q.review_status as ReviewStatus]}`}>
                     {q.review_status.replace('_', ' ')}
                   </span>
                 </div>
                 <div className="text-xs text-ink/50 mt-1">
-                  {q.difficulty} {q.is_ai_generated && <span className="text-accent-dark">·  AI{q.ai_topic ? `: ${q.ai_topic}` : ''}</span>}
+                  {q.difficulty} {q.is_ai_generated && <span className="text-accent-dark">· AI{q.ai_topic ? `: ${q.ai_topic}` : ''}</span>}
                 </div>
+
+                {/* Options + correct answer */}
+                <div className="mt-3 space-y-1.5">
+                  {(['A', 'B', 'C', 'D'] as const).map((letter) => {
+                    const optKey = `option_${letter.toLowerCase()}` as 'option_a' | 'option_b' | 'option_c' | 'option_d'
+                    const optValue = q[optKey] || ''
+                    const isCorrect = q.correct_option === letter
+                    return (
+                      <div
+                        key={letter}
+                        className={`flex items-start gap-2 px-2.5 py-1.5 rounded-lg text-xs leading-snug border ${
+                          isCorrect
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-200 font-semibold'
+                            : 'bg-canvas border-border text-ink/80'
+                        }`}
+                      >
+                        <span className={`shrink-0 font-mono font-bold ${isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-ink/50'}`}>
+                          {letter}
+                        </span>
+                        <span className="flex-1">{optValue}</span>
+                        {isCorrect && (
+                          <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Explanation */}
+                {q.explanation && (
+                  <div className="mt-2 text-[11px] text-ink/70 bg-canvas/60 px-2.5 py-1.5 rounded-lg border border-border/50 leading-snug">
+                    <span className="font-bold text-ink/80">💡 </span>
+                    <span>{q.explanation}</span>
+                  </div>
+                )}
+
                 {q.review_status === 'rejected' && q.rejection_reason && (
                   <div className="text-xs text-danger mt-1">Rejected: {q.rejection_reason}</div>
                 )}
