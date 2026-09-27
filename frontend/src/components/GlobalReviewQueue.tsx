@@ -15,6 +15,8 @@ export interface Question {
   option_d: string
   correct_option: 'A' | 'B' | 'C' | 'D'
   explanation?: string
+  difficulty?: 'easy' | 'medium' | 'hard'
+  is_ai_generated?: boolean
 }
 
 interface ReviewQueueResponse {
@@ -477,15 +479,15 @@ export function GlobalReviewQueue() {
                 key={q.id}
                 ref={isFocused ? focusedCardRef : null}
                 onClick={() => setFocusedIdx(idx)}
-                className={`p-6 space-y-3 transition cursor-pointer ${
+                className={`p-4 space-y-2 transition cursor-pointer ${
                   isSelected ? 'bg-accent-light/20 border-l-4 border-l-accent' : 'hover:bg-canvas/40'
                 } ${
                   isFocused && !isEditing ? 'ring-2 ring-indigo-500 ring-inset bg-indigo-50/30 dark:bg-indigo-950/20' : ''
                 }`}
               >
-                {/* Item Meta Header */}
-                <div className="flex justify-between items-center text-xs">
-                  <div className="flex items-center gap-3">
+                {/* Item Meta Header (compact) */}
+                <div className="flex flex-wrap justify-between items-center text-xs gap-2">
+                  <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -493,17 +495,37 @@ export function GlobalReviewQueue() {
                       onChange={() => toggleSelectOne(q.id)}
                       className="w-4 h-4 accent-accent rounded cursor-pointer disabled:opacity-50"
                     />
-                    <span className="bg-accent-light text-accent-dark font-semibold px-2.5 py-0.5 rounded-md">
+                    <span className="bg-accent-light text-accent-dark font-semibold px-2 py-0.5 rounded-md text-[10px]">
                       {q.course_code ? `${q.course_code} — ${q.course_name || ''}` : `Course ID: ${q.course_id}`}
                     </span>
+                    {q.difficulty && (
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                          q.difficulty === 'hard'
+                            ? 'bg-rose-500/10 text-rose-700 border border-rose-500/20'
+                            : q.difficulty === 'medium'
+                            ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+                            : 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20'
+                        }`}
+                      >
+                        {q.difficulty}
+                      </span>
+                    )}
+                    {q.is_ai_generated && (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/10 text-indigo-700 border border-indigo-500/20">
+                        AI
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-ink/40 font-mono">Model: {q.ai_model || 'Groq'}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-ink/40 font-mono text-[10px] truncate max-w-[120px]">
+                      {q.ai_model || 'Groq'}
+                    </span>
                     {!isEditing && (
                       <button
                         type="button"
                         onClick={() => startEdit(q)}
-                        className="text-ink/60 hover:text-ink font-medium underline"
+                        className="text-ink/60 hover:text-ink font-medium underline text-[11px]"
                       >
                         Edit
                       </button>
@@ -587,50 +609,44 @@ export function GlobalReviewQueue() {
                       <FormattedQuestionText text={q.question_text} />
                     </div>
 
-                    {/* Options Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm pl-7">
-                      <div
-                        className={`p-2 rounded border ${
-                          q.correct_option === 'A'
-                            ? 'bg-emerald-50 border-emerald-300 font-semibold text-emerald-900'
-                            : 'bg-canvas text-ink/80 border-border'
-                        }`}
-                      >
-                        A: {q.option_a}
-                      </div>
-                      <div
-                        className={`p-2 rounded border ${
-                          q.correct_option === 'B'
-                            ? 'bg-emerald-50 border-emerald-300 font-semibold text-emerald-900'
-                            : 'bg-canvas text-ink/80 border-border'
-                        }`}
-                      >
-                        B: {q.option_b}
-                      </div>
-                      <div
-                        className={`p-2 rounded border ${
-                          q.correct_option === 'C'
-                            ? 'bg-emerald-50 border-emerald-300 font-semibold text-emerald-900'
-                            : 'bg-canvas text-ink/80 border-border'
-                        }`}
-                      >
-                        C: {q.option_c}
-                      </div>
-                      <div
-                        className={`p-2 rounded border ${
-                          q.correct_option === 'D'
-                            ? 'bg-emerald-50 border-emerald-300 font-semibold text-emerald-900'
-                            : 'bg-canvas text-ink/80 border-border'
-                        }`}
-                      >
-                        D: {q.option_d}
-                      </div>
+                    {/* Options Grid (compact) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm pl-7">
+                      {(['A', 'B', 'C', 'D'] as const).map((letter) => {
+                        const optKey = `option_${letter.toLowerCase()}` as keyof Question
+                        const optValue = (q[optKey] as string) || ''
+                        const isCorrectOpt = q.correct_option === letter
+                        return (
+                          <div
+                            key={letter}
+                            className={`flex gap-2 px-2.5 py-1.5 rounded text-xs leading-snug ${
+                              isCorrectOpt
+                                ? 'bg-emerald-50 border border-emerald-300 font-semibold text-emerald-900'
+                                : 'bg-canvas text-ink/80 border border-border'
+                            }`}
+                          >
+                            <span
+                              className={`shrink-0 font-mono font-bold ${
+                                isCorrectOpt ? 'text-emerald-700' : 'text-ink/50'
+                              }`}
+                            >
+                              {letter}
+                            </span>
+                            <span className="flex-1">{optValue}</span>
+                            {isCorrectOpt && (
+                              <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-emerald-700">
+                                ✓
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
 
                     {q.explanation && (
-                      <p className="text-xs text-ink/60 pl-7 italic bg-canvas/60 p-2 rounded border border-border/50">
-                        <span className="font-semibold not-italic">Explanation:</span> {q.explanation}
-                      </p>
+                      <div className="text-[11px] text-ink/70 pl-7 bg-canvas/60 px-2.5 py-1.5 rounded border border-border/50 leading-snug">
+                        <span className="font-bold text-ink/80">💡 </span>
+                        <span>{q.explanation}</span>
+                      </div>
                     )}
                   </>
                 )}
