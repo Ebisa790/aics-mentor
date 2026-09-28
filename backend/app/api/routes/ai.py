@@ -135,8 +135,10 @@ Stick to the 3 sections above. Nothing else."""
         {"role": "user", "content": initial_prompt},
     ]
 
-    # 6. Try models × retries
-    models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
+        # 6. Try models × retries
+    # Using non-reasoning models — reasoning models (gpt-oss-*) put their
+    # output in a separate `reasoning` field and can leave `content` empty.
+    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
     ai_explanation = None
     last_error = None
 
@@ -148,13 +150,25 @@ Stick to the 3 sections above. Nothing else."""
                     model=model,
                     messages=messages,
                     temperature=0.3,
-                    max_tokens=500,   # bumped from 350 to prevent truncation
+                    max_tokens=500,
                 )
-                text = completion.choices[0].message.content
+                choice = completion.choices[0]
+                text = choice.message.content
+
+                # Log what actually came back so we can diagnose empty responses
+                logger.info(
+                    f"Model {model} returned: finish_reason={choice.finish_reason}, "
+                    f"content_len={len(text) if text else 0}, "
+                    f"content_preview={(text or '')[:80]!r}"
+                )
+
                 if text and text.strip():
                     ai_explanation = text
                     logger.info(f"Success with model: {model}")
                     break
+                else:
+                    last_error = f"{model}: empty content (finish_reason={choice.finish_reason})"
+                    logger.warning(last_error)
             except Exception as e:
                 last_error = f"{type(e).__name__}: {e}"
                 logger.warning(f"Model {model} failed: {last_error}")
@@ -162,7 +176,7 @@ Stick to the 3 sections above. Nothing else."""
         if ai_explanation:
             break
         if attempt == 0:
-            time.sleep(1)  # brief pause before retry
+            time.sleep(1)
 
     # 7. Increment usage only if we actually got a real AI response
     if not is_premium_or_admin and ai_explanation:
