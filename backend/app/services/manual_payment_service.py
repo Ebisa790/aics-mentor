@@ -412,6 +412,60 @@ class ManualPaymentService:
             dup_payment = self.db.get(Payment, duplicate.payment_id)
             same_user = dup_payment is not None and dup_payment.user_id == user.id
 
+            # ── Auto-cancel the current pending payment ──
+            # A reused reference cannot be fixed by retrying against the
+            # same tx_ref, and leaving the payment PENDING permanently
+            # blocks future /initiate calls ("you already have a pending
+            # manual payment"). Cancel it now so the student can start
+            # over with a fresh payment.
+            try:
+                payment.status = PaymentStatus.CANCELLED
+                payment.verified_at = datetime.now(timezone.utc)
+                self._append_audit(
+                    payment, "auto_cancelled",
+                    actor_id=user.id,
+                    reason="duplicate_reference",
+                    reference=bank_reference,
+                )
+                self.db.commit()
+                logger.info(
+                    f"Auto-cancelled pending payment {payment.id} "
+                    f"(tx_ref={payment.tx_ref}) after duplicate "
+                    f"reference {bank_reference} was detected"
+                )
+            except Exception as cleanup_err:
+                self.db.rollback()
+                logger.warning(
+                    f"Failed to auto-cancel pending payment "
+                    f"{payment.id}: {cleanup_err}"
+                )
+
+            # Now raise the appropriate error for the student
+            if same_user:
+                if dup_payment.status == PaymentStatus.PENDING:
+                    raise ManualPaymentError(
+                        "You already submitted this reference. "
+                        "Please wait for admin verification — check "
+                        "'My Bank Payments' for the status."
+                    )
+                elif dup_payment.status == PaymentStatus.SUCCESS:
+                    raise ManualPaymentError(
+                        "This reference was already approved. "
+                        "If you made a second payment with the same "
+                        "reference, please contact support."
+                    )
+                else:
+                    raise ManualPaymentError(
+                        "This reference was already submitted and "
+                        "could not be verified. If you have a new "
+                        "receipt, please double-check the reference."
+                    )
+            else:
+                raise ManualPaymentError(
+                    "This reference is already in use. "
+                    "If you believe this is a mistake, please contact support."
+                )
+
             if same_user:
                 if dup_payment.status == PaymentStatus.PENDING:
                     raise ManualPaymentError(
