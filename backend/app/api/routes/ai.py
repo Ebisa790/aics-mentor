@@ -30,22 +30,18 @@ class ExplainRequest(BaseModel):
 
 
 def _build_fallback_explanation(req: ExplainRequest) -> str:
-    """Plain, honest explanation when the AI is unavailable."""
+    """Plain explanation when the AI is unavailable."""
     correct = req.correct_option
     correct_text = req.options.get(correct, "")
     picked = req.selected_option
 
     parts = [
         f"**Why {correct} is correct** — {correct_text or 'This option matches the concept tested in the question.'}",
-        "**Key concept** — Review the related topic in your course notes to reinforce the underlying idea.",
-        "**Remember** — Check the explanation in the course material for the full reasoning.",
+        "**Key concept** — Review the related topic in your course notes.",
+        "**Remember** — Check the course material for the full reasoning.",
     ]
-
     if picked and picked != correct:
-        parts.append(
-            f"_You picked {picked}. Compare it closely with {correct} to spot the difference._"
-        )
-
+        parts.append(f"_You picked {picked}. Compare it closely with {correct}._")
     return "\n\n".join(parts)
 
 
@@ -67,7 +63,7 @@ async def explain_question(
         or current_user.role == UserRole.ADMIN
     )
 
-    # 2. Reset daily counter if it's a new day
+    # 2. Reset daily counter if new day
     from datetime import datetime
     last_usage = getattr(current_user, "last_ai_usage_date", None)
     today = datetime.utcnow().date()
@@ -80,34 +76,31 @@ async def explain_question(
             current_user.last_ai_usage_date = datetime.utcnow()
             db.commit()
 
-    # 3. Enforce free-tier daily limit
+    # 3. Free-tier limit
     current_ai_usage = getattr(current_user, "ai_usage_count", 0)
     if not is_premium_or_admin and current_ai_usage >= FREE_TIER_DAILY_AI_LIMIT:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                f"You have reached your daily limit of "
-                f"{FREE_TIER_DAILY_AI_LIMIT} AI explanations."
-            ),
+            detail=f"You have reached your daily limit of {FREE_TIER_DAILY_AI_LIMIT} AI explanations.",
         )
 
-    # 4. Get client
+    # 4. Client
     client = get_groq_client()
     if not client:
-        logger.error("Groq client unavailable — returning fallback explanation")
+        logger.error("Groq client unavailable — fallback")
         return {
             "explanation": _build_fallback_explanation(req),
             "is_mock": True,
         }
 
-    # 5. Build prompt
+    # 5. Prompt
     system_instruction = (
         "You are a concise CS tutor. Write exam explanations for university students.\n"
         "STRICT RULES:\n"
-        "- Response length: 100-140 words. NO EXCEPTIONS.\n"
-        "- No preamble, no greeting, no 'Great question'.\n"
+        "- Response length: 100-140 words.\n"
+        "- No preamble, no greeting.\n"
         "- Do NOT explain every wrong option.\n"
-        "- Use simple Markdown. Only one code block if absolutely necessary."
+        "- Use simple Markdown."
     )
 
     initial_prompt = f"""Question: {req.question_text}
@@ -135,14 +128,12 @@ Stick to the 3 sections above. Nothing else."""
         {"role": "user", "content": initial_prompt},
     ]
 
-        # 6. Try models × retries
-    # Using non-reasoning models — reasoning models (gpt-oss-*) put their
-    # output in a separate `reasoning` field and can leave `content` empty.
-    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    # 6. Models — gpt-oss reasoning models with low reasoning effort
+    models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
     ai_explanation = None
     last_error = None
 
-    for attempt in range(2):  # 2 attempts total (1 retry)
+    for attempt in range(2):
         for model in models:
             try:
                 logger.info(f"Attempt {attempt + 1}, model={model}")
@@ -150,16 +141,16 @@ Stick to the 3 sections above. Nothing else."""
                     model=model,
                     messages=messages,
                     temperature=0.3,
-                    max_tokens=500,
+                    max_completion_tokens=1200,   # enough for reasoning + output
+                    reasoning_effort="low",        # keep reasoning short
+                    include_reasoning=False,       # hide reasoning from content
                 )
                 choice = completion.choices[0]
                 text = choice.message.content
 
-                # Log what actually came back so we can diagnose empty responses
                 logger.info(
-                    f"Model {model} returned: finish_reason={choice.finish_reason}, "
-                    f"content_len={len(text) if text else 0}, "
-                    f"content_preview={(text or '')[:80]!r}"
+                    f"Model {model}: finish_reason={choice.finish_reason}, "
+                    f"content_len={len(text) if text else 0}"
                 )
 
                 if text and text.strip():
@@ -167,7 +158,7 @@ Stick to the 3 sections above. Nothing else."""
                     logger.info(f"Success with model: {model}")
                     break
                 else:
-                    last_error = f"{model}: empty content (finish_reason={choice.finish_reason})"
+                    last_error = f"{model}: empty content (finish={choice.finish_reason})"
                     logger.warning(last_error)
             except Exception as e:
                 last_error = f"{type(e).__name__}: {e}"
@@ -178,13 +169,13 @@ Stick to the 3 sections above. Nothing else."""
         if attempt == 0:
             time.sleep(1)
 
-    # 7. Increment usage only if we actually got a real AI response
+    # 7. Increment usage only on real AI success
     if not is_premium_or_admin and ai_explanation:
         current_user.ai_usage_count += 1
         current_user.last_ai_usage_date = datetime.utcnow()
         db.commit()
 
-    # 8. Return — real AI if we got it, otherwise a built-in fallback
+    # 8. Return
     if ai_explanation:
         return {"explanation": ai_explanation, "is_mock": False}
 
