@@ -728,10 +728,15 @@ export function ManualPaymentModal({
           />
         </div>
 
-        <p className="mt-3 max-w-[260px] text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-          Scan with your phone's camera. Copy the details into your bank app
-          and send the exact amount.
-        </p>
+        <div className="mt-3 max-w-[280px] text-center space-y-1.5">
+  <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+    Scan with your phone's <span className="text-emerald-600 dark:text-emerald-400">camera app</span> — not the bank app
+  </p>
+  <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+    The details will appear on your screen. Then open your bank app and
+    enter the phone number and amount manually.
+  </p>
+</div>
       </div>
     )}
 
