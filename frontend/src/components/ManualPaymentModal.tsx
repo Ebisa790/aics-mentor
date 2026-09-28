@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Smartphone,
   X,
-   QrCode,
+  QrCode,
   Keyboard,
 } from 'lucide-react'
 import { formatMoney } from '../utils/format'
@@ -174,6 +174,7 @@ export function ManualPaymentModal({
   const [senderPhone, setSenderPhone] = useState('')
   const [note, setNote] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [copiedAll, setCopiedAll] = useState(false)
   const [payMethod, setPayMethod] = useState<'qr' | 'manual'>('qr')
   const [referenceError, setReferenceError] = useState<string | null>(null)
 
@@ -181,6 +182,8 @@ export function ManualPaymentModal({
   const [confirmSent, setConfirmSent] = useState(false)
   const [confirmUnderstood, setConfirmUnderstood] = useState(false)
   const [confirmAmount, setConfirmAmount] = useState('')
+  // Exact-amount gate: null = unanswered, true = yes exact, false = no different
+  const [sentExactAmount, setSentExactAmount] = useState<boolean | null>(null)
 
   // ── Draft persistence helpers ──────────────────────────────
   const clearDraft = () => {
@@ -269,6 +272,10 @@ export function ManualPaymentModal({
     setSenderName('')
     setSenderPhone('')
     setNote('')
+    setConfirmSent(false)
+    setConfirmUnderstood(false)
+    setConfirmAmount('')
+    setSentExactAmount(null)
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -339,7 +346,12 @@ export function ManualPaymentModal({
     !!options &&
     !isNaN(typedAmountNum) &&
     Math.abs(typedAmountNum - Number(options.amount)) < 0.01
-  const gatesPassed = confirmSent && confirmUnderstood && amountMatches
+
+  const gatesPassed =
+    confirmSent &&
+    confirmUnderstood &&
+    sentExactAmount === true &&
+    amountMatches
 
   const handleCopy = async (text: string, field: string) => {
     try {
@@ -348,6 +360,26 @@ export function ManualPaymentModal({
       window.setTimeout(() => setCopiedField(null), 1500)
     } catch {
       /* ignore — clipboard is best-effort */
+    }
+  }
+
+  const handleCopyAll = async () => {
+    if (!options || !selectedBankInfo) return
+    const label =
+      selectedBankInfo.bank === 'telebirr' ? 'Phone' : 'Account'
+    const text = [
+      `${bankMeta[selectedBankInfo.bank].label} Payment`,
+      `${label}: ${selectedBankInfo.account_number}`,
+      `Name: ${selectedBankInfo.account_name}`,
+      `Amount: ${options.amount} ${options.currency}`,
+      `Plan: ${options.plan_name}`,
+    ].join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedAll(true)
+      window.setTimeout(() => setCopiedAll(false), 2000)
+    } catch {
+      /* ignore */
     }
   }
 
@@ -513,9 +545,67 @@ export function ManualPaymentModal({
 
               <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                 We received your bank reference. Our team will verify the
-                deposit within <strong>24 hours</strong>. You&apos;ll get an
-                email as soon as Premium is activated.
+                deposit and activate Premium shortly.
               </p>
+
+              {/* Post-submit timeline */}
+              <div className="mt-5 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left dark:border-slate-800 dark:bg-slate-950/50">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Reference submitted
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Just now
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                    <span className="text-[10px] font-bold">2</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Under review
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Usually within a few hours
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    <span className="text-[10px] font-bold">3</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Email confirmation
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      You&apos;ll be notified when approved
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">
+                    <span className="text-[10px] font-bold">4</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Premium unlocked
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Full access to all content
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               <button
                 type="button"
@@ -674,127 +764,149 @@ export function ManualPaymentModal({
                   })}
                 </div>
               </div>
-{/* Bank details */}
-{selectedBankInfo && (
-  <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
-    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-      Step 2 — Send the exact amount to
-    </div>
 
-    {/* Tab switcher — Telebirr only, desktop only */}
-    {selectedBankInfo.bank === 'telebirr' && (
-      <div className="hidden sm:inline-flex rounded-xl bg-slate-200 p-0.5 dark:bg-slate-800">
-        <button
-          type="button"
-          onClick={() => setPayMethod('qr')}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-            payMethod === 'qr'
-              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-        >
-          <QrCode className="h-3.5 w-3.5" />
-          Scan QR
-        </button>
-        <button
-          type="button"
-          onClick={() => setPayMethod('manual')}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-            payMethod === 'manual'
-              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-        >
-          <Keyboard className="h-3.5 w-3.5" />
-          Copy details
-        </button>
-      </div>
-    )}
+              {/* Bank details */}
+              {selectedBankInfo && (
+                <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Step 2 — Send the exact amount to
+                  </div>
 
-    {/* QR view — Telebirr only, desktop only, active tab only */}
-    {selectedBankInfo.bank === 'telebirr' && payMethod === 'qr' && (
-      <div className="hidden sm:flex flex-col items-center rounded-xl border border-emerald-200 bg-white px-4 py-4 dark:border-emerald-500/30 dark:bg-slate-900">
-        <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-          Scan with your Telebirr app
-        </div>
+                  {/* Tab switcher — Telebirr only, desktop only */}
+                  {selectedBankInfo.bank === 'telebirr' && (
+                    <div className="hidden sm:inline-flex rounded-xl bg-slate-200 p-0.5 dark:bg-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setPayMethod('qr')}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                          payMethod === 'qr'
+                            ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <QrCode className="h-3.5 w-3.5" />
+                        Scan QR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayMethod('manual')}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                          payMethod === 'manual'
+                            ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <Keyboard className="h-3.5 w-3.5" />
+                        Copy details
+                      </button>
+                    </div>
+                  )}
 
-        <img
-          src="/telebirr-qr.png"
-          alt="Telebirr payment QR code"
-          className="h-40 w-40 rounded-lg bg-white p-2 ring-1 ring-slate-200 dark:ring-slate-700"
-        />
+                  {/* QR view — Telebirr only, desktop only, active tab only */}
+                  {selectedBankInfo.bank === 'telebirr' && payMethod === 'qr' && (
+                    <div className="hidden sm:flex flex-col items-center rounded-xl border border-emerald-200 bg-white px-4 py-4 dark:border-emerald-500/30 dark:bg-slate-900">
+                      <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                        Scan with your Telebirr app
+                      </div>
 
-        <p className="mt-3 max-w-[280px] text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-          Open the Telebirr app, tap the scan icon, and point at this QR.
-          Your phone will show our phone number — tap it, then enter{' '}
-          <strong className="text-slate-700 dark:text-slate-200">
-            {options.amount} {options.currency}
-          </strong>{' '}
-          and send.
-        </p>
-      </div>
-    )}
+                      <img
+                        src="/telebirr-qr.png"
+                        alt="Telebirr payment QR code"
+                        className="h-40 w-40 rounded-lg bg-white p-2 ring-1 ring-slate-200 dark:ring-slate-700"
+                      />
 
-    {/* Copy details view — always on mobile; on desktop when "Copy details" tab active, or for non-Telebirr banks */}
-    <div
-      className={`space-y-2.5 ${
-        selectedBankInfo.bank === 'telebirr' && payMethod === 'qr'
-          ? 'block sm:hidden'
-          : 'block'
-      }`}
-    >
-      <button
-        type="button"
-        onClick={() =>
-          handleCopy(selectedBankInfo.account_number, 'acct')
-        }
-        className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
-      >
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {selectedBankInfo.bank === 'telebirr'
-              ? 'Phone number'
-              : 'Account number'}
-          </div>
-          <div className="font-mono text-sm font-bold text-slate-900 dark:text-white">
-            {selectedBankInfo.account_number}
-          </div>
-        </div>
-        {copiedField === 'acct' ? (
-          <Check className="h-4 w-4 text-emerald-500" />
-        ) : (
-          <Copy className="h-4 w-4 text-slate-400" />
-        )}
-      </button>
+                      <p className="mt-3 max-w-[280px] text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                        Open the Telebirr app, tap the scan icon, and point at this QR.
+                        Your phone will show our phone number — tap it, then enter{' '}
+                        <strong className="text-slate-700 dark:text-slate-200">
+                          {options.amount} {options.currency}
+                        </strong>{' '}
+                        and send.
+                      </p>
+                    </div>
+                  )}
 
-      <button
-        type="button"
-        onClick={() =>
-          handleCopy(selectedBankInfo.account_name, 'name')
-        }
-        className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
-      >
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Account name
-          </div>
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">
-            {selectedBankInfo.account_name}
-          </div>
-        </div>
-        {copiedField === 'name' ? (
-          <Check className="h-4 w-4 text-emerald-500" />
-        ) : (
-          <Copy className="h-4 w-4 text-slate-400" />
-        )}
-      </button>
-    </div>
+                  {/* Copy details view — always on mobile; on desktop when "Copy details" tab active, or for non-Telebirr banks */}
+                  <div
+                    className={`space-y-2.5 ${
+                      selectedBankInfo.bank === 'telebirr' && payMethod === 'qr'
+                        ? 'block sm:hidden'
+                        : 'block'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopy(selectedBankInfo.account_number, 'acct')
+                      }
+                      className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
+                    >
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          {selectedBankInfo.bank === 'telebirr'
+                            ? 'Phone number'
+                            : 'Account number'}
+                        </div>
+                        <div className="font-mono text-sm font-bold text-slate-900 dark:text-white">
+                          {selectedBankInfo.account_number}
+                        </div>
+                      </div>
+                      {copiedField === 'acct' ? (
+                        <Check className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-slate-400" />
+                      )}
+                    </button>
 
-    <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-      {options.instructions}
-    </p>
-  </div>
-)}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopy(selectedBankInfo.account_name, 'name')
+                      }
+                      className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
+                    >
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Account name
+                        </div>
+                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                          {selectedBankInfo.account_name}
+                        </div>
+                      </div>
+                      {copiedField === 'name' ? (
+                        <Check className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-slate-400" />
+                      )}
+                    </button>
+
+                    {/* Copy all details button */}
+                    <button
+                      type="button"
+                      onClick={handleCopyAll}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      {copiedAll ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            Copied all details!
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          <span>Copy all details</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                    {options.instructions}
+                  </p>
+                </div>
+              )}
 
               {/* Reference form */}
               <div className="space-y-3">
@@ -828,6 +940,10 @@ export function ManualPaymentModal({
                           : 'e.g. 260922130393530'
                     }
                     disabled={submitting}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
                     className={`w-full rounded-xl border bg-white px-3 py-2.5 font-mono text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 disabled:opacity-50 dark:bg-slate-950 dark:text-white ${
                       reference.length === 0
                         ? 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700'
@@ -876,7 +992,7 @@ export function ManualPaymentModal({
                   )}
 
                   {/* Confirmation gates */}
-                  <div className="mt-4 space-y-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 p-3.5">
+                  <div className="mt-4 space-y-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 p-3.5">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                       Before you submit
                     </p>
@@ -885,7 +1001,15 @@ export function ManualPaymentModal({
                       <input
                         type="checkbox"
                         checked={confirmSent}
-                        onChange={(e) => setConfirmSent(e.target.checked)}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          setConfirmSent(checked)
+                          // Unchecking resets the exact-amount gate
+                          if (!checked) {
+                            setSentExactAmount(null)
+                            setConfirmAmount('')
+                          }
+                        }}
                         disabled={submitting}
                         className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600"
                       />
@@ -897,6 +1021,88 @@ export function ManualPaymentModal({
                         to the account shown above, from my own bank account.
                       </span>
                     </label>
+
+                    {/* Exact-amount gate — appears once the first checkbox is checked */}
+                    {confirmSent && (
+                      <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                        <p className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Did you send{' '}
+                          <strong className="text-slate-900 dark:text-white">
+                            {options?.amount} {options?.currency}
+                          </strong>{' '}
+                          exactly?
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSentExactAmount(true)}
+                            disabled={submitting}
+                            className={`rounded-lg border-2 px-3 py-2 text-xs font-bold transition ${
+                              sentExactAmount === true
+                                ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'
+                            }`}
+                          >
+                            Yes, exact amount
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSentExactAmount(false)}
+                            disabled={submitting}
+                            className={`rounded-lg border-2 px-3 py-2 text-xs font-bold transition ${
+                              sentExactAmount === false
+                                ? 'border-rose-500 bg-rose-50 text-rose-700 dark:border-rose-500 dark:bg-rose-500/10 dark:text-rose-400'
+                                : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'
+                            }`}
+                          >
+                            No, different
+                          </button>
+                        </div>
+
+                        {sentExactAmount === false && (
+                          <div className="mt-2.5 rounded-lg border border-rose-200 bg-rose-50 p-2.5 dark:border-rose-500/30 dark:bg-rose-500/10">
+                            <p className="text-[11px] leading-relaxed text-rose-700 dark:text-rose-400">
+                              You must send the{' '}
+                              <strong>exact amount</strong> shown above. Please
+                              cancel this and send the correct amount first,
+                              then come back and submit.
+                            </p>
+                          </div>
+                        )}
+
+                        {sentExactAmount === true && (
+                          <div className="mt-3">
+                            <label className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                              Type the amount you sent to confirm{' '}
+                              <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={confirmAmount}
+                              onChange={(e) => setConfirmAmount(e.target.value)}
+                              placeholder={options ? String(options.amount) : '500'}
+                              disabled={submitting}
+                              className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 disabled:opacity-50 dark:bg-slate-950 dark:text-white ${
+                                confirmAmount.length === 0
+                                  ? 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700'
+                                  : amountMatches
+                                    ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500 dark:border-emerald-500/60'
+                                    : 'border-amber-400 focus:border-amber-500 focus:ring-amber-500 dark:border-amber-500/60'
+                              }`}
+                            />
+                            {confirmAmount.length > 0 && !amountMatches && (
+                              <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                <AlertCircle className="h-3 w-3" />
+                                Amount doesn&apos;t match. Please type exactly{' '}
+                                {options ? `${options.amount}` : ''}.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <label className="flex items-start gap-2.5 cursor-pointer">
                       <input
@@ -911,35 +1117,6 @@ export function ManualPaymentModal({
                         reference</strong> will result in a permanent ban.
                       </span>
                     </label>
-
-                    <div className="pt-1">
-                      <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Type the amount you sent to confirm{' '}
-                        <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={confirmAmount}
-                        onChange={(e) => setConfirmAmount(e.target.value)}
-                        placeholder={options ? String(options.amount) : '500'}
-                        disabled={submitting}
-                        className={`w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 disabled:opacity-50 dark:bg-slate-950 dark:text-white ${
-                          confirmAmount.length === 0
-                            ? 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700'
-                            : amountMatches
-                              ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500 dark:border-emerald-500/60'
-                              : 'border-amber-400 focus:border-amber-500 focus:ring-amber-500 dark:border-amber-500/60'
-                        }`}
-                      />
-                      {confirmAmount.length > 0 && !amountMatches && (
-                        <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                          <AlertCircle className="h-3 w-3" />
-                          Amount doesn't match. Please type exactly{' '}
-                          {options ? `${options.amount}` : ''}.
-                        </p>
-                      )}
-                    </div>
                   </div>
                 </div>
 
@@ -999,16 +1176,21 @@ export function ManualPaymentModal({
                 </div>
               )}
 
-              {/* Trust line */}
-              <div className="flex flex-col items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 text-center">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                  <span>Verified manually within 24 hours</span>
+              {/* Warning above submit */}
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                <div className="flex items-start gap-2.5">
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <div>
+                    <p className="text-[11px] font-bold text-amber-900 dark:text-amber-300">
+                      Every submission is verified
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800/80 dark:text-amber-400/80">
+                      We match each reference against our bank statement before
+                      approving. Falsified or reused references result in
+                      permanent account suspension.
+                    </p>
+                  </div>
                 </div>
-                <p className="max-w-[320px] leading-relaxed">
-                  We&apos;ll match this reference against our bank
-                  statement before activating Premium.
-                </p>
               </div>
 
               {/* Actions */}
