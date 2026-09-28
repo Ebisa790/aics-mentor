@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+import time
 
 from app.api.deps import get_current_user
 from app.core.ai_client import DEFAULT_MODEL, get_groq_client
@@ -11,7 +12,6 @@ from app.models.user import SubscriptionTier, User, UserRole
 
 router = APIRouter(prefix="/api/ai", tags=["AI Assistance"])
 
-# Daily limit for free tier users
 FREE_TIER_DAILY_AI_LIMIT = 5
 
 
@@ -29,74 +29,88 @@ class ExplainRequest(BaseModel):
     messages: Optional[List[ChatMessage]] = []
 
 
+def _build_fallback_explanation(req: ExplainRequest) -> str:
+    """Plain, honest explanation when the AI is unavailable."""
+    correct = req.correct_option
+    correct_text = req.options.get(correct, "")
+    picked = req.selected_option
+
+    parts = [
+        f"**Why {correct} is correct** — {correct_text or 'This option matches the concept tested in the question.'}",
+        "**Key concept** — Review the related topic in your course notes to reinforce the underlying idea.",
+        "**Remember** — Check the explanation in the course material for the full reasoning.",
+    ]
+
+    if picked and picked != correct:
+        parts.append(
+            f"_You picked {picked}. Compare it closely with {correct} to spot the difference._"
+        )
+
+    return "\n\n".join(parts)
+
+
 @router.post("/explain-question")
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 async def explain_question(
     request: Request,
     req: ExplainRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Generates a short, structured AI explanation for an exam question.
-    Target length: 100-150 words.
-    """
+    """Generate a short structured AI explanation, with safe fallbacks."""
     import logging
     logger = logging.getLogger(__name__)
 
-    try:
-        # 1. Tier & Access Check
-        is_premium_or_admin = (
-            current_user.subscription_tier == SubscriptionTier.PREMIUM
-            or current_user.role == UserRole.ADMIN
+    # 1. Tier & Access Check
+    is_premium_or_admin = (
+        current_user.subscription_tier == SubscriptionTier.PREMIUM
+        or current_user.role == UserRole.ADMIN
+    )
+
+    # 2. Reset daily counter if it's a new day
+    from datetime import datetime
+    last_usage = getattr(current_user, "last_ai_usage_date", None)
+    today = datetime.utcnow().date()
+    if last_usage:
+        last_usage_date = (
+            last_usage.date() if isinstance(last_usage, datetime) else last_usage
+        )
+        if last_usage_date < today:
+            current_user.ai_usage_count = 0
+            current_user.last_ai_usage_date = datetime.utcnow()
+            db.commit()
+
+    # 3. Enforce free-tier daily limit
+    current_ai_usage = getattr(current_user, "ai_usage_count", 0)
+    if not is_premium_or_admin and current_ai_usage >= FREE_TIER_DAILY_AI_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"You have reached your daily limit of "
+                f"{FREE_TIER_DAILY_AI_LIMIT} AI explanations."
+            ),
         )
 
-        # Reset AI usage count if it's a new day
-        from datetime import datetime, timedelta
-        last_usage = getattr(current_user, "last_ai_usage_date", None)
-        today = datetime.utcnow().date()
+    # 4. Get client
+    client = get_groq_client()
+    if not client:
+        logger.error("Groq client unavailable — returning fallback explanation")
+        return {
+            "explanation": _build_fallback_explanation(req),
+            "is_mock": True,
+        }
 
-        if last_usage:
-            last_usage_date = (
-                last_usage.date() if isinstance(last_usage, datetime) else last_usage
-            )
-            if last_usage_date < today:
-                current_user.ai_usage_count = 0
-                current_user.last_ai_usage_date = datetime.utcnow()
-                db.commit()
+    # 5. Build prompt
+    system_instruction = (
+        "You are a concise CS tutor. Write exam explanations for university students.\n"
+        "STRICT RULES:\n"
+        "- Response length: 100-140 words. NO EXCEPTIONS.\n"
+        "- No preamble, no greeting, no 'Great question'.\n"
+        "- Do NOT explain every wrong option.\n"
+        "- Use simple Markdown. Only one code block if absolutely necessary."
+    )
 
-        # 2. Enforce AI Daily Limit for Free Tier Users
-        current_ai_usage = getattr(current_user, "ai_usage_count", 0)
-        if not is_premium_or_admin and current_ai_usage >= FREE_TIER_DAILY_AI_LIMIT:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=(
-                    f"You have reached your daily limit of "
-                    f"{FREE_TIER_DAILY_AI_LIMIT} AI explanations."
-                ),
-            )
-
-        # 3. Get AI Client
-        client = get_groq_client()
-        if not client:
-            logger.warning("Groq client not available")
-            return {
-                "explanation": "AI explanation is temporarily unavailable. Please try again in a moment.",
-                "is_mock": True,
-            }
-
-        # 4. Construct Prompt (short, structured, no preamble)
-        system_instruction = (
-            "You are a concise CS tutor. Write exam explanations for university students.\n"
-            "STRICT RULES:\n"
-            "- Response length: 100-140 words. NO EXCEPTIONS.\n"
-            "- No preamble, no greeting, no 'Great question'.\n"
-            "- Do NOT include a 'mistake note' — the student already knows they picked wrong.\n"
-            "- Do NOT explain every wrong option.\n"
-            "- Use simple Markdown. Only one code block if absolutely necessary."
-        )
-
-        initial_prompt = f"""Question: {req.question_text}
+    initial_prompt = f"""Question: {req.question_text}
 
 A: {req.options.get('A', '')}
 B: {req.options.get('B', '')}
@@ -116,56 +130,52 @@ Write a short explanation with exactly these 3 parts:
 
 Stick to the 3 sections above. Nothing else."""
 
-        messages = [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": initial_prompt},
-        ]
+    messages = [
+        {"role": "system", "content": system_instruction},
+        {"role": "user", "content": initial_prompt},
+    ]
 
-        # 5. Try Groq models in order
-        groq_models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
-        ai_explanation = None
+    # 6. Try models × retries
+    models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
+    ai_explanation = None
+    last_error = None
 
-        for model in groq_models:
+    for attempt in range(2):  # 2 attempts total (1 retry)
+        for model in models:
             try:
-                logger.info(f"Trying Groq model: {model}")
+                logger.info(f"Attempt {attempt + 1}, model={model}")
                 completion = client.chat.completions.create(
                     model=model,
                     messages=messages,
                     temperature=0.3,
-                    max_tokens=500,
+                    max_tokens=500,   # bumped from 350 to prevent truncation
                 )
-                ai_explanation = completion.choices[0].message.content
-                if ai_explanation and ai_explanation.strip():
+                text = completion.choices[0].message.content
+                if text and text.strip():
+                    ai_explanation = text
                     logger.info(f"Success with model: {model}")
                     break
             except Exception as e:
-                logger.warning(f"Model {model} failed: {e}")
+                last_error = f"{type(e).__name__}: {e}"
+                logger.warning(f"Model {model} failed: {last_error}")
                 continue
+        if ai_explanation:
+            break
+        if attempt == 0:
+            time.sleep(1)  # brief pause before retry
 
-        # 6. Increment usage count for free users
-        if not is_premium_or_admin and ai_explanation:
-            current_user.ai_usage_count += 1
-            current_user.last_ai_usage_date = datetime.utcnow()
-            db.commit()
+    # 7. Increment usage only if we actually got a real AI response
+    if not is_premium_or_admin and ai_explanation:
+        current_user.ai_usage_count += 1
+        current_user.last_ai_usage_date = datetime.utcnow()
+        db.commit()
 
-        # 7. Return result
-        if ai_explanation and ai_explanation.strip():
-            return {
-                "explanation": ai_explanation,
-                "is_mock": False,
-            }
-        else:
-            return {
-                "explanation": "Explanation not available. Please try again later.",
-                "is_mock": True,
-            }
+    # 8. Return — real AI if we got it, otherwise a built-in fallback
+    if ai_explanation:
+        return {"explanation": ai_explanation, "is_mock": False}
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Explain question error: {e}")
-        return {
-            "explanation": "Explanation not available. Please try again later.",
-            "is_mock": True,
-        }
-    
+    logger.error(f"All AI attempts failed. Last error: {last_error}")
+    return {
+        "explanation": _build_fallback_explanation(req),
+        "is_mock": True,
+    }
