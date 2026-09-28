@@ -87,12 +87,13 @@ async def explain_question(
 
         # 4. Construct Prompt (short, structured, no preamble)
         system_instruction = (
-            "You are a concise CS tutor writing exam explanations for university students. "
-            "Rules:\n"
-            "- Total response: 100-150 words. Do not exceed 150 words.\n"
-            "- No preamble. Do NOT start with 'Great question' or 'Let me explain'.\n"
-            "- Use simple Markdown. One code block only if truly needed.\n"
-            "- Prioritize clarity over completeness."
+            "You are a concise CS tutor. Write exam explanations for university students.\n"
+            "STRICT RULES:\n"
+            "- Response length: 100-140 words. NO EXCEPTIONS.\n"
+            "- No preamble, no greeting, no 'Great question'.\n"
+            "- Do NOT include a 'mistake note' — the student already knows they picked wrong.\n"
+            "- Do NOT explain every wrong option.\n"
+            "- Use simple Markdown. Only one code block if absolutely necessary."
         )
 
         initial_prompt = f"""Question: {req.question_text}
@@ -113,7 +114,7 @@ Write a short explanation with exactly these 3 parts:
 
 **Remember** — 1 sentence memory hook.
 
-If the student picked wrong, add ONE short sentence inside the first section noting their likely mistake. Do NOT explain every wrong option."""
+Stick to the 3 sections above. Nothing else."""
 
         messages = [
             {"role": "system", "content": system_instruction},
@@ -131,7 +132,7 @@ If the student picked wrong, add ONE short sentence inside the first section not
                     model=model,
                     messages=messages,
                     temperature=0.3,
-                    max_tokens=350,
+                    max_tokens=500,
                 )
                 ai_explanation = completion.choices[0].message.content
                 if ai_explanation and ai_explanation.strip():
@@ -167,3 +168,4 @@ If the student picked wrong, add ONE short sentence inside the first section not
             "explanation": "Explanation not available. Please try again later.",
             "is_mock": True,
         }
+    
