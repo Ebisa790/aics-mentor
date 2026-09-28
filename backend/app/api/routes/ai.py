@@ -128,7 +128,11 @@ Stick to the 3 sections above. Nothing else."""
         {"role": "user", "content": initial_prompt},
     ]
 
-    # 6. Models — gpt-oss reasoning models with low reasoning effort
+    # 6. Models — gpt-oss reasoning models.
+    # Old OpenAI SDK doesn't know max_completion_tokens / reasoning_effort /
+    # include_reasoning, so we pass them through extra_body and use the legacy
+    # max_tokens name. Groq accepts these body fields even if the SDK doesn't
+    # model them explicitly.
     models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
     ai_explanation = None
     last_error = None
@@ -141,9 +145,11 @@ Stick to the 3 sections above. Nothing else."""
                     model=model,
                     messages=messages,
                     temperature=0.3,
-                    max_completion_tokens=1200,   # enough for reasoning + output
-                    reasoning_effort="low",        # keep reasoning short
-                    include_reasoning=False,       # hide reasoning from content
+                    max_tokens=2500,               # legacy name; large enough for reasoning + output
+                    extra_body={
+                        "reasoning_effort": "low",   # keep reasoning short
+                        "include_reasoning": False,  # hide reasoning from content
+                    },
                 )
                 choice = completion.choices[0]
                 text = choice.message.content
