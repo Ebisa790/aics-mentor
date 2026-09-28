@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import QRCode from 'react-qr-code'
 import axios from 'axios'
 import {
   AlertCircle,
@@ -671,62 +672,53 @@ export function ManualPaymentModal({
                 </div>
               </div>
 
-              {/* Bank details */}
-              {selectedBankInfo && (
-                <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Step 2 — Send the exact amount to
-                  </div>
+             {/* Bank details */}
+{selectedBankInfo && (
+  <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+      Step 2 — Send the exact amount to
+    </div>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopy(selectedBankInfo.account_number, 'acct')
-                    }
-                    className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
-                  >
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Account number
-                      </div>
-                      <div className="font-mono text-sm font-bold text-slate-900 dark:text-white">
-                        {selectedBankInfo.account_number}
-                      </div>
-                    </div>
-                    {copiedField === 'acct' ? (
-                      <Check className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <Copy className="h-4 w-4 text-slate-400" />
-                    )}
-                  </button>
+    {/* account number button */}
+    ...
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopy(selectedBankInfo.account_name, 'name')
-                    }
-                    className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
-                  >
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Account name
-                      </div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {selectedBankInfo.account_name}
-                      </div>
-                    </div>
-                    {copiedField === 'name' ? (
-                      <Check className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <Copy className="h-4 w-4 text-slate-400" />
-                    )}
-                  </button>
+    {/* account name button */}
+    ...
 
-                  <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                    {options.instructions}
-                  </p>
-                </div>
-              )}
+    {/* QR code — desktop only */}
+    <div className="hidden sm:flex flex-col items-center rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+        Or scan with your phone
+      </div>
+
+      <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200 dark:ring-slate-700">
+        <QRCode
+          value={[
+            `${bankMeta[selectedBankInfo.bank].label} Payment`,
+            `Account: ${selectedBankInfo.account_number}`,
+            `Name: ${selectedBankInfo.account_name}`,
+            `Amount: ${options.amount} ${options.currency}`,
+            `Plan: ${options.plan_name}`,
+          ].join('\n')}
+          size={160}
+          level="M"
+          bgColor="#ffffff"
+          fgColor="#0f172a"
+        />
+      </div>
+
+      <p className="mt-2 max-w-[240px] text-center text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+        Scan with your phone's camera. The details will appear
+        on your phone — copy them into your bank app.
+      </p>
+    </div>
+
+    {/* instructions — moved to the end */}
+    <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+      {options.instructions}
+    </p>
+  </div>
+)}
 
               {/* Reference form */}
               <div className="space-y-3">
