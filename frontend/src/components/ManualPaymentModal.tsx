@@ -727,9 +727,9 @@ export function ManualPaymentModal({
       )}
     </button>
 
-    {/* Telebirr only — official QR image (works with Telebirr app) */}
+    {/* Telebirr only — official QR image (desktop only) */}
     {selectedBankInfo.bank === 'telebirr' && (
-      <div className="flex flex-col items-center rounded-xl border border-emerald-200 bg-white px-4 py-4 dark:border-emerald-500/30 dark:bg-slate-900">
+      <div className="hidden sm:flex flex-col items-center rounded-xl border border-emerald-200 bg-white px-4 py-4 dark:border-emerald-500/30 dark:bg-slate-900">
         <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
           Scan with your Telebirr app
         </div>
@@ -740,9 +740,13 @@ export function ManualPaymentModal({
           className="h-40 w-40 rounded-lg bg-white p-2 ring-1 ring-slate-200 dark:ring-slate-700"
         />
 
-        <p className="mt-3 max-w-[260px] text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+        <p className="mt-3 max-w-[280px] text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
           Open the Telebirr app, tap the scan icon, and point at this QR.
-          The payment screen will fill in automatically.
+          Your phone will show our phone number — tap it, then enter{' '}
+          <strong className="text-slate-700 dark:text-slate-200">
+            {options.amount} {options.currency}
+          </strong>{' '}
+          and send.
         </p>
       </div>
     )}
