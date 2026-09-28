@@ -11,6 +11,8 @@ import {
   ShieldCheck,
   Smartphone,
   X,
+   QrCode,
+  Keyboard,
 } from 'lucide-react'
 import { formatMoney } from '../utils/format'
 import {
@@ -172,7 +174,7 @@ export function ManualPaymentModal({
   const [senderPhone, setSenderPhone] = useState('')
   const [note, setNote] = useState('')
   const [copiedField, setCopiedField] = useState<string | null>(null)
-  
+  const [payMethod, setPayMethod] = useState<'qr' | 'manual'>('qr')
   const [referenceError, setReferenceError] = useState<string | null>(null)
 
   // Confirmation gates
@@ -679,56 +681,38 @@ export function ManualPaymentModal({
       Step 2 — Send the exact amount to
     </div>
 
-    {/* Account / phone number — copyable */}
-    <button
-      type="button"
-      onClick={() =>
-        handleCopy(selectedBankInfo.account_number, 'acct')
-      }
-      className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
-    >
-      <div>
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          {selectedBankInfo.bank === 'telebirr'
-            ? 'Phone number'
-            : 'Account number'}
-        </div>
-        <div className="font-mono text-sm font-bold text-slate-900 dark:text-white">
-          {selectedBankInfo.account_number}
-        </div>
-      </div>
-      {copiedField === 'acct' ? (
-        <Check className="h-4 w-4 text-emerald-500" />
-      ) : (
-        <Copy className="h-4 w-4 text-slate-400" />
-      )}
-    </button>
-
-    {/* Account name — copyable */}
-    <button
-      type="button"
-      onClick={() =>
-        handleCopy(selectedBankInfo.account_name, 'name')
-      }
-      className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
-    >
-      <div>
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          Account name
-        </div>
-        <div className="text-sm font-semibold text-slate-900 dark:text-white">
-          {selectedBankInfo.account_name}
-        </div>
-      </div>
-      {copiedField === 'name' ? (
-        <Check className="h-4 w-4 text-emerald-500" />
-      ) : (
-        <Copy className="h-4 w-4 text-slate-400" />
-      )}
-    </button>
-
-    {/* Telebirr only — official QR image (desktop only) */}
+    {/* Tab switcher — Telebirr only, desktop only */}
     {selectedBankInfo.bank === 'telebirr' && (
+      <div className="hidden sm:inline-flex rounded-xl bg-slate-200 p-0.5 dark:bg-slate-800">
+        <button
+          type="button"
+          onClick={() => setPayMethod('qr')}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+            payMethod === 'qr'
+              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <QrCode className="h-3.5 w-3.5" />
+          Scan QR
+        </button>
+        <button
+          type="button"
+          onClick={() => setPayMethod('manual')}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+            payMethod === 'manual'
+              ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <Keyboard className="h-3.5 w-3.5" />
+          Copy details
+        </button>
+      </div>
+    )}
+
+    {/* QR view — Telebirr only, desktop only, active tab only */}
+    {selectedBankInfo.bank === 'telebirr' && payMethod === 'qr' && (
       <div className="hidden sm:flex flex-col items-center rounded-xl border border-emerald-200 bg-white px-4 py-4 dark:border-emerald-500/30 dark:bg-slate-900">
         <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
           Scan with your Telebirr app
@@ -750,6 +734,61 @@ export function ManualPaymentModal({
         </p>
       </div>
     )}
+
+    {/* Copy details view — always on mobile; on desktop when "Copy details" tab active, or for non-Telebirr banks */}
+    <div
+      className={`space-y-2.5 ${
+        selectedBankInfo.bank === 'telebirr' && payMethod === 'qr'
+          ? 'block sm:hidden'
+          : 'block'
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() =>
+          handleCopy(selectedBankInfo.account_number, 'acct')
+        }
+        className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
+      >
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            {selectedBankInfo.bank === 'telebirr'
+              ? 'Phone number'
+              : 'Account number'}
+          </div>
+          <div className="font-mono text-sm font-bold text-slate-900 dark:text-white">
+            {selectedBankInfo.account_number}
+          </div>
+        </div>
+        {copiedField === 'acct' ? (
+          <Check className="h-4 w-4 text-emerald-500" />
+        ) : (
+          <Copy className="h-4 w-4 text-slate-400" />
+        )}
+      </button>
+
+      <button
+        type="button"
+        onClick={() =>
+          handleCopy(selectedBankInfo.account_name, 'name')
+        }
+        className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5 text-left transition hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800"
+      >
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Account name
+          </div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">
+            {selectedBankInfo.account_name}
+          </div>
+        </div>
+        {copiedField === 'name' ? (
+          <Check className="h-4 w-4 text-emerald-500" />
+        ) : (
+          <Copy className="h-4 w-4 text-slate-400" />
+        )}
+      </button>
+    </div>
 
     <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
       {options.instructions}
