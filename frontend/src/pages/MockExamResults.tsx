@@ -366,15 +366,15 @@ export function MockExamResults({
                 )}
 
                 {/* AI explanation content */}
-                {explState.content && (
-                  <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/40 bg-gradient-to-br from-indigo-50/80 via-white to-indigo-50/40 dark:from-indigo-500/10 dark:via-slate-900 dark:to-indigo-500/5 p-5 space-y-3 shadow-sm">
-                    <div className="flex items-center gap-2 pb-2 border-b border-indigo-200/60 dark:border-indigo-500/30">
+                               {explState.content && (
+                  <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/40 bg-gradient-to-br from-indigo-50/60 via-white to-indigo-50/30 dark:from-indigo-500/10 dark:via-slate-900 dark:to-indigo-500/5 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-5 py-3 bg-indigo-100/60 dark:bg-indigo-500/15 border-b border-indigo-200 dark:border-indigo-500/40">
                       <Sparkles className="h-4 w-4 fill-amber-300 text-amber-500 shrink-0" />
-                      <span className="text-sm font-bold text-indigo-900 dark:text-indigo-200">
-                        AI Deep-Dive Explanation
+                      <span className="text-sm font-bold text-indigo-900 dark:text-indigo-200 tracking-tight">
+                        AI Explanation
                       </span>
                     </div>
-                    <div className="text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+                    <div className="px-5 py-4 text-sm leading-relaxed text-slate-800 dark:text-slate-200 space-y-3">
                       <FormattedQuestionText text={explState.content} />
                     </div>
                   </div>

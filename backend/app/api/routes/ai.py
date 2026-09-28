@@ -81,29 +81,34 @@ async def explain_question(
                     "is_mock": True
                 }
 
-        # 4. Construct Prompt
-        system_instruction = (
-            "You are an expert Computer Science professor helping a university student prepare for their national exit examination. "
-            "Maintain an encouraging, highly educational tone. Use Markdown formatting."
+            system_instruction = (
+            "You are a concise CS tutor writing exam explanations for university students. "
+            "Rules:\n"
+            "- Total response: 100-150 words. Do not exceed 150 words.\n"
+            "- No preamble. Do NOT start with 'Great question' or 'Let me explain'.\n"
+            "- Use simple Markdown. One code block only if truly needed.\n"
+            "- Prioritize clarity over completeness."
         )
 
-        initial_prompt = f"""
-Question: {req.question_text}
-Options:
+        initial_prompt = f"""Question: {req.question_text}
+
 A: {req.options.get('A', '')}
 B: {req.options.get('B', '')}
 C: {req.options.get('C', '')}
 D: {req.options.get('D', '')}
 
-Student Selected Answer: Option {req.selected_option}
-Correct Answer: Option {req.correct_option}
+Correct answer: {req.correct_option}
+Student picked: {req.selected_option}
 
-Please provide a structured explanation formatted in Markdown with:
-1. **Core Concept**: What core CS topic is being tested?
-2. **Step-by-Step Explanation**: Why is the correct answer right?
-3. **Why Others Are Wrong**: Brief explanation of each wrong option
-4. **Key Takeaway**: A 1-sentence memory hook for quick retention.
-"""
+Write a short explanation with exactly these 3 parts:
+
+**Why {req.correct_option} is correct** — 2-3 sentences.
+
+**Key concept** — 1 sentence naming the underlying CS concept.
+
+**Remember** — 1 sentence memory hook.
+
+If the student picked wrong, add ONE short sentence inside the first section noting their likely mistake. Do NOT explain every wrong option."""
 
         messages = [
             {"role": "system", "content": system_instruction},
@@ -120,8 +125,8 @@ Please provide a structured explanation formatted in Markdown with:
                 completion = client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    temperature=0.7,
-                    max_tokens=800,
+                    temperature=0.3,
+                    max_tokens=350,
                 )
                 ai_explanation = completion.choices[0].message.content
                 if ai_explanation and ai_explanation.strip():
@@ -140,8 +145,8 @@ Please provide a structured explanation formatted in Markdown with:
                     completion = openrouter_client.chat.completions.create(
                         model="openai/gpt-oss-20b",
                         messages=messages,
-                        temperature=0.7,
-                        max_tokens=800,
+                        temperature=0.3,
+                        max_tokens=350,
                     )
                     ai_explanation = completion.choices[0].message.content
             except Exception as e:
