@@ -129,7 +129,7 @@ export function MockExamResults({
         </div>
       </div>
 
-            {/* Domain Breakdown — table with per-question dot rows */}
+                {/* Domain Breakdown — table with per-question dot rows */}
       {(() => {
         const domainStats: Record<
           string,
@@ -167,20 +167,58 @@ export function MockExamResults({
         );
 
         const [showAllCourses, setShowAllCourses] = React.useState(false);
-        const displayDomains = showAllCourses ? domains : domains.slice(0, 8);
+        const [isCollapsed, setIsCollapsed] = React.useState<boolean>(() => {
+          try {
+            return (
+              localStorage.getItem('exam_subject_perf_collapsed') === '1'
+            );
+          } catch {
+            return false;
+          }
+        });
+
+        const toggleCollapsed = () => {
+          const next = !isCollapsed;
+          setIsCollapsed(next);
+          try {
+            localStorage.setItem(
+              'exam_subject_perf_collapsed',
+              next ? '1' : '0'
+            );
+          } catch {
+            /* ignore */
+          }
+        };
+
+        const displayDomains = showAllCourses
+          ? domains
+          : domains.slice(0, 8);
 
         return (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
-            {/* Header */}
-            <div className="px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
-              <div className="min-w-0">
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-                  Subject-wise Performance
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {domains.length}{' '}
-                  {domains.length === 1 ? 'subject' : 'subjects'} reviewed
-                </p>
+            {/* Header — clickable to toggle */}
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              aria-expanded={!isCollapsed}
+              aria-controls="subject-performance-body"
+              className="w-full px-5 sm:px-6 py-4 flex items-center justify-between gap-3 flex-wrap text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            >
+              <div className="min-w-0 flex items-center gap-2.5">
+                <ChevronDown
+                  className={`h-4 w-4 text-slate-400 shrink-0 transition-transform duration-200 ${
+                    isCollapsed ? '-rotate-90' : 'rotate-0'
+                  }`}
+                />
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                    Subject-wise Performance
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {domains.length}{' '}
+                    {domains.length === 1 ? 'subject' : 'subjects'} reviewed
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
@@ -203,126 +241,130 @@ export function MockExamResults({
                   </span>
                 )}
               </div>
-            </div>
+            </button>
 
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 sm:px-6 py-3 w-[200px]">
-                      Course
-                    </th>
-                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 hidden sm:table-cell">
-                      Questions
-                    </th>
-                    <th className="text-center font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 w-24">
-                      Score
-                    </th>
-                    <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 sm:px-6 py-3 w-28">
-                      Rating
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayDomains.map(([course, stats], idx) => {
-                    const pct = Math.round(
-                      (stats.correct / stats.total) * 100
-                    );
-
-                    const rating =
-                      pct >= 70
-                        ? { label: 'Strong', tone: 'emerald' as const }
-                        : pct >= 40
-                          ? { label: 'Moderate', tone: 'amber' as const }
-                          : { label: 'Weak', tone: 'rose' as const };
-
-                    const pillClass =
-                      rating.tone === 'emerald'
-                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30'
-                        : rating.tone === 'amber'
-                          ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30'
-                          : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30';
-
-                    return (
-                      <tr
-                        key={course}
-                        className={`group border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
-                          idx % 2 === 0
-                            ? 'bg-white dark:bg-slate-900'
-                            : 'bg-slate-50/50 dark:bg-slate-900/50'
-                        }`}
-                      >
-                        {/* Course name */}
-                        <td className="px-5 sm:px-6 py-3.5">
-                          <div className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[180px] sm:max-w-none">
-                            {course}
-                          </div>
-                        </td>
-
-                        {/* Per-question dot row */}
-                        <td className="px-3 py-3.5 hidden sm:table-cell">
-                          <div className="flex flex-wrap items-center gap-1 max-w-[420px]">
-                            {stats.results.map((wasCorrect, i) => (
-                              <span
-                                key={i}
-                                title={`Q${i + 1}: ${
-                                  wasCorrect ? 'Correct' : 'Wrong'
-                                }`}
-                                className={`h-3 w-3 rounded-[3px] transition-transform group-hover:scale-110 ${
-                                  wasCorrect
-                                    ? 'bg-emerald-500 dark:bg-emerald-400'
-                                    : 'bg-rose-400 dark:bg-rose-500/70'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </td>
-
-                        {/* Score */}
-                        <td className="px-3 py-3.5 text-center">
-                          <span className="font-mono text-sm font-bold text-slate-700 dark:text-slate-200 tabular-nums">
-                            {stats.correct}
-                            <span className="text-slate-400 dark:text-slate-500 font-normal">
-                              /{stats.total}
-                            </span>
-                          </span>
-                        </td>
-
-                        {/* Rating pill */}
-                        <td className="px-5 sm:px-6 py-3.5 text-right">
-                          <span
-                            className={`inline-flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border ${pillClass}`}
-                          >
-                            {rating.label}
-                          </span>
-                        </td>
+            {/* Collapsible body */}
+            {!isCollapsed && (
+              <div id="subject-performance-body">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                        <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 sm:px-6 py-3 w-[200px]">
+                          Course
+                        </th>
+                        <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 hidden sm:table-cell">
+                          Questions
+                        </th>
+                        <th className="text-center font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 w-24">
+                          Score
+                        </th>
+                        <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 sm:px-6 py-3 w-28">
+                          Rating
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {displayDomains.map(([course, stats], idx) => {
+                        const pct = Math.round(
+                          (stats.correct / stats.total) * 100
+                        );
 
-            {/* Footer with show all toggle */}
-            {domains.length > 8 && (
-              <div className="px-5 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 flex justify-center">
-                <button
-                  onClick={() => setShowAllCourses(!showAllCourses)}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition"
-                >
-                  {showAllCourses ? (
-                    <>
-                      <ChevronUp className="h-3.5 w-3.5" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="h-3.5 w-3.5" />
-                      Show All {domains.length} Courses
-                    </>
-                  )}
-                </button>
+                        const rating =
+                          pct >= 70
+                            ? { label: 'Strong', tone: 'emerald' as const }
+                            : pct >= 40
+                              ? { label: 'Moderate', tone: 'amber' as const }
+                              : { label: 'Weak', tone: 'rose' as const };
+
+                        const pillClass =
+                          rating.tone === 'emerald'
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30'
+                            : rating.tone === 'amber'
+                              ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30'
+                              : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30';
+
+                        return (
+                          <tr
+                            key={course}
+                            className={`group border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
+                              idx % 2 === 0
+                                ? 'bg-white dark:bg-slate-900'
+                                : 'bg-slate-50/50 dark:bg-slate-900/50'
+                            }`}
+                          >
+                            {/* Course name */}
+                            <td className="px-5 sm:px-6 py-3.5">
+                              <div className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[180px] sm:max-w-none">
+                                {course}
+                              </div>
+                            </td>
+
+                            {/* Per-question dot row */}
+                            <td className="px-3 py-3.5 hidden sm:table-cell">
+                              <div className="flex flex-wrap items-center gap-1 max-w-[420px]">
+                                {stats.results.map((wasCorrect, i) => (
+                                  <span
+                                    key={i}
+                                    title={`Q${i + 1}: ${
+                                      wasCorrect ? 'Correct' : 'Wrong'
+                                    }`}
+                                    className={`h-3 w-3 rounded-[3px] transition-transform group-hover:scale-110 ${
+                                      wasCorrect
+                                        ? 'bg-emerald-500 dark:bg-emerald-400'
+                                        : 'bg-rose-400 dark:bg-rose-500/70'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </td>
+
+                            {/* Score */}
+                            <td className="px-3 py-3.5 text-center">
+                              <span className="font-mono text-sm font-bold text-slate-700 dark:text-slate-200 tabular-nums">
+                                {stats.correct}
+                                <span className="text-slate-400 dark:text-slate-500 font-normal">
+                                  /{stats.total}
+                                </span>
+                              </span>
+                            </td>
+
+                            {/* Rating pill */}
+                            <td className="px-5 sm:px-6 py-3.5 text-right">
+                              <span
+                                className={`inline-flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border ${pillClass}`}
+                              >
+                                {rating.label}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Footer with show all toggle */}
+                {domains.length > 8 && (
+                  <div className="px-5 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 flex justify-center">
+                    <button
+                      onClick={() => setShowAllCourses(!showAllCourses)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition"
+                    >
+                      {showAllCourses ? (
+                        <>
+                          <ChevronUp className="h-3.5 w-3.5" />
+                          Show Less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3.5 w-3.5" />
+                          Show All {domains.length} Courses
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
