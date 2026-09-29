@@ -371,156 +371,263 @@ export function MockExamResults({
         );
       })()}
 
-      {/* Question Breakdown */}
-      <div className="space-y-6">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Question Review</h2>
-        <div className="space-y-4">
-          {resultSummary.breakdown.map((item, idx) => {
-            const explState = aiExpl[item.id] || {};
+           {/* Question Breakdown with filter chips */}
+      {(() => {
+        const totalCount = resultSummary.breakdown.length;
+        const incorrectCount = resultSummary.breakdown.filter(
+          (i) => !i.is_correct
+        ).length;
+        const correctCount = totalCount - incorrectCount;
 
-            return (
-              <div
-                key={item.id ?? idx}
-                className={`bg-white dark:bg-slate-900 rounded-2xl border p-6 space-y-4 transition-all active:scale-95 shadow-sm ${
-                  item.is_correct
-                    ? 'border-slate-200 dark:border-slate-700'
-                    : 'border-rose-200 dark:border-rose-500/40 bg-rose-50/10 dark:bg-rose-500/5'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                      Question {idx + 1}
-                    </span>
-                    <span
-                      className={`text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                        item.is_correct
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
-                          : 'bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300'
-                      }`}
-                    >
-                      {item.is_correct ? 'Correct' : 'Incorrect'}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onGetAiExplanation(item)}
-                    disabled={explState.loading}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-200 bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 px-3 py-1.5 rounded-lg transition active:scale-95 disabled:opacity-50"
-                  >
-                    <Sparkles className="h-3.5 w-3.5 fill-amber-300 text-amber-500 shrink-0" />
-                    <span>{explState.loading ? 'Analyzing…' : 'Explain'}</span>
-                  </button>
+        const [reviewFilter, setReviewFilter] = React.useState<
+          'all' | 'incorrect' | 'correct'
+        >('all');
+
+        const filtered = resultSummary.breakdown
+          .map((item, originalIdx) => ({ item, originalIdx }))
+          .filter(({ item }) => {
+            if (reviewFilter === 'all') return true;
+            if (reviewFilter === 'incorrect') return !item.is_correct;
+            return item.is_correct;
+          });
+
+        const chips: Array<{
+          id: 'all' | 'incorrect' | 'correct';
+          label: string;
+          count: number;
+          tone: 'slate' | 'rose' | 'emerald';
+        }> = [
+          { id: 'all', label: 'All', count: totalCount, tone: 'slate' },
+          {
+            id: 'incorrect',
+            label: 'Incorrect',
+            count: incorrectCount,
+            tone: 'rose',
+          },
+          {
+            id: 'correct',
+            label: 'Correct',
+            count: correctCount,
+            tone: 'emerald',
+          },
+        ];
+
+        return (
+          <div className="space-y-4">
+            {/* Sticky filter bar */}
+            <div className="sticky top-2 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm px-4 sm:px-5 py-3.5">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                    Question Review
+                  </h2>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
+                    {filtered.length}/{totalCount}
+                  </span>
                 </div>
 
-                <FormattedQuestionText text={item.question_text} />
+                {/* Filter chips */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {chips.map((chip) => {
+                    const isActive = reviewFilter === chip.id;
+                    const isDisabled = chip.count === 0;
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
-                  {(['A', 'B', 'C', 'D'] as const).map((opt) => {
-                    const rawText = (item as any)[`option_${opt.toLowerCase()}`] || '';
-                    const optionText = cleanOptionText(String(rawText || ''));
-                    const isUserPick = item.selected_option === opt;
-                    const isCorrectOpt = item.correct_option === opt;
-
-                    let style = 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300';
-                    if (isCorrectOpt) {
-                      style = 'border-emerald-300 dark:border-emerald-500/60 bg-emerald-50/80 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 font-medium ring-1 ring-emerald-400 dark:ring-emerald-500/50';
-                    } else if (isUserPick && !item.is_correct) {
-                      style = 'border-rose-300 dark:border-rose-500/60 bg-rose-50/80 dark:bg-rose-500/10 text-rose-950 dark:text-rose-200 font-medium ring-1 ring-rose-400 dark:ring-rose-500/50';
-                    }
+                    const activeClass =
+                      chip.tone === 'slate'
+                        ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100'
+                        : chip.tone === 'rose'
+                          ? 'bg-rose-600 text-white border-rose-600'
+                          : 'bg-emerald-600 text-white border-emerald-600';
 
                     return (
-                      <div
-                        key={opt}
-                        className={`p-3 rounded-xl border text-xs flex items-center gap-3 transition-all active:scale-95 ${style}`}
+                      <button
+                        key={chip.id}
+                        type="button"
+                        onClick={() => setReviewFilter(chip.id)}
+                        disabled={isDisabled}
+                        className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
+                          isActive
+                            ? activeClass
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
                       >
+                        <span>{chip.label}</span>
                         <span
-                          className={`w-6 h-6 rounded-md flex items-center justify-center font-bold shrink-0 ${
-                            isCorrectOpt
-                              ? 'bg-emerald-600 text-white'
-                              : isUserPick && !item.is_correct
-                              ? 'bg-rose-600 text-white'
-                              : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                          className={`inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded text-[10px] font-black tabular-nums ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : chip.tone === 'rose'
+                                ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400'
+                                : chip.tone === 'emerald'
+                                  ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                           }`}
                         >
-                          {opt}
+                          {chip.count}
                         </span>
-                        <span className="flex-1 leading-snug">{optionText}</span>
-                        {isCorrectOpt && (
-                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider shrink-0">
-                            Correct
-                          </span>
-                        )}
-                        {isUserPick && !isCorrectOpt && (
-                          <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider shrink-0">
-                            Your Answer
-                          </span>
-                        )}
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
-
-                {item.explanation && (
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 space-y-1">
-                    <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-100">
-                      <HelpCircle className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      <span>Explanation:</span>
-                    </div>
-                    <p className="leading-relaxed">{item.explanation}</p>
-                  </div>
-                )}
-
-                {/* AI loading skeleton */}
-                {explState.loading && !explState.content && (
-                  <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/40 bg-indigo-50/40 dark:bg-indigo-500/5 p-5 space-y-3 animate-pulse">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 fill-amber-300 text-amber-500 shrink-0" />
-                      <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300">
-                        Analyzing this question…
-                      </span>
-                    </div>
-                    <div className="h-3 w-11/12 bg-indigo-200/60 dark:bg-indigo-500/20 rounded" />
-                    <div className="h-3 w-full bg-indigo-200/50 dark:bg-indigo-500/15 rounded" />
-                    <div className="h-3 w-4/5 bg-indigo-200/50 dark:bg-indigo-500/15 rounded" />
-                    <div className="h-3 w-3/4 bg-indigo-200/40 dark:bg-indigo-500/10 rounded" />
-                  </div>
-                )}
-
-                {/* AI explanation content */}
-                                                 {explState.content && (
-                  <div className="relative rounded-2xl overflow-hidden border border-emerald-200 dark:border-emerald-500/40 bg-white dark:bg-slate-900 shadow-sm">
-                    {/* Top accent line */}
-                    <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
-
-                    {/* Header — compact */}
-                    <div className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-emerald-50 to-teal-50/50 dark:from-emerald-500/10 dark:to-teal-500/5 border-b border-emerald-100 dark:border-emerald-500/30">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm">
-                        <Sparkles className="h-5 w-5 text-white" />
-                      </div>
-                      <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-100 tracking-tight">
-                        AI Explanation
-                      </h3>
-                    </div>
-
-                    {/* Body */}
-                    <div className="px-5 sm:px-6 py-5 bg-gradient-to-b from-white to-emerald-50/30 dark:from-slate-900 dark:to-emerald-500/5">
-                      <div className="text-sm leading-7 text-slate-800 dark:text-slate-200">
-                        <FormattedQuestionText text={explState.content} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {explState.error && (
-                  <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/40 rounded-xl text-xs text-rose-800 dark:text-rose-300">
-                    {explState.error}
-                  </div>
-                )}
               </div>
-            );
-          })}
-        </div>
-      </div>
+            </div>
+
+            {/* Empty state when filter yields nothing (shouldn't happen, but safe) */}
+            {filtered.length === 0 && (
+              <div className="text-center py-12 text-sm text-slate-500 dark:text-slate-400">
+                No questions match this filter.
+              </div>
+            )}
+
+            {/* Filtered questions */}
+            <div className="space-y-4">
+              {filtered.map(({ item, originalIdx }) => {
+                const explState = aiExpl[item.id] || {};
+
+                return (
+                  <div
+                    key={item.id ?? originalIdx}
+                    className={`bg-white dark:bg-slate-900 rounded-2xl border p-6 space-y-4 transition-all shadow-sm ${
+                      item.is_correct
+                        ? 'border-slate-200 dark:border-slate-700'
+                        : 'border-rose-200 dark:border-rose-500/40 bg-rose-50/10 dark:bg-rose-500/5'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                          Q{originalIdx + 1}
+                        </span>
+                        <span
+                          className={`text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                            item.is_correct
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
+                              : 'bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300'
+                          }`}
+                        >
+                          {item.is_correct ? 'Correct' : 'Incorrect'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onGetAiExplanation(item)}
+                        disabled={explState.loading}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-200 bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 px-3 py-1.5 rounded-lg transition active:scale-95 disabled:opacity-50"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 fill-amber-300 text-amber-500 shrink-0" />
+                        <span>{explState.loading ? 'Analyzing…' : 'Explain'}</span>
+                      </button>
+                    </div>
+
+                    <FormattedQuestionText text={item.question_text} />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+                      {(['A', 'B', 'C', 'D'] as const).map((opt) => {
+                        const rawText =
+                          (item as any)[`option_${opt.toLowerCase()}`] || '';
+                        const optionText = cleanOptionText(String(rawText || ''));
+                        const isUserPick = item.selected_option === opt;
+                        const isCorrectOpt = item.correct_option === opt;
+
+                        let style =
+                          'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300';
+                        if (isCorrectOpt) {
+                          style =
+                            'border-emerald-300 dark:border-emerald-500/60 bg-emerald-50/80 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 font-medium ring-1 ring-emerald-400 dark:ring-emerald-500/50';
+                        } else if (isUserPick && !item.is_correct) {
+                          style =
+                            'border-rose-300 dark:border-rose-500/60 bg-rose-50/80 dark:bg-rose-500/10 text-rose-950 dark:text-rose-200 font-medium ring-1 ring-rose-400 dark:ring-rose-500/50';
+                        }
+
+                        return (
+                          <div
+                            key={opt}
+                            className={`p-3 rounded-xl border text-xs flex items-center gap-3 transition-all ${style}`}
+                          >
+                            <span
+                              className={`w-6 h-6 rounded-md flex items-center justify-center font-bold shrink-0 ${
+                                isCorrectOpt
+                                  ? 'bg-emerald-600 text-white'
+                                  : isUserPick && !item.is_correct
+                                    ? 'bg-rose-600 text-white'
+                                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                              }`}
+                            >
+                              {opt}
+                            </span>
+                            <span className="flex-1 leading-snug">
+                              {optionText}
+                            </span>
+                            {isCorrectOpt && (
+                              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider shrink-0">
+                                Correct
+                              </span>
+                            )}
+                            {isUserPick && !isCorrectOpt && (
+                              <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider shrink-0">
+                                Your Answer
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {item.explanation && (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-100">
+                          <HelpCircle className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span>Explanation:</span>
+                        </div>
+                        <p className="leading-relaxed">{item.explanation}</p>
+                      </div>
+                    )}
+
+                    {explState.loading && !explState.content && (
+                      <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/40 bg-indigo-50/40 dark:bg-indigo-500/5 p-5 space-y-3 animate-pulse">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 fill-amber-300 text-amber-500 shrink-0" />
+                          <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300">
+                            Analyzing this question…
+                          </span>
+                        </div>
+                        <div className="h-3 w-11/12 bg-indigo-200/60 dark:bg-indigo-500/20 rounded" />
+                        <div className="h-3 w-full bg-indigo-200/50 dark:bg-indigo-500/15 rounded" />
+                        <div className="h-3 w-4/5 bg-indigo-200/50 dark:bg-indigo-500/15 rounded" />
+                      </div>
+                    )}
+
+                    {explState.content && (
+                      <div className="relative rounded-2xl overflow-hidden border border-emerald-200 dark:border-emerald-500/40 bg-white dark:bg-slate-900 shadow-sm">
+                        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+                        <div className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-emerald-50 to-teal-50/50 dark:from-emerald-500/10 dark:to-teal-500/5 border-b border-emerald-100 dark:border-emerald-500/30">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm">
+                            <Sparkles className="h-5 w-5 text-white" />
+                          </div>
+                          <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-100 tracking-tight">
+                            AI Explanation
+                          </h3>
+                        </div>
+                        <div className="px-5 sm:px-6 py-5 bg-gradient-to-b from-white to-emerald-50/30 dark:from-slate-900 dark:to-emerald-500/5">
+                          <div className="text-sm leading-7 text-slate-800 dark:text-slate-200">
+                            <FormattedQuestionText text={explState.content} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {explState.error && (
+                      <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/40 rounded-xl text-xs text-rose-800 dark:text-rose-300">
+                        {explState.error}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
