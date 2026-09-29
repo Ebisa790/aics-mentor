@@ -158,13 +158,34 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const { data } = await axios.post(
-          `${API_BASE_URL}/api/auth/refresh`,
-          null,
-          {
-            params: { refresh_token: refreshToken },
+                // Retry once on transient failure (cold start, brief network blip)
+        let refreshAttempt = 0
+        let data: any = null
+        let lastError: unknown = null
+        while (refreshAttempt < 2) {
+          try {
+            const res = await axios.post(
+              `${API_BASE_URL}/api/auth/refresh`,
+              null,
+              {
+                params: { refresh_token: refreshToken },
+                timeout: 15000,   // shorter timeout per attempt
+              }
+            )
+            data = res.data
+            break
+          } catch (err) {
+            lastError = err
+            const status = (err as AxiosError)?.response?.status
+            // If the backend clearly said "your token is bad", stop retrying
+            if (status === 401) break
+            refreshAttempt += 1
+            if (refreshAttempt < 2) {
+              await new Promise((r) => setTimeout(r, 800))
+            }
           }
-        )
+        }
+        if (!data) throw lastError
 
         const newAccessToken = data.access_token
         const newRefreshToken = data.refresh_token ?? refreshToken
@@ -174,13 +195,18 @@ apiClient.interceptors.response.use(
 
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return apiClient(originalRequest)
-      } catch (refreshError) {
+           } catch (refreshError) {
         processQueue(refreshError as AxiosError, null)
-        clearTokens()
 
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-          window.location.href = '/login'
+        // Only clear tokens if the refresh endpoint itself returned 401 —
+        // i.e., the refresh token is genuinely invalid.
+        // A network error or 5xx from the backend does NOT mean the session is dead.
+        const refreshStatus = (refreshError as AxiosError)?.response?.status
+        if (refreshStatus === 401) {
+          clearTokens()
         }
+        // No hard redirect — ProtectedRoute will render the login page
+        // on its own once the token is truly gone.
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

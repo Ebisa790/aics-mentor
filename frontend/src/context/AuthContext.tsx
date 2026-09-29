@@ -32,13 +32,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const userProfile = await authApi.me()
-      console.log('refreshUser - fetched fresh user data:', userProfile)
       setUser(userProfile)
       return userProfile
-    } catch (error) {
+    } catch (error: any) {
+      const status = error?.response?.status
       console.error('refreshUser - failed to fetch user:', error)
-      clearTokens()
-      setUser(null)
+
+      // Only clear tokens when the backend actively rejected us.
+      // Never clear on network errors, timeouts, or cold-start failures —
+      // those are transient and should not log the user out.
+      if (status === 401 || status === 403) {
+        clearTokens()
+        setUser(null)
+      }
       return null
     } finally {
       setIsLoading(false)
