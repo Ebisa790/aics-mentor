@@ -129,7 +129,7 @@ export function MockExamResults({
         </div>
       </div>
 
-      {/* Domain Breakdown */}
+           {/* Domain Breakdown — table layout */}
       {(() => {
         const domainStats: Record<string, { total: number; correct: number }> = {};
         resultSummary.breakdown.forEach((item: any) => {
@@ -147,21 +147,168 @@ export function MockExamResults({
 
         if (domains.length === 0) return null;
 
-        const strongAreas = domains.slice(0, 5).filter(([, s]) => (s.correct / s.total) >= 0.5);
-        const weakAreas = domains.slice(-5).reverse().filter(([, s]) => (s.correct / s.total) < 0.7);
+        const strongAreas = domains.filter(([, s]) => (s.correct / s.total) >= 0.7);
+        const mediumAreas = domains.filter(([, s]) => {
+          const pct = s.correct / s.total;
+          return pct >= 0.4 && pct < 0.7;
+        });
+        const weakAreas = domains.filter(([, s]) => (s.correct / s.total) < 0.4);
+
         const [showAllCourses, setShowAllCourses] = React.useState(false);
-        const displayDomains = showAllCourses ? domains : [...strongAreas, ...weakAreas];
+        const displayDomains = showAllCourses
+          ? domains
+          : domains.slice(0, 8);
 
         return (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Subject-wise Performance
-              </h2>
-              {domains.length > (strongAreas.length + weakAreas.length) && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+            {/* Header */}
+            <div className="px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                  Subject-wise Performance
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {domains.length} {domains.length === 1 ? 'subject' : 'subjects'} reviewed
+                </p>
+              </div>
+
+              {/* Grade summary pills */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {strongAreas.length > 0 && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    {strongAreas.length} strong
+                  </span>
+                )}
+                {mediumAreas.length > 0 && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-2.5 py-1 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    {mediumAreas.length} moderate
+                  </span>
+                )}
+                {weakAreas.length > 0 && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-2.5 py-1 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                    {weakAreas.length} weak
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 sm:px-6 py-3">
+                      Course
+                    </th>
+                    <th className="text-center font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 w-24">
+                      Score
+                    </th>
+                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 hidden sm:table-cell">
+                      Progress
+                    </th>
+                    <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 sm:px-6 py-3 w-28">
+                      Rating
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayDomains.map(([course, stats], idx) => {
+                    const pct = Math.round((stats.correct / stats.total) * 100);
+
+                    const rating =
+                      pct >= 70
+                        ? { label: 'Strong', tone: 'emerald' as const }
+                        : pct >= 40
+                          ? { label: 'Moderate', tone: 'amber' as const }
+                          : { label: 'Weak', tone: 'rose' as const };
+
+                    const barColor =
+                      rating.tone === 'emerald'
+                        ? 'bg-emerald-500'
+                        : rating.tone === 'amber'
+                          ? 'bg-amber-500'
+                          : 'bg-rose-500';
+
+                    const pillClass =
+                      rating.tone === 'emerald'
+                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30'
+                        : rating.tone === 'amber'
+                          ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30'
+                          : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30';
+
+                    return (
+                      <tr
+                        key={course}
+                        className={`border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
+                          idx % 2 === 0
+                            ? 'bg-white dark:bg-slate-900'
+                            : 'bg-slate-50/50 dark:bg-slate-900/50'
+                        }`}
+                      >
+                        {/* Course name */}
+                        <td className="px-5 sm:px-6 py-3.5">
+                          <div className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[200px] sm:max-w-none">
+                            {course}
+                          </div>
+                        </td>
+
+                        {/* Score */}
+                        <td className="px-3 py-3.5 text-center">
+                          <span className="font-mono text-sm font-bold text-slate-700 dark:text-slate-200 tabular-nums">
+                            {stats.correct}
+                            <span className="text-slate-400 dark:text-slate-500 font-normal">
+                              /{stats.total}
+                            </span>
+                          </span>
+                        </td>
+
+                        {/* Progress bar + percent */}
+                        <td className="px-3 py-3.5 hidden sm:table-cell">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 min-w-[80px]">
+                              <div
+                                className={`h-full rounded-full ${barColor} transition-all duration-500`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span
+                              className={`font-mono text-xs font-bold tabular-nums w-10 text-right ${
+                                rating.tone === 'emerald'
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : rating.tone === 'amber'
+                                    ? 'text-amber-600 dark:text-amber-400'
+                                    : 'text-rose-600 dark:text-rose-400'
+                              }`}
+                            >
+                              {pct}%
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Rating pill */}
+                        <td className="px-5 sm:px-6 py-3.5 text-right">
+                          <span
+                            className={`inline-flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border ${pillClass}`}
+                          >
+                            {rating.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer with show all toggle */}
+            {domains.length > 8 && (
+              <div className="px-5 sm:px-6 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 flex justify-center">
                 <button
                   onClick={() => setShowAllCourses(!showAllCourses)}
-                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition flex items-center gap-1"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition"
                 >
                   {showAllCourses ? (
                     <>
@@ -171,78 +318,10 @@ export function MockExamResults({
                   ) : (
                     <>
                       <ChevronDown className="h-3.5 w-3.5" />
-                      Show All Courses
+                      Show All {domains.length} Courses
                     </>
                   )}
                 </button>
-              )}
-            </div>
-
-            {!showAllCourses ? (
-              <>
-                {strongAreas.length > 0 && (
-                  <div className="mb-5">
-                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-2">Good</p>
-                    <div className="space-y-2">
-                      {strongAreas.map(([course, stats]) => {
-                        const pct = Math.round((stats.correct / stats.total) * 100);
-                        return (
-                          <div key={course} className="flex items-center gap-3">
-                            <span className="text-xs text-slate-600 dark:text-slate-300 w-36 truncate">{course}</span>
-                            <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 w-12 text-right">{pct}%</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {weakAreas.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-rose-700 dark:text-rose-400 mb-2">Needs Work</p>
-                    <div className="space-y-2">
-                      {weakAreas.map(([course, stats]) => {
-                        const pct = Math.round((stats.correct / stats.total) * 100);
-                        return (
-                          <div key={course} className="flex items-center gap-3">
-                            <span className="text-xs text-slate-600 dark:text-slate-300 w-36 truncate">{course}</span>
-                            <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                              <div className="h-full rounded-full bg-rose-400" style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="text-xs font-bold text-rose-600 dark:text-rose-400 w-12 text-right">{pct}%</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="space-y-3">
-                {displayDomains.map(([course, stats]) => {
-                  const pct = Math.round((stats.correct / stats.total) * 100);
-                  const isGood = pct >= 50;
-                  return (
-                    <div key={course} className="flex items-center gap-3">
-                      <span className="text-xs text-slate-600 dark:text-slate-300 w-36 truncate">{course}</span>
-                      <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                        <div
-                          className={`h-full rounded-full ${isGood ? 'bg-emerald-500' : 'bg-rose-400'}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <span className={`text-xs font-bold w-12 text-right ${isGood ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                        {pct}%
-                      </span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 w-16 text-right">
-                        {stats.correct}/{stats.total} Qs
-                      </span>
-                    </div>
-                  );
-                })}
               </div>
             )}
           </div>
