@@ -55,6 +55,39 @@ function clearCooldownTimestamp() {
   localStorage.removeItem(COOLDOWN_KEY)
 }
 
+// ── Session persistence so refresh/close/reopen can resume ──
+const SESSION_KEY = (id: string) => `quiz_session_${id}`
+
+interface SavedQuizSession {
+  attemptId: string | null
+  answers: Record<string, string>
+  flagged: Record<string, boolean>
+  activeQuestionIdx: number
+  deadline: number | null
+  savedAt: number
+}
+
+function loadSavedSession(id: string): SavedQuizSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY(id))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    if (typeof parsed.savedAt !== 'number') return null
+    return parsed as SavedQuizSession
+  } catch {
+    return null
+  }
+}
+
+function clearSavedSession(id: string) {
+  try {
+    localStorage.removeItem(SESSION_KEY(id))
+  } catch {
+    /* ignore */
+  }
+}
+
 export function Quiz() {
   const { quizId } = useParams<{ quizId: string }>()
   const navigate = useNavigate()
@@ -170,6 +203,7 @@ export function Quiz() {
         }
 
         localStorage.removeItem(`quiz_draft_${currentQuizId}`)
+        clearSavedSession(currentQuizId)
 
         if (!isPremium && !isAdmin) {
           setCooldownTimestamp(THREE_HOURS_IN_SECONDS)
@@ -193,17 +227,11 @@ export function Quiz() {
     async (id: string, isCancelled: () => boolean) => {
       setIsLoading(true)
       setResult(null)
-      setFlagged({})
-      setActiveQuestionIdx(0)
-      setWarningsCount(0)
-      setAutoSubmitted(false)
-      setDeadline(null)
-      setSecondsLeft(null)
       submittedRef.current = false
 
+      // Cooldown check
       if (!isPremium && !isAdmin) {
         const remainingCooldown = getRemainingCooldownSeconds()
-
         if (remainingCooldown !== null && remainingCooldown > 0) {
           setCooldownSeconds(remainingCooldown)
           setCooldownError(
@@ -218,39 +246,56 @@ export function Quiz() {
       setCooldownError(null)
       setCooldownSeconds(null)
 
-      let initialDraft: Record<string, string> = {}
+      // Try to restore a saved session
+      const saved = loadSavedSession(id)
+      const canResume =
+        saved !== null &&
+        saved.deadline !== null &&
+        saved.deadline > Date.now()
 
-      try {
-        const saved = localStorage.getItem(`quiz_draft_${id}`)
-
-        if (saved) {
-          initialDraft = JSON.parse(saved)
-        }
-      } catch {
-        // Fallback on JSON parsing error.
+      // Clear stale session if it's expired
+      if (saved && !canResume) {
+        clearSavedSession(id)
       }
 
-      setAnswers(initialDraft)
-
       try {
-        const [quizRes, attemptRes] = await Promise.all([
-          quizApi.get(id),
-          quizApi.start(id),
-        ])
-
+        const quizRes = await quizApi.get(id)
         if (isCancelled()) return
-
         setQuiz(quizRes)
-        setAttemptId(attemptRes?.attempt_id ?? null)
 
-        const timeLimit = quizRes?.time_limit_minutes
-        const startedAt = attemptRes?.started_at
+        if (canResume && saved) {
+          // RESUME PATH — restore everything, don't create a new attempt
+          setAttemptId(saved.attemptId)
+          setAnswers(saved.answers || {})
+          setFlagged(saved.flagged || {})
+          setActiveQuestionIdx(saved.activeQuestionIdx || 0)
+          setWarningsCount(0)          // warnings reset on resume
+          setAutoSubmitted(false)
+          setDeadline(saved.deadline)
+          // secondsLeft will be computed by the timer effect
+        } else {
+          // FRESH START PATH
+          const attemptRes = await quizApi.start(id)
+          if (isCancelled()) return
 
-        if (timeLimit && startedAt) {
-          const startedAtMs = new Date(startedAt).getTime()
+          setAttemptId(attemptRes?.attempt_id ?? null)
+          setAnswers({})
+          setFlagged({})
+          setActiveQuestionIdx(0)
+          setWarningsCount(0)
+          setAutoSubmitted(false)
 
-          if (!isNaN(startedAtMs)) {
-            setDeadline(startedAtMs + timeLimit * 60 * 1000)
+          const timeLimit = quizRes?.time_limit_minutes
+          const startedAt = attemptRes?.started_at
+          if (timeLimit && startedAt) {
+            const startedAtMs = new Date(startedAt).getTime()
+            if (!isNaN(startedAtMs)) {
+              setDeadline(startedAtMs + timeLimit * 60 * 1000)
+            } else {
+              setDeadline(null)
+            }
+          } else {
+            setDeadline(null)
           }
         }
       } catch (err) {
@@ -280,18 +325,35 @@ export function Quiz() {
     }
   }, [quizId, initAttempt])
 
+   // Persist the full session so refresh/close/reopen can resume
   useEffect(() => {
-    if (quizId && !result && !isLoading) {
-      if (Object.keys(answers).length > 0) {
-        localStorage.setItem(
-          `quiz_draft_${quizId}`,
-          JSON.stringify(answers),
-        )
-      } else {
-        localStorage.removeItem(`quiz_draft_${quizId}`)
-      }
+    if (!quizId || !quiz || result || isLoading) return
+
+    const session: SavedQuizSession = {
+      attemptId,
+      answers,
+      flagged,
+      activeQuestionIdx,
+      deadline,
+      savedAt: Date.now(),
     }
-  }, [quizId, answers, result, isLoading])
+
+    try {
+      localStorage.setItem(SESSION_KEY(quizId), JSON.stringify(session))
+    } catch {
+      /* ignore */
+    }
+  }, [
+    quizId,
+    quiz,
+    attemptId,
+    answers,
+    flagged,
+    activeQuestionIdx,
+    deadline,
+    result,
+    isLoading,
+  ])
 
   useEffect(() => {
     if (cooldownSeconds === null || cooldownSeconds <= 0) return
@@ -367,6 +429,7 @@ export function Quiz() {
     setIsRestarting(true)
 
     localStorage.removeItem(`quiz_draft_${quizId}`)
+    clearSavedSession(quizId)
     setAnswers({})
 
     initAttempt(quizId, () => false)
@@ -387,6 +450,7 @@ export function Quiz() {
 
       if (quizId) {
         localStorage.removeItem(`quiz_draft_${quizId}`)
+        clearSavedSession(quizId)
       }
 
       setResult(null)
