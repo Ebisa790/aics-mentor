@@ -8,6 +8,7 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
+   X, 
 } from 'lucide-react';
 import { ExamResultSummary, ExamResultItem, cleanOptionText } from './MockExamTypes';
 import { FormattedQuestionText } from '../components/FormattedQuestionText';
@@ -33,6 +34,23 @@ export function MockExamResults({
   onGoDashboard,
   onGetAiExplanation,
 }: MockExamResultsProps) {
+  const [selectedCourse, setSelectedCourse] = React.useState<string | null>(null);
+  const reviewSectionRef = React.useRef<HTMLDivElement>(null);
+  const [showAllCourses, setShowAllCourses] = React.useState(false);
+        const [isCollapsed, setIsCollapsed] = React.useState<boolean>(() => {
+          try {
+            return (
+              localStorage.getItem('exam_subject_perf_collapsed') === '1'
+            );
+          } catch {
+            return false;
+          }
+        });
+
+  const [reviewFilter, setReviewFilter] = React.useState<
+          'all' | 'incorrect' | 'correct'
+        >('all');
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
       {/* Score Header Card */}
@@ -166,16 +184,7 @@ export function MockExamResults({
           ([, s]) => s.correct / s.total < 0.4
         );
 
-        const [showAllCourses, setShowAllCourses] = React.useState(false);
-        const [isCollapsed, setIsCollapsed] = React.useState<boolean>(() => {
-          try {
-            return (
-              localStorage.getItem('exam_subject_perf_collapsed') === '1'
-            );
-          } catch {
-            return false;
-          }
-        });
+        
 
         const toggleCollapsed = () => {
           const next = !isCollapsed;
@@ -285,14 +294,35 @@ export function MockExamResults({
                               : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30';
 
                         return (
-                          <tr
-                            key={course}
-                            className={`group border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
-                              idx % 2 === 0
-                                ? 'bg-white dark:bg-slate-900'
-                                : 'bg-slate-50/50 dark:bg-slate-900/50'
-                            }`}
-                          >
+                                                <tr
+                        key={course}
+                        onClick={() => {
+                          setSelectedCourse(
+                            selectedCourse === course ? null : course
+                          );
+                          // Scroll to the Question Review section
+                          setTimeout(() => {
+                            reviewSectionRef.current?.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'start',
+                            });
+                          }, 50);
+                        }}
+                        className={`group border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors cursor-pointer ${
+                          selectedCourse === course
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 ring-1 ring-emerald-300 dark:ring-emerald-500/40'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                        } ${
+                          idx % 2 === 0
+                            ? 'bg-white dark:bg-slate-900'
+                            : 'bg-slate-50/50 dark:bg-slate-900/50'
+                        }`}
+                        title={
+                          selectedCourse === course
+                            ? 'Click to clear filter'
+                            : 'Click to see questions from this course'
+                        }
+                      >
                             {/* Course name */}
                             <td className="px-5 sm:px-6 py-3.5">
                               <div className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[180px] sm:max-w-none">
@@ -373,23 +403,36 @@ export function MockExamResults({
 
            {/* Question Breakdown with filter chips */}
       {(() => {
-        const totalCount = resultSummary.breakdown.length;
-        const incorrectCount = resultSummary.breakdown.filter(
-          (i) => !i.is_correct
-        ).length;
-        const correctCount = totalCount - incorrectCount;
+    
 
-        const [reviewFilter, setReviewFilter] = React.useState<
-          'all' | 'incorrect' | 'correct'
-        >('all');
+       
 
+        // Filter by course first, then by correctness
         const filtered = resultSummary.breakdown
           .map((item, originalIdx) => ({ item, originalIdx }))
           .filter(({ item }) => {
+            // Course filter (AND)
+            if (
+              selectedCourse &&
+              (item as any).course_name !== selectedCourse
+            ) {
+              return false;
+            }
+            // Status filter (AND)
             if (reviewFilter === 'all') return true;
             if (reviewFilter === 'incorrect') return !item.is_correct;
             return item.is_correct;
           });
+
+        // Counts for the chips reflect the *current course* context
+        const courseScoped = selectedCourse
+          ? resultSummary.breakdown.filter(
+              (item) => (item as any).course_name === selectedCourse
+            )
+          : resultSummary.breakdown;
+        const scopedTotal = courseScoped.length;
+        const scopedIncorrect = courseScoped.filter((i) => !i.is_correct).length;
+        const scopedCorrect = scopedTotal - scopedIncorrect;
 
         const chips: Array<{
           id: 'all' | 'incorrect' | 'correct';
@@ -397,32 +440,47 @@ export function MockExamResults({
           count: number;
           tone: 'slate' | 'rose' | 'emerald';
         }> = [
-          { id: 'all', label: 'All', count: totalCount, tone: 'slate' },
+          { id: 'all', label: 'All', count: scopedTotal, tone: 'slate' },
           {
             id: 'incorrect',
             label: 'Incorrect',
-            count: incorrectCount,
+            count: scopedIncorrect,
             tone: 'rose',
           },
           {
             id: 'correct',
             label: 'Correct',
-            count: correctCount,
+            count: scopedCorrect,
             tone: 'emerald',
           },
         ];
 
-        return (
-          <div className="space-y-4">
+                return (
+          <div ref={reviewSectionRef} className="space-y-4">
             {/* Sticky filter bar */}
             <div className="sticky top-2 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm px-4 sm:px-5 py-3.5">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
                   <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                     Question Review
                   </h2>
+
+                  {selectedCourse && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCourse(null)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/40 px-2.5 py-1 rounded-full transition hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-95"
+                      title="Clear course filter"
+                    >
+                      <span className="truncate max-w-[140px]">
+                        {selectedCourse}
+                      </span>
+                      <X className="h-3 w-3 shrink-0" />
+                    </button>
+                  )}
+
                   <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
-                    {filtered.length}/{totalCount}
+                    {filtered.length}/{scopedTotal}
                   </span>
                 </div>
 
