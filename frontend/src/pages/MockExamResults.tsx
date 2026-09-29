@@ -366,20 +366,37 @@ export function MockExamResults({
                 )}
 
                 {/* AI explanation content */}
-                               {explState.content && (
-                  <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/40 bg-gradient-to-br from-indigo-50/60 via-white to-indigo-50/30 dark:from-indigo-500/10 dark:via-slate-900 dark:to-indigo-500/5 overflow-hidden shadow-sm">
-                    <div className="flex items-center gap-2 px-5 py-3 bg-indigo-100/60 dark:bg-indigo-500/15 border-b border-indigo-200 dark:border-indigo-500/40">
-                      <Sparkles className="h-4 w-4 fill-amber-300 text-amber-500 shrink-0" />
-                      <span className="text-sm font-bold text-indigo-900 dark:text-indigo-200 tracking-tight">
-                        AI Explanation
+                                              {explState.content && (
+                  <div className="relative rounded-2xl overflow-hidden border border-indigo-200 dark:border-indigo-500/40 bg-white dark:bg-slate-900 shadow-sm">
+                    {/* Top accent line */}
+                    <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+
+                    {/* Header */}
+                    <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-indigo-50 to-violet-50/50 dark:from-indigo-500/10 dark:to-violet-500/5 border-b border-indigo-100 dark:border-indigo-500/30">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm">
+                        <Sparkles className="h-4 w-4 fill-amber-200 text-amber-100" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold text-indigo-950 dark:text-indigo-100 tracking-tight">
+                          AI Explanation
+                        </h3>
+                        <p className="text-[11px] text-indigo-700/70 dark:text-indigo-300/70">
+                          Generated analysis of this question
+                        </p>
+                      </div>
+                      <span className="hidden sm:inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-2 py-1 rounded-md border border-indigo-200 dark:border-indigo-500/40">
+                        AI
                       </span>
                     </div>
-                    <div className="px-5 py-4 text-sm leading-relaxed text-slate-800 dark:text-slate-200 space-y-3">
-                      <FormattedQuestionText text={explState.content} />
+
+                    {/* Body */}
+                    <div className="px-5 sm:px-6 py-5 bg-gradient-to-b from-white to-indigo-50/30 dark:from-slate-900 dark:to-indigo-500/5">
+                      <div className="text-sm leading-7 text-slate-800 dark:text-slate-200">
+                        <FormattedQuestionText text={explState.content} />
+                      </div>
                     </div>
                   </div>
                 )}
-
                 {explState.error && (
                   <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/40 rounded-xl text-xs text-rose-800 dark:text-rose-300">
                     {explState.error}
