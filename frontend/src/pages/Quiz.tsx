@@ -12,8 +12,10 @@ import type {
 } from '../api/types'
 import { FormattedQuestionText } from '../components/FormattedQuestionText'
 
+
 const THREE_HOURS_IN_SECONDS = 3 * 60 * 60
 const COOLDOWN_KEY = 'quiz_cooldown_until'
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000  
 
 function formatCountdown(totalSeconds: number): string {
   const clamped = Math.max(0, totalSeconds)
@@ -246,12 +248,11 @@ export function Quiz() {
       setCooldownError(null)
       setCooldownSeconds(null)
 
-      // Try to restore a saved session
+      
       const saved = loadSavedSession(id)
-      const canResume =
-        saved !== null &&
-        saved.deadline !== null &&
-        saved.deadline > Date.now()
+      const fresh = saved !== null && (Date.now() - saved.savedAt) < SESSION_TTL_MS
+      const timeOk = saved !== null && (saved.deadline === null || saved.deadline > Date.now())
+      const canResume = fresh && timeOk
 
       // Clear stale session if it's expired
       if (saved && !canResume) {
