@@ -129,35 +129,45 @@ export function MockExamResults({
         </div>
       </div>
 
-           {/* Domain Breakdown — table layout */}
+            {/* Domain Breakdown — table with per-question dot rows */}
       {(() => {
-        const domainStats: Record<string, { total: number; correct: number }> = {};
+        const domainStats: Record<
+          string,
+          { total: number; correct: number; results: boolean[] }
+        > = {};
+
         resultSummary.breakdown.forEach((item: any) => {
           const course = item.course_name || 'Other Topics';
           if (!domainStats[course]) {
-            domainStats[course] = { total: 0, correct: 0 };
+            domainStats[course] = { total: 0, correct: 0, results: [] };
           }
           domainStats[course].total += 1;
+          domainStats[course].results.push(Boolean(item.is_correct));
           if (item.is_correct) domainStats[course].correct += 1;
         });
 
         const domains = Object.entries(domainStats)
           .filter(([, stats]) => stats.total >= 1)
-          .sort((a, b) => (b[1].correct / b[1].total) - (a[1].correct / a[1].total));
+          .sort(
+            (a, b) =>
+              b[1].correct / b[1].total - a[1].correct / a[1].total
+          );
 
         if (domains.length === 0) return null;
 
-        const strongAreas = domains.filter(([, s]) => (s.correct / s.total) >= 0.7);
+        const strongAreas = domains.filter(
+          ([, s]) => s.correct / s.total >= 0.7
+        );
         const mediumAreas = domains.filter(([, s]) => {
           const pct = s.correct / s.total;
           return pct >= 0.4 && pct < 0.7;
         });
-        const weakAreas = domains.filter(([, s]) => (s.correct / s.total) < 0.4);
+        const weakAreas = domains.filter(
+          ([, s]) => s.correct / s.total < 0.4
+        );
 
         const [showAllCourses, setShowAllCourses] = React.useState(false);
-        const displayDomains = showAllCourses
-          ? domains
-          : domains.slice(0, 8);
+        const displayDomains = showAllCourses ? domains : domains.slice(0, 8);
 
         return (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
@@ -168,11 +178,11 @@ export function MockExamResults({
                   Subject-wise Performance
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {domains.length} {domains.length === 1 ? 'subject' : 'subjects'} reviewed
+                  {domains.length}{' '}
+                  {domains.length === 1 ? 'subject' : 'subjects'} reviewed
                 </p>
               </div>
 
-              {/* Grade summary pills */}
               <div className="flex items-center gap-2 flex-wrap">
                 {strongAreas.length > 0 && (
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 rounded-full">
@@ -200,14 +210,14 @@ export function MockExamResults({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 sm:px-6 py-3">
+                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 sm:px-6 py-3 w-[200px]">
                       Course
+                    </th>
+                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 hidden sm:table-cell">
+                      Questions
                     </th>
                     <th className="text-center font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 w-24">
                       Score
-                    </th>
-                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 hidden sm:table-cell">
-                      Progress
                     </th>
                     <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-5 sm:px-6 py-3 w-28">
                       Rating
@@ -216,7 +226,9 @@ export function MockExamResults({
                 </thead>
                 <tbody>
                   {displayDomains.map(([course, stats], idx) => {
-                    const pct = Math.round((stats.correct / stats.total) * 100);
+                    const pct = Math.round(
+                      (stats.correct / stats.total) * 100
+                    );
 
                     const rating =
                       pct >= 70
@@ -224,13 +236,6 @@ export function MockExamResults({
                         : pct >= 40
                           ? { label: 'Moderate', tone: 'amber' as const }
                           : { label: 'Weak', tone: 'rose' as const };
-
-                    const barColor =
-                      rating.tone === 'emerald'
-                        ? 'bg-emerald-500'
-                        : rating.tone === 'amber'
-                          ? 'bg-amber-500'
-                          : 'bg-rose-500';
 
                     const pillClass =
                       rating.tone === 'emerald'
@@ -242,7 +247,7 @@ export function MockExamResults({
                     return (
                       <tr
                         key={course}
-                        className={`border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
+                        className={`group border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
                           idx % 2 === 0
                             ? 'bg-white dark:bg-slate-900'
                             : 'bg-slate-50/50 dark:bg-slate-900/50'
@@ -250,8 +255,27 @@ export function MockExamResults({
                       >
                         {/* Course name */}
                         <td className="px-5 sm:px-6 py-3.5">
-                          <div className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[200px] sm:max-w-none">
+                          <div className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[180px] sm:max-w-none">
                             {course}
+                          </div>
+                        </td>
+
+                        {/* Per-question dot row */}
+                        <td className="px-3 py-3.5 hidden sm:table-cell">
+                          <div className="flex flex-wrap items-center gap-1 max-w-[420px]">
+                            {stats.results.map((wasCorrect, i) => (
+                              <span
+                                key={i}
+                                title={`Q${i + 1}: ${
+                                  wasCorrect ? 'Correct' : 'Wrong'
+                                }`}
+                                className={`h-3 w-3 rounded-[3px] transition-transform group-hover:scale-110 ${
+                                  wasCorrect
+                                    ? 'bg-emerald-500 dark:bg-emerald-400'
+                                    : 'bg-rose-400 dark:bg-rose-500/70'
+                                }`}
+                              />
+                            ))}
                           </div>
                         </td>
 
@@ -263,29 +287,6 @@ export function MockExamResults({
                               /{stats.total}
                             </span>
                           </span>
-                        </td>
-
-                        {/* Progress bar + percent */}
-                        <td className="px-3 py-3.5 hidden sm:table-cell">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 min-w-[80px]">
-                              <div
-                                className={`h-full rounded-full ${barColor} transition-all duration-500`}
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                            <span
-                              className={`font-mono text-xs font-bold tabular-nums w-10 text-right ${
-                                rating.tone === 'emerald'
-                                  ? 'text-emerald-600 dark:text-emerald-400'
-                                  : rating.tone === 'amber'
-                                    ? 'text-amber-600 dark:text-amber-400'
-                                    : 'text-rose-600 dark:text-rose-400'
-                              }`}
-                            >
-                              {pct}%
-                            </span>
-                          </div>
                         </td>
 
                         {/* Rating pill */}
