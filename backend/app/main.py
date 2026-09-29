@@ -1,11 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 from slowapi import _rate_limit_exceeded_handler  # type: ignore # noqa: PLC2701
 from slowapi.errors import RateLimitExceeded  # type: ignore
 from slowapi.middleware import SlowAPIMiddleware  # type: ignore
-from app.models.user import User,UserDevice # noqa
+from app.models.user import User, UserDevice  # noqa
 from app.core.config import settings
+from app.core.database import get_db
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
@@ -15,12 +18,13 @@ if getattr(settings, 'SENTRY_DSN', None):
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
         environment=settings.ENVIRONMENT,
-        traces_sample_rate=1.0,
+        traces_sample_rate=0.1,  # 10% of requests — keeps free-tier quota healthy
         integrations=[
             FastApiIntegration(),
             SqlalchemyIntegration(),
         ],
     )
+
 from app.core.rate_limit import limiter
 from app.core.error_handlers import register_error_handlers
 from app.core.logging_middleware import RequestLoggingMiddleware
@@ -35,7 +39,7 @@ from app.api.routes import (
     payments,
     manual_payments,
     drills,
-    ai,  
+    ai,
     devices,
     announcements,
     attempts,
@@ -45,13 +49,10 @@ from app.api.routes import (
     exams,
     exam_blueprint,
     materials,
-   
     quizzes,
     tutor,
     users,
 )
-
-
 
 
 def _validate_production_config() -> None:
@@ -88,16 +89,55 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.ENVIRONMENT != "production" else None,
 )
 
+
+# ============================================================
+# HEALTH CHECK — for Render + uptime monitors
+# ============================================================
+
+@app.get("/health", tags=["health"])
+def health_check(db: Session = Depends(get_db)):
+    """
+    Liveness check for Render and external uptime monitors.
+    Uses SELECT 1 so it stays cheap under frequent polling.
+    Always returns 200 so Render doesn't restart on a transient DB blip —
+    read the 'db' field for the real status.
+    """
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "db": "connected"}
+    except Exception as e:
+        return {"status": "degraded", "db": "error", "detail": str(e)[:120]}
+
+
+@app.get("/api/health", tags=["health"])
+def health_check_legacy(db: Session = Depends(get_db)):
+    """Kept for any existing monitors that still hit /api/health."""
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "db": "connected"}
+    except Exception as e:
+        return {"status": "degraded", "db": "error", "detail": str(e)[:120]}
+
+
+# ============================================================
+# DEBUG — dev only
+# ============================================================
+
 @app.get("/api/debug-enums")
 def debug_enums():
+    """Enum sanity check. Hidden in production."""
+    if settings.ENVIRONMENT == "production":
+        raise HTTPException(status_code=404, detail="Not found")
+
     from app.models.user import UserRole, SubscriptionTier
-    from sqlalchemy import text
     from app.core.database import engine
+
     with engine.connect() as conn:
         result = conn.execute(text("SELECT enum_range(NULL::user_role)"))
         db_user_role = str(result.scalar())
         result = conn.execute(text("SELECT enum_range(NULL::subscription_tier)"))
         db_sub_tier = str(result.scalar())
+
     return {
         "code_user_role": [e.value for e in UserRole],
         "db_user_role": db_user_role,
@@ -105,14 +145,19 @@ def debug_enums():
         "db_subscription_tier": db_sub_tier,
     }
 
-    redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
-    openapi_url="/openapi.json" if settings.ENVIRONMENT != "production" else None,
 
+# ============================================================
+# MIDDLEWARE
+# ============================================================
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-allowed_hosts = [h.strip() for h in settings.ALLOWED_HOSTS.split(",")] if settings.ALLOWED_HOSTS != "*" else ["*"]
+allowed_hosts = (
+    [h.strip() for h in settings.ALLOWED_HOSTS.split(",")]
+    if settings.ALLOWED_HOSTS != "*"
+    else ["*"]
+)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 app.add_middleware(
@@ -129,7 +174,11 @@ app.add_middleware(SlowAPIMiddleware)
 
 register_error_handlers(app)
 
-# Include API Routers
+
+# ============================================================
+# ROUTERS
+# ============================================================
+
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(users.router)
@@ -142,17 +191,14 @@ app.include_router(attempts.router)
 app.include_router(payments.router)
 app.include_router(manual_payments.router)
 app.include_router(tutor.router)
-app.include_router(ai.router) 
+app.include_router(ai.router)
 app.include_router(admin.router)
 app.include_router(question_management.router)
 app.include_router(review_queue.router)
 app.include_router(support.router)
 app.include_router(exams.router)
 app.include_router(exam_blueprint.router)
-app.include_router(admin_users.router) 
+app.include_router(admin_users.router)
 app.include_router(announcements.router)
 app.include_router(drills.router, prefix="/api")
 app.include_router(devices.router)
-@app.get("/api/health", tags=["health"])
-def health_check():
-    return {"status": "ok"}
