@@ -12,11 +12,27 @@ import { MockExamConfig } from './MockExamConfig';
 import { MockExamTaking } from './MockExamTaking';
 import { MockExamResults } from './MockExamResults';
 
+// localStorage key for the live exam session — survives page reload
+const EXAM_SESSION_KEY = 'exit_exam_live_session_v1';
+
+interface SavedExamSession {
+  sessionId: string;
+  questions: Question[];
+  userAnswers: Record<string, string>;
+  flaggedQuestions: Record<string, boolean>;
+  currentIndex: number;
+  enableProctoring: boolean;
+  timeLimitMinutes: number;
+  startedAt: number; // epoch ms
+  examType: 'mock' | 'targeted';
+}
+
 export function MockExamPage() {
   const navigate = useNavigate();
   const examContainerRef = useRef<HTMLDivElement>(null);
   const isSubmittingRef = useRef(false);
   const lastViolationTimeRef = useRef(0);
+  const examStartedAtRef = useRef<number>(0);
 
   const { user, isPremium, isLoading: isAuthLoading } = useAuth();
 
@@ -43,6 +59,104 @@ export function MockExamPage() {
   const [aiExpl, setAiExpl] = useState<Record<string, { loading: boolean; content?: string; error?: string }>>({});
 
   // ============================================================
+  // SESSION PERSISTENCE
+  // ============================================================
+
+  const clearSavedSession = () => {
+    try {
+      localStorage.removeItem(EXAM_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // Save the whole live session whenever anything changes while taking the exam
+  useEffect(() => {
+    if (step !== 'taking' || !sessionId || questions.length === 0) return;
+    const saved: SavedExamSession = {
+      sessionId,
+      questions,
+      userAnswers,
+      flaggedQuestions,
+      currentIndex,
+      enableProctoring,
+      timeLimitMinutes,
+      startedAt: examStartedAtRef.current || Date.now(),
+      examType: 'mock', // targeted uses same restore path
+    };
+    try {
+      localStorage.setItem(EXAM_SESSION_KEY, JSON.stringify(saved));
+    } catch {
+      /* quota exceeded — very unlikely for exam data */
+    }
+  }, [
+    step,
+    sessionId,
+    questions,
+    userAnswers,
+    flaggedQuestions,
+    currentIndex,
+    enableProctoring,
+    timeLimitMinutes,
+  ]);
+
+  // On first mount, check for a saved session and resume it
+  useEffect(() => {
+    let saved: SavedExamSession | null = null;
+    try {
+      const raw = localStorage.getItem(EXAM_SESSION_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || !parsed.sessionId) {
+        localStorage.removeItem(EXAM_SESSION_KEY);
+        return;
+      }
+      saved = parsed as SavedExamSession;
+    } catch {
+      localStorage.removeItem(EXAM_SESSION_KEY);
+      return;
+    }
+
+    if (!saved) return;
+
+    const elapsedSec = Math.floor((Date.now() - saved.startedAt) / 1000);
+    const totalSec = saved.timeLimitMinutes * 60;
+    const remaining = totalSec - elapsedSec;
+
+    // If time already ran out, discard the stale session.
+    // (The student will see the config page and can start fresh.)
+    if (remaining <= 0) {
+      localStorage.removeItem(EXAM_SESSION_KEY);
+      return;
+    }
+
+    // Restore everything
+    examStartedAtRef.current = saved.startedAt;
+    setSessionId(saved.sessionId);
+    setQuestions(saved.questions);
+    setUserAnswers(saved.userAnswers || {});
+    setFlaggedQuestions(saved.flaggedQuestions || {});
+    setCurrentIndex(saved.currentIndex || 0);
+    setEnableProctoring(saved.enableProctoring);
+    setTimeLimitMinutes(saved.timeLimitMinutes);
+    setTimeLeft(remaining);
+    setStep('taking');
+
+    // Best-effort fullscreen request (may be blocked without a user gesture)
+    if (saved.enableProctoring) {
+      try {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {
+            /* user gesture required — ignore */
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  // ============================================================
   // SELECT EXAM PRESET
   // ============================================================
 
@@ -65,13 +179,7 @@ export function MockExamPage() {
   // ============================================================
 
   const handleSelectOption = (questionId: string, option: string) => {
-    setUserAnswers((prev) => {
-      const updated = { ...prev, [questionId]: option };
-      if (sessionId) {
-        localStorage.setItem(`exit_exam_draft_${sessionId}`, JSON.stringify(updated));
-      }
-      return updated;
-    });
+    setUserAnswers((prev) => ({ ...prev, [questionId]: option }));
   };
 
   // ============================================================
@@ -115,7 +223,10 @@ export function MockExamPage() {
             option_d: '',
           }),
           id: item.question_id,
-          question_text: originalQ?.question_text || item.prompt || 'Question details unavailable',
+          question_text:
+            originalQ?.question_text ||
+            item.prompt ||
+            'Question details unavailable',
           selected_option: item.user_answer || '',
           correct_option: item.correct_answer || '',
           is_correct: Boolean(item.is_correct),
@@ -132,7 +243,13 @@ export function MockExamPage() {
         breakdown,
       });
 
-      localStorage.removeItem(`exit_exam_draft_${sessionId}`);
+      // Clear both legacy draft and new session blob
+      try {
+        localStorage.removeItem(`exit_exam_draft_${sessionId}`);
+      } catch {
+        /* ignore */
+      }
+      clearSavedSession();
 
       if (document.fullscreenElement) {
         try {
@@ -147,7 +264,7 @@ export function MockExamPage() {
       isSubmittingRef.current = false;
       alert(
         err.response?.data?.detail ||
-          "We couldn't submit your exam. Your answers are saved - please try again."
+          "We couldn't submit your exam. Your answers are saved — please try again."
       );
     } finally {
       setLoading(false);
@@ -178,28 +295,6 @@ export function MockExamPage() {
       window.clearInterval(timer);
     };
   }, [step, handleSubmitExam]);
-
-  // ============================================================
-  // RESTORE LOCAL DRAFT
-  // ============================================================
-
-  useEffect(() => {
-    if (step !== 'taking' || !sessionId) return;
-
-    const draftKey = `exit_exam_draft_${sessionId}`;
-    const savedDraft = localStorage.getItem(draftKey);
-    if (!savedDraft) return;
-
-    try {
-      const parsed = JSON.parse(savedDraft);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        setUserAnswers(parsed);
-      }
-    } catch (error) {
-      console.warn('Failed to restore exam draft:', error);
-      localStorage.removeItem(draftKey);
-    }
-  }, [step, sessionId]);
 
   // ============================================================
   // SECURITY VIOLATION
@@ -249,7 +344,8 @@ export function MockExamPage() {
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = 'Warning: Leaving or refreshing will interrupt your active exam!';
+      e.returnValue =
+        'Warning: Leaving or refreshing will interrupt your active exam!';
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -325,6 +421,9 @@ export function MockExamPage() {
         };
       });
 
+      clearSavedSession();
+      examStartedAtRef.current = Date.now();
+
       setSessionId(res.data.id);
       setQuestions(qList);
       setTimeLeft(timeLimitMinutes * 60);
@@ -345,7 +444,10 @@ export function MockExamPage() {
             await document.documentElement.requestFullscreen();
           }
         } catch (fsErr) {
-          console.warn('Fullscreen request bypassed or blocked by browser settings.', fsErr);
+          console.warn(
+            'Fullscreen request bypassed or blocked by browser settings.',
+            fsErr
+          );
         }
       }
     } catch (err: any) {
@@ -353,7 +455,8 @@ export function MockExamPage() {
         setShowUpgradeModal(true);
       } else {
         alert(
-          err.response?.data?.detail || "Couldn't start your exam. Check your connection and try again."
+          err.response?.data?.detail ||
+            "Couldn't start your exam. Check your connection and try again."
         );
       }
     } finally {
@@ -399,7 +502,9 @@ export function MockExamPage() {
         ...prev,
         [item.id]: {
           loading: false,
-          error: err.response?.data?.detail || 'Failed to generate AI deep dive explanation.',
+          error:
+            err.response?.data?.detail ||
+            'Failed to generate AI deep dive explanation.',
         },
       }));
     }
@@ -448,6 +553,9 @@ export function MockExamPage() {
         };
       });
 
+      clearSavedSession();
+      examStartedAtRef.current = Date.now();
+
       setSessionId(res.data.id);
       setQuestions(qList);
       setTimeLeft(incorrectItems.length * 120);
@@ -468,11 +576,16 @@ export function MockExamPage() {
             await document.documentElement.requestFullscreen();
           }
         } catch (fsErr) {
-          console.warn('Fullscreen request bypassed or blocked by browser settings.', fsErr);
+          console.warn(
+            'Fullscreen request bypassed or blocked by browser settings.',
+            fsErr
+          );
         }
       }
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to start targeted review session.');
+      alert(
+        err.response?.data?.detail || 'Failed to start targeted review session.'
+      );
     } finally {
       setLoading(false);
     }
@@ -566,7 +679,9 @@ export function MockExamPage() {
         onSelectOption={handleSelectOption}
         onToggleFlag={toggleFlagQuestion}
         onNavigate={setCurrentIndex}
-        onNext={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+        onNext={() =>
+          setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))
+        }
         onPrevious={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
         onShowSubmit={() => setShowSubmitModal(true)}
         onCloseSubmit={() => setShowSubmitModal(false)}
@@ -578,7 +693,9 @@ export function MockExamPage() {
   }
 
   if (step === 'results' && resultSummary) {
-    const incorrectItems = resultSummary.breakdown.filter((item) => !item.is_correct);
+    const incorrectItems = resultSummary.breakdown.filter(
+      (item) => !item.is_correct
+    );
     return (
       <MockExamResults
         resultSummary={resultSummary}
