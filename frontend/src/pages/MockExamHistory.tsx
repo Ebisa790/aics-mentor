@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardList, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import {
+  ArrowLeft,
+  ClipboardList,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Trash2,
+  Loader2,
+  AlertTriangle,
+} from 'lucide-react';
 import { apiClient } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 interface HistoryItem {
   id: string;
@@ -61,19 +71,40 @@ function presetBadge(title: string): string {
   return 'Exam';
 }
 
-// An attempt is considered "abandoned" if the student submitted it in under
-// 60 seconds with a 0 score. Those are almost never real attempts — they're
-// test clicks or accidental submits.
 function isAbandoned(item: HistoryItem): boolean {
   return item.score_percent === 0 && (item.duration_seconds ?? 9999) < 60;
 }
 
 export function MockExamHistory() {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
+
   const [data, setData] = useState<HistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAbandoned, setShowAbandoned] = useState(false);
+
+  // Delete flow state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
+
+  const loadHistory = () => {
+    setLoading(true);
+    setError(null);
+    apiClient
+      .get<HistoryResponse>('/api/exams/history?limit=50')
+      .then((res) => setData(res.data))
+      .catch((err) => {
+        console.error('Failed to load exam history:', err);
+        setError(
+          err?.response?.data?.detail ||
+            'Could not load your exam history. Please try again.'
+        );
+      })
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -102,7 +133,6 @@ export function MockExamHistory() {
     };
   }, []);
 
-  // Trend: for each row, compare score to the NEXT older attempt (chronologically previous)
   const trendByAttemptId = useMemo(() => {
     const map: Record<string, number | null> = {};
     if (!data) return map;
@@ -119,7 +149,6 @@ export function MockExamHistory() {
     return map;
   }, [data]);
 
-  // Split items into visible + abandoned
   const abandonedCount = useMemo(() => {
     if (!data) return 0;
     return data.items.filter(isAbandoned).length;
@@ -130,6 +159,37 @@ export function MockExamHistory() {
     if (showAbandoned) return data.items;
     return data.items.filter((i) => !isAbandoned(i));
   }, [data, showAbandoned]);
+
+  const handleConfirmDelete = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const res = await apiClient.post('/api/exams/history/reset');
+      const deleted = res.data?.deleted_attempts ?? 0;
+
+      setDeleteSuccess(
+        deleted === 0
+          ? 'No attempts to delete.'
+          : `Deleted ${deleted} attempt${deleted === 1 ? '' : 's'}.`
+      );
+      setShowDeleteModal(false);
+
+      // Reload history
+      loadHistory();
+
+      // Auto-dismiss success message
+      window.setTimeout(() => setDeleteSuccess(null), 4000);
+    } catch (err: any) {
+      console.error('Reset failed:', err);
+      setDeleteError(
+        err?.response?.data?.detail ||
+          'Could not reset your history. Please try again.'
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
@@ -142,7 +202,7 @@ export function MockExamHistory() {
         Back to Mock Exams
       </Link>
 
-      {/* Title + toggle */}
+      {/* Title + toggles */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
@@ -153,18 +213,50 @@ export function MockExamHistory() {
           </p>
         </div>
 
-        {!loading && !error && abandonedCount > 0 && (
-          <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 hover:border-slate-300 dark:hover:border-slate-600 transition">
-            <input
-              type="checkbox"
-              checked={showAbandoned}
-              onChange={(e) => setShowAbandoned(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
-            />
-            Show abandoned attempts ({abandonedCount})
-          </label>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {!loading && !error && abandonedCount > 0 && (
+            <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 hover:border-slate-300 dark:hover:border-slate-600 transition">
+              <input
+                type="checkbox"
+                checked={showAbandoned}
+                onChange={(e) => setShowAbandoned(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+              />
+              Show abandoned ({abandonedCount})
+            </label>
+          )}
+
+          {/* Admin-only reset button */}
+          {isAdmin && !loading && !error && data && data.items.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError(null);
+                setShowDeleteModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/40 hover:bg-rose-100 dark:hover:bg-rose-500/20 rounded-lg px-3 py-2 transition"
+              title="Admin: permanently delete all your mock attempts"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Reset history
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Success toast */}
+      {deleteSuccess && (
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300 flex items-center justify-between gap-3">
+          <span>{deleteSuccess}</span>
+          <button
+            type="button"
+            onClick={() => setDeleteSuccess(null)}
+            className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 text-xs font-bold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (
@@ -181,7 +273,7 @@ export function MockExamHistory() {
         <div className="rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/20 p-6 text-center">
           <p className="text-sm text-rose-700 dark:text-rose-400">{error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={loadHistory}
             className="mt-3 text-xs font-bold text-rose-700 dark:text-rose-400 hover:underline"
           >
             Retry
@@ -283,7 +375,9 @@ export function MockExamHistory() {
                     return (
                       <tr
                         key={item.id}
-                        onClick={() => navigate(`/mock-exams/history/${item.id}`)}
+                        onClick={() =>
+                          navigate(`/mock-exams/history/${item.id}`)
+                        }
                         className={`border-b border-slate-100 dark:border-slate-800 last:border-0 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
                           abandoned
                             ? 'opacity-60'
@@ -296,7 +390,6 @@ export function MockExamHistory() {
                           {formatDate(item.submitted_at)}
                         </td>
 
-                        {/* Compact badge */}
                         <td className="px-3 py-3">
                           <div className="flex items-center gap-1.5">
                             <span className="inline-flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
@@ -310,7 +403,6 @@ export function MockExamHistory() {
                           </div>
                         </td>
 
-                        {/* Score with trend arrow */}
                         <td className="px-3 py-3 text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5 justify-end">
                             <span
@@ -353,7 +445,6 @@ export function MockExamHistory() {
                           </span>
                         </td>
 
-                        {/* Weak areas */}
                         <td className="px-4 py-3">
                           {item.weak_areas && item.weak_areas.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
@@ -392,6 +483,69 @@ export function MockExamHistory() {
             </p>
           )}
         </>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !deleting && setShowDeleteModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-slate-200 dark:border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Reset exam history?
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
+                  Permanently deletes <strong>all your mock exam attempts</strong>.
+                  This cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="rounded-xl border border-rose-200 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/10 px-3 py-2.5 text-xs text-rose-700 dark:text-rose-400">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 px-4 py-2.5 text-sm font-bold text-white transition active:scale-95 disabled:opacity-50"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Deleting…</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Yes, delete all</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
