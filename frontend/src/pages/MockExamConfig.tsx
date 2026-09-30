@@ -1,4 +1,5 @@
-import { BookOpen, ChevronRight, Zap, Lock, Crown } from 'lucide-react';
+import { BookOpen, ChevronRight, Zap, Lock, Crown, History } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Spinner } from '../components/Spinner';
 import UpgradeModal from '../components/UpgradeModal';
 import { EXAM_PRESETS } from './MockExamTypes';
@@ -41,10 +42,20 @@ export function MockExamConfig({
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       {/* Header Card */}
-      <div className="relative w-full overflow-hidden rounded-2xl bg-[#1b1b3a] text-white shadow-xl border border-slate-800">
+            <div className="relative w-full overflow-hidden rounded-2xl bg-[#1b1b3a] text-white shadow-xl border border-slate-800">
         <div className="pointer-events-none absolute right-4 bottom-8 opacity-10 md:right-8 md:bottom-2 text-indigo-300">
           <BookOpen className="h-64 w-64 stroke-[1.2]" />
         </div>
+
+        {/* History link — top right */}
+        <Link
+          to="/mock-exams/history"
+          className="absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-200 hover:text-white bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/30 px-3 py-1.5 rounded-lg transition"
+        >
+          <History className="h-3.5 w-3.5" />
+          Past Attempts
+        </Link>
+
         <div className="relative z-10 p-6 md:p-8">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-200">
             <Zap className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />

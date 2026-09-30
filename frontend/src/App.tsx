@@ -7,6 +7,8 @@ import { AppLayout } from './components/AppLayout'
 import { PaymentCallbackPage } from './pages/PaymentCallback'
 import { LandingPage } from './pages/Landing'
 import { SupportPage } from './pages/Support'
+import { MockExamHistory } from './pages/MockExamHistory';
+import { MockExamPastResult } from './pages/MockExamPastResult';
 import { LoginPage } from './pages/Login'
 import { RegisterPage } from './pages/Register'
 import { ForgotPasswordPage } from './pages/ForgotPassword'
@@ -75,6 +77,8 @@ export default function App() {
               <Route path="/quizzes/:quizId" element={<Quiz />} />
               <Route path="/mock-exam" element={<MockExamPage />} />
               <Route path="/mock-exams" element={<MockExamPage />} />
+              <Route path="/mock-exams/history" element={<MockExamHistory />} />
+<Route path="/mock-exams/history/:attemptId" element={<MockExamPastResult />} />
               <Route path="/tutor" element={<TutorPage />} />
               <Route path="/materials" element={<MaterialsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
