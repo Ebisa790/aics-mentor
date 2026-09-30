@@ -4,6 +4,7 @@ import {
   Eye,
   EyeOff,
   Check,
+  Mail,
   X,
   ShieldCheck,
   UserPlus,
@@ -27,7 +28,7 @@ export function RegisterPage() {
 
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
   const passwordRequirements = [
     {
       label: 'At least 8 characters',
@@ -91,7 +92,8 @@ export function RegisterPage() {
 
     try {
       await register(trimmedEmail, password, trimmedName)
-      navigate('/dashboard')
+      // Do NOT auto-login — the account needs email verification first.
+      setRegisteredEmail(trimmedEmail)
     } catch (err: any) {
       const detail = err?.friendlyMessage || err?.response?.data?.detail
       if (typeof detail === 'string') {
@@ -138,8 +140,50 @@ export function RegisterPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950">
+  
+
+    // Show the "check your inbox" screen after a successful signup
+  if (registeredEmail) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-8 shadow-sm text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-500/10 mx-auto">
+            <Mail className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-4">
+            Check your inbox
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+            We sent a verification link to{' '}
+            <strong className="text-slate-900 dark:text-slate-100">
+              {registeredEmail}
+            </strong>
+            . Click the link to activate your account.
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
+            Don't see it? Check your spam folder. The link expires in 24 hours.
+          </p>
+          <div className="mt-6 space-y-2">
+            <Link
+              to="/resend-verification"
+              className="inline-flex items-center justify-center w-full px-4 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            >
+              Resend verification email
+            </Link>
+            <Link
+              to="/login"
+              className="inline-flex items-center justify-center w-full px-4 py-3 text-slate-500 dark:text-slate-400 text-xs font-semibold hover:text-slate-700 dark:hover:text-slate-200 transition"
+            >
+              Back to login
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+    return (
+     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950">
       {/* ============================================================
           LEFT BRANDING PANEL
           ============================================================ */}
