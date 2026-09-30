@@ -103,20 +103,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       return authResponse
-    } catch (err: any) {
-      if (err?.response?.status === 401) {
+       } catch (err: any) {
+      const status = err?.response?.status
+      const detail = err?.response?.data?.detail
+
+      if (status === 401) {
         throw new Error('Incorrect email or password. Please try again.')
       }
-      if (err?.response?.status === 403) {
-        const detail = err?.response?.data?.detail
-        if (detail && typeof detail === 'string' && detail.toLowerCase().includes('locked')) {
-          throw new Error('Too many failed login attempts. Please wait a few minutes and try again.')
+
+      if (status === 403) {
+        // Case 1: Email not verified yet — detail is an object
+        if (
+          detail &&
+          typeof detail === 'object' &&
+          detail.error === 'email_not_verified'
+        ) {
+          throw new Error(
+            detail.message ||
+              'Please verify your email before logging in. Check your inbox for the verification link.'
+          )
         }
-        throw new Error('Your account has been deactivated. Please contact support to reactivate your account.')
+
+        // Case 2: Locked out from failed attempts — detail is a string
+        if (
+          typeof detail === 'string' &&
+          detail.toLowerCase().includes('locked')
+        ) {
+          throw new Error(
+            'Too many failed login attempts. Please wait a few minutes and try again.'
+          )
+        }
+
+        // Case 3: Genuinely deactivated account
+        throw new Error(
+          'Your account has been deactivated. Please contact support to reactivate your account.'
+        )
       }
+
       if (err?.message && err.message.includes('Network')) {
         throw new Error('Connection issue. Check your internet and try again.')
       }
+
       throw err
     }
   }
@@ -149,8 +176,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, fullName: string) => {
     try {
+      // Create the account. The backend sends a verification email.
+      // Do NOT auto-login — the user must verify first.
       await authApi.register({ email, password, full_name: fullName })
-      await login(email, password)
     } catch (err: any) {
       if (err?.response?.status === 400) {
         throw new Error('An account with this email already exists.')
