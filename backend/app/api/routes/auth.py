@@ -1,4 +1,7 @@
 import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
 import pyotp
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -165,14 +168,23 @@ ExitAI Ethiopia Team
 @limiter.limit("15/minute")
 def register(request: Request, payload: UserRegister, db: Session = Depends(get_db)):
     """
-    Registers a new student.
-    By default, sets role to STUDENT and subscription_tier to FREE.
+    Registers a new student. Account is created unverified and a verification
+    email is sent. The user must click the link before they can log in.
     """
+    from app.core.disposable_emails import is_disposable_email
+    from app.models.email_verification import EmailVerificationToken
+
+    if is_disposable_email(payload.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please sign up with a valid email address. Disposable or test providers are not allowed.",
+        )
+
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="An account with this email already exists"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An account with this email already exists",
         )
 
     user = User(
@@ -184,16 +196,147 @@ def register(request: Request, payload: UserRegister, db: Session = Depends(get_
         role=UserRole.STUDENT,
         subscription_tier=SubscriptionTier.FREE,
         ai_usage_count=0,
+        email_verified=False,
     )
-    
     db.add(user)
     db.commit()
     db.refresh(user)
-    
-    # Send welcome email
-    send_welcome_email(to_email=user.email, full_name=user.full_name)
-    
+
+    # Generate verification token
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+    db.add(
+        EmailVerificationToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+        )
+    )
+    db.commit()
+
+    verification_link = f"{settings.FRONTEND_ORIGIN}/verify-email?token={raw_token}"
+
+    try:
+        from app.core.email import send_email_verification
+        send_email_verification(
+            to_email=user.email,
+            full_name=user.full_name,
+            verification_link=verification_link,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send verification email to {user.email}: {e}")
+
     return user
+
+@router.post("/verify-email")
+def verify_email(
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    """Verify a user's email using the token from the verification link."""
+    from app.models.email_verification import EmailVerificationToken
+
+    token = (payload.get("token") or "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification token is required.",
+        )
+
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    now = datetime.now(timezone.utc)
+
+    row = (
+        db.query(EmailVerificationToken)
+        .filter(
+            EmailVerificationToken.token_hash == token_hash,
+            EmailVerificationToken.used_at.is_(None),
+            EmailVerificationToken.expires_at > now,
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link is invalid or has expired. Please request a new one.",
+        )
+
+    user = db.get(User, row.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Account not found.",
+        )
+
+    if user.email_verified:
+        row.used_at = now
+        db.commit()
+        return {"success": True, "message": "Email already verified."}
+
+    user.email_verified = True
+    user.email_verified_at = now
+    row.used_at = now
+    db.commit()
+
+    return {"success": True, "message": "Email verified. You can now log in."}
+
+
+@router.post("/resend-verification")
+@limiter.limit("5/minute")
+def resend_verification(
+    request: Request,
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    """Resend the verification email. Always returns generic success (anti-enumeration)."""
+    from app.models.email_verification import EmailVerificationToken
+
+    email = (payload.get("email") or "").strip().lower()
+    generic_response = {
+        "success": True,
+        "message": "If an unverified account exists for that email, a new verification link has been sent.",
+    }
+
+    if not email:
+        return generic_response
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user or user.email_verified:
+        return generic_response
+
+    # Invalidate old tokens
+    now = datetime.now(timezone.utc)
+    db.query(EmailVerificationToken).filter(
+        EmailVerificationToken.user_id == user.id,
+        EmailVerificationToken.used_at.is_(None),
+    ).update({"used_at": now})
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+    db.add(
+        EmailVerificationToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=now + timedelta(hours=24),
+        )
+    )
+    db.commit()
+
+    verification_link = f"{settings.FRONTEND_ORIGIN}/verify-email?token={raw_token}"
+
+    try:
+        from app.core.email import send_email_verification
+        send_email_verification(
+            to_email=user.email,
+            full_name=user.full_name,
+            verification_link=verification_link,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to resend verification email to {user.email}: {e}")
+
+    return generic_response
 
 
 @router.post("/login")
@@ -244,6 +387,17 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
                 user.locked_until = now_utc + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
             db.commit()
         raise invalid_credentials_exception
+
+        # Block login if email is not yet verified
+    if not getattr(user, "email_verified", True):  # default True for safety on old rows
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "email_not_verified",
+                "message": "Please verify your email before logging in. Check your inbox for the verification link.",
+                "email": user.email,
+            },
+        )
 
     # Reset failed attempts on successful authentication
     if hasattr(user, "failed_login_attempts") and user.failed_login_attempts > 0:
@@ -345,6 +499,13 @@ def google_login(request: Request, payload: GoogleLoginRequest, db: Session = De
 
     user = db.query(User).filter(User.email == email).first()
 
+    # If a Google user exists but isn't verified, verify them now.
+    # Google already confirmed the email, so we trust it.
+    if user and not getattr(user, "email_verified", True):
+        user.email_verified = True
+        user.email_verified_at = datetime.now(timezone.utc)
+        db.commit()
+
     if not user:
         random_pwd = secrets.token_urlsafe(32)
         user = User(
@@ -354,7 +515,9 @@ def google_login(request: Request, payload: GoogleLoginRequest, db: Session = De
             role=UserRole.STUDENT,
             subscription_tier=SubscriptionTier.FREE,
             ai_usage_count=0,
-            is_active=True
+            is_active=True,
+            email_verified=True,
+            email_verified_at=datetime.now(timezone.utc),
         )
         db.add(user)
         db.commit()
@@ -527,10 +690,12 @@ def send_email_2fa(
     
     if not email:
         raise HTTPException(status_code=400, detail="Email required.")
-    
+
     user = db.query(User).filter(User.email == email).first()
+
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email.")
+    
     
     # If password provided, verify it (for login flow)
     if password and not verify_password(password, user.hashed_password):
