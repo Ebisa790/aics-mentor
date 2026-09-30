@@ -18,3 +18,4 @@ from app.models.attempt import DrillAttempt  # noqa: F401
 from app.models.exam_blueprint import ExamBlueprintItem  # noqa: F401
 from app.models.payment import ManualPaymentDetail, DeletedPaymentLog  # noqa: F401
 from app.core.database import Base
+from app.models.email_verification import EmailVerificationToken  # noqa: F401

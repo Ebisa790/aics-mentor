@@ -140,3 +140,10 @@ class User(Base):
     # using back_populates="user" to avoid circular import
     failed_login_attempts = Column(Integer, default=0, nullable=True)
     locked_until = Column(DateTime(timezone=True), nullable=True)
+
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

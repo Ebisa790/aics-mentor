@@ -287,6 +287,30 @@ def send_password_reset_email(to_email: str, reset_link: str) -> bool:
     return send_email(to_email=to_email, subject=subject, body_text=body_text, body_html=body_html)
 
 
+def send_email_verification(to_email: str, full_name: str, verification_link: str) -> bool:
+    """Send the account verification email. Returns True on success."""
+    subject = "Verify your ExitAI Ethiopia account"
+    body_text = f"""Hi {full_name or 'there'},
+
+Welcome to ExitAI Ethiopia. Please confirm your email address by clicking
+the link below:
+
+{verification_link}
+
+This link expires in 24 hours.
+
+If you didn't create this account, you can safely ignore this email.
+
+ExitAI Ethiopia Team
+"""
+    # Adjust to whatever helper pattern the other send_* functions use.
+    # If they return bool, return that. If they raise, wrap accordingly.
+    return send_email_async(
+        to_email=to_email,
+        subject=subject,
+        body_text=body_text,
+    )
+
 def send_support_ticket_confirmation(to_email: str, ticket_id: str, ticket_subject: str) -> bool:
     """
     Sends confirmation email when a support ticket is created.
