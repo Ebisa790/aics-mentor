@@ -61,11 +61,19 @@ function presetBadge(title: string): string {
   return 'Exam';
 }
 
+// An attempt is considered "abandoned" if the student submitted it in under
+// 60 seconds with a 0 score. Those are almost never real attempts — they're
+// test clicks or accidental submits.
+function isAbandoned(item: HistoryItem): boolean {
+  return item.score_percent === 0 && (item.duration_seconds ?? 9999) < 60;
+}
+
 export function MockExamHistory() {
   const navigate = useNavigate();
   const [data, setData] = useState<HistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAbandoned, setShowAbandoned] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +119,18 @@ export function MockExamHistory() {
     return map;
   }, [data]);
 
+  // Split items into visible + abandoned
+  const abandonedCount = useMemo(() => {
+    if (!data) return 0;
+    return data.items.filter(isAbandoned).length;
+  }, [data]);
+
+  const visibleItems = useMemo(() => {
+    if (!data) return [];
+    if (showAbandoned) return data.items;
+    return data.items.filter((i) => !isAbandoned(i));
+  }, [data, showAbandoned]);
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
       {/* Back */}
@@ -122,14 +142,28 @@ export function MockExamHistory() {
         Back to Mock Exams
       </Link>
 
-      {/* Title */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-          Exam History
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          All your past mock exam attempts, newest first.
-        </p>
+      {/* Title + toggle */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+            Exam History
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            All your past mock exam attempts, newest first.
+          </p>
+        </div>
+
+        {!loading && !error && abandonedCount > 0 && (
+          <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400 cursor-pointer select-none shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 hover:border-slate-300 dark:hover:border-slate-600 transition">
+            <input
+              type="checkbox"
+              checked={showAbandoned}
+              onChange={(e) => setShowAbandoned(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+            />
+            Show abandoned attempts ({abandonedCount})
+          </label>
+        )}
       </div>
 
       {/* Loading */}
@@ -240,19 +274,22 @@ export function MockExamHistory() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.items.map((item, idx) => {
+                  {visibleItems.map((item, idx) => {
                     const trend = trendByAttemptId[item.id];
                     const trendIsUp = trend !== null && trend > 0.5;
                     const trendIsDown = trend !== null && trend < -0.5;
+                    const abandoned = isAbandoned(item);
 
                     return (
                       <tr
                         key={item.id}
                         onClick={() => navigate(`/mock-exams/history/${item.id}`)}
                         className={`border-b border-slate-100 dark:border-slate-800 last:border-0 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
-                          idx % 2 === 0
-                            ? 'bg-white dark:bg-slate-900'
-                            : 'bg-slate-50/50 dark:bg-slate-900/50'
+                          abandoned
+                            ? 'opacity-60'
+                            : idx % 2 === 0
+                              ? 'bg-white dark:bg-slate-900'
+                              : 'bg-slate-50/50 dark:bg-slate-900/50'
                         }`}
                       >
                         <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
@@ -261,9 +298,16 @@ export function MockExamHistory() {
 
                         {/* Compact badge */}
                         <td className="px-3 py-3">
-                          <span className="inline-flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                            {presetBadge(item.title)}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                              {presetBadge(item.title)}
+                            </span>
+                            {abandoned && (
+                              <span className="inline-flex items-center text-[9px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                Abandoned
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Score with trend arrow */}
@@ -344,7 +388,7 @@ export function MockExamHistory() {
           {/* Pagination note */}
           {data.stats.has_more && (
             <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-              Showing {data.items.length} of {data.stats.total_attempts} attempts
+              Showing {visibleItems.length} of {data.stats.total_attempts} attempts
             </p>
           )}
         </>
