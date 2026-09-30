@@ -712,3 +712,99 @@ def get_exam_attempt_detail(
         "passed": score_percent >= 50.0,
         "results": results,
     }
+
+# ============================================================
+# ADMIN — RESET HISTORY
+# ============================================================
+
+@router.post("/history/reset")
+def reset_my_mock_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Admin-only: permanently delete all of the current user's mock exam attempts.
+
+    Cascades to attempt_answers via the FK constraint.
+    Also cleans up the mock quizzes that were generated just for this user.
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action is admin-only.",
+        )
+
+    # Collect quiz IDs tied to this user's mock attempts (for later cleanup)
+    attempt_rows = (
+        db.query(Attempt.id, Attempt.quiz_id)
+        .join(Quiz, Attempt.quiz_id == Quiz.id)
+        .filter(
+            Attempt.student_id == current_user.id,
+            Quiz.generated_mode == GeneratedExamMode.MOCK,
+        )
+        .all()
+    )
+
+    attempt_ids = [row[0] for row in attempt_rows]
+    quiz_ids = list({row[1] for row in attempt_rows})
+
+    if not attempt_ids:
+        return {
+            "success": True,
+            "deleted_attempts": 0,
+            "deleted_quizzes": 0,
+            "message": "No mock attempts to delete.",
+        }
+
+    # Delete attempts — attempt_answers cascade-deletes automatically
+    deleted_attempts = (
+        db.query(Attempt)
+        .filter(Attempt.id.in_(attempt_ids))
+        .delete(synchronize_session=False)
+    )
+
+    # Delete the mock quizzes that were generated for this user only.
+    # Guard: only remove quizzes that no longer have any attempts attached.
+    deleted_quizzes = 0
+    if quiz_ids:
+        # Find quizzes with no remaining attempts
+        remaining_quizzes_with_attempts = {
+            row[0]
+            for row in (
+                db.query(Attempt.quiz_id)
+                .filter(Attempt.quiz_id.in_(quiz_ids))
+                .distinct()
+                .all()
+            )
+        }
+        quizzes_to_delete = [
+            qid for qid in quiz_ids if qid not in remaining_quizzes_with_attempts
+        ]
+
+        if quizzes_to_delete:
+            deleted_quizzes = (
+                db.query(Quiz)
+                .filter(
+                    Quiz.id.in_(quizzes_to_delete),
+                    Quiz.generated_for_user_id == current_user.id,
+                    Quiz.generated_mode == GeneratedExamMode.MOCK,
+                )
+                .delete(synchronize_session=False)
+            )
+
+    db.commit()
+
+    logger.info(
+        f"Admin {current_user.id} reset own mock history: "
+        f"{deleted_attempts} attempts, {deleted_quizzes} quizzes removed"
+    )
+
+    return {
+        "success": True,
+        "deleted_attempts": int(deleted_attempts),
+        "deleted_quizzes": int(deleted_quizzes),
+        "message": (
+            f"Deleted {deleted_attempts} attempt"
+            f"{'s' if deleted_attempts != 1 else ''}."
+        ),
+    }
