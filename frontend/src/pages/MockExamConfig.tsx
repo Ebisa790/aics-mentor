@@ -13,6 +13,8 @@ interface MockExamConfigProps {
   loading: boolean;
   isPremium: boolean;
   showUpgradeModal: boolean;
+  lastScore?: number;
+  attemptCount?: number;
   onPresetSelect: (presetId: string) => void;
   onProctoringChange: (checked: boolean) => void;
   onRulesAcknowledgedChange: (checked: boolean) => void;
@@ -31,6 +33,8 @@ export function MockExamConfig({
   loading,
   isPremium,
   showUpgradeModal,
+  lastScore,
+  attemptCount,
   onPresetSelect,
   onProctoringChange,
   onRulesAcknowledgedChange,
@@ -48,12 +52,13 @@ export function MockExamConfig({
         </div>
 
         {/* History link — top right */}
+               {/* History link — top right */}
         <Link
           to="/mock-exams/history"
-          className="absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-200 hover:text-white bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/30 px-3 py-1.5 rounded-lg transition"
+          className="absolute top-4 right-4 z-20 inline-flex items-center gap-2 text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 px-3.5 py-2 rounded-lg transition shadow-md"
         >
           <History className="h-3.5 w-3.5" />
-          Past Attempts
+          <span>Past Attempts</span>
         </Link>
 
         <div className="relative z-10 p-6 md:p-8">
@@ -67,6 +72,20 @@ export function MockExamConfig({
           <p className="max-w-2xl text-sm md:text-base leading-relaxed text-indigo-100/80">
             Complete Computer-Based Testing (CBT) environment modeling official MoE exit examination standards.
           </p>
+                    {/* Personal stat — only if you want to add the fetch */}
+          {/* Requires: pass `lastScore` and `attemptCount` as props */}
+                   {typeof lastScore === 'number' && typeof attemptCount === 'number' && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-indigo-200/90">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Last score: <span className="font-bold text-white">{Math.round(lastScore)}%</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                {attemptCount} {attemptCount === 1 ? 'attempt' : 'attempts'} so far
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
