@@ -53,13 +53,14 @@ export function MockExamConfig({
           </div>
 
           {/* History link — top right */}
-          <Link
-            to="/mock-exams/history"
-            className="absolute top-4 right-4 z-20 inline-flex items-center gap-2 text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 px-3.5 py-2 rounded-lg transition shadow-md"
-          >
-            <History className="h-3.5 w-3.5" />
-            <span>Past Attempts</span>
-          </Link>
+        <Link
+          to="/mock-exams/history"
+          className="absolute top-4 right-4 z-20 inline-flex items-center gap-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg transition shadow-lg shadow-indigo-900/40 active:scale-95"
+        >
+          <History className="h-3.5 w-3.5" />
+          <span>Check Past Attempts</span>
+          <ChevronRight className="h-3.5 w-3.5 opacity-70" />
+        </Link>
 
           <div className="relative z-10 p-6 md:p-8">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-200">
