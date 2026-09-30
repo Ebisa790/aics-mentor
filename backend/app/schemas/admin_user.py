@@ -18,6 +18,7 @@ class AdminUserOut(BaseModel):
     subscription_tier: SubscriptionTier
     is_active: bool
     created_at: datetime
+    email_verified: bool
 
     model_config = ConfigDict(from_attributes=True)
 

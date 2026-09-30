@@ -454,6 +454,11 @@ export const adminUserApi = {
 
   update: (userId: string, data: Partial<Pick<AdminUser, 'role' | 'subscription_tier' | 'is_active'>>) =>
     apiClient.patch<AdminUser>(`/api/admin/users/${userId}`, data).then((res) => res.data),
+
+    delete: async (id: string) => {
+    const res = await apiClient.delete(`/api/admin/users/${id}`)
+    return res.data
+  },
 }
 
 export const announcementApi = {

@@ -1,4 +1,6 @@
+import logging
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
@@ -8,6 +10,8 @@ from app.api.deps import require_admin
 from app.core.database import get_db
 from app.models.user import User
 from app.schemas.admin_user import AdminUserOut, AdminUserUpdate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/admin/users", 
@@ -149,10 +153,50 @@ def export_users_csv(
     
     csv_content = output.getvalue()
     
+    logger.info(f"Exporting user data to CSV: {datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}")
     return Response(
         content=csv_content,
         media_type='text/csv',
         headers={
-            'Content-Disposition': f'attachment; filename=users_export_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.csv'
+            'Content-Disposition': f'attachment; filename=users_export_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
         }
     )
+
+@router.delete("/{user_id}", dependencies=[Depends(require_admin)])
+def delete_user(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """
+    Admin-only: permanently delete a user.
+
+    Safety rule: refuses to delete verified accounts, since those have real
+    progress and (potentially) payments attached. For verified users, use
+    PATCH with is_active=false instead.
+    """
+    target = db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if target.id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot delete your own account.",
+        )
+
+    if getattr(target, "email_verified", False):
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete verified users. Deactivate them instead.",
+        )
+
+    deleted_email = target.email
+    db.delete(target)
+    db.commit()
+
+    logger.info(
+        f"Admin {current_user.id} deleted unverified user {user_id} ({deleted_email})"
+    )
+
+    return {"success": True, "deleted_email": deleted_email}

@@ -46,6 +46,7 @@ export interface AdminUser {
   subscription_tier: SubscriptionTier
   is_2fa_enabled?: boolean
   is_active: boolean
+  email_verified: boolean  // ← ADD THIS
   created_at: string
 }
 
