@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardList } from 'lucide-react';
+import { ArrowLeft, ClipboardList, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 interface HistoryItem {
@@ -13,6 +13,7 @@ interface HistoryItem {
   correct_count: number;
   passed: boolean;
   duration_seconds: number | null;
+  weak_areas: string[];
 }
 
 interface HistoryStats {
@@ -20,11 +21,14 @@ interface HistoryStats {
   average_score: number;
   best_score: number;
   last_score: number;
+  has_more: boolean;
 }
 
 interface HistoryResponse {
   items: HistoryItem[];
   stats: HistoryStats;
+  offset: number;
+  limit: number;
 }
 
 function formatDate(iso: string | null): string {
@@ -49,6 +53,12 @@ function formatDuration(seconds: number | null): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function presetBadge(title: string): string {
+  const m = title.match(/(\d+)[- ]?Question/i);
+  if (m) return `${m[1]}Q`;
+  return 'Exam';
 }
 
 export function MockExamHistory() {
@@ -83,6 +93,23 @@ export function MockExamHistory() {
       cancelled = true;
     };
   }, []);
+
+  // Trend: for each row, compare score to the NEXT older attempt (chronologically previous)
+  const trendByAttemptId = useMemo(() => {
+    const map: Record<string, number | null> = {};
+    if (!data) return map;
+    const items = data.items;
+    for (let i = 0; i < items.length; i++) {
+      const newer = items[i];
+      const older = items[i + 1];
+      if (!older) {
+        map[newer.id] = null;
+        continue;
+      }
+      map[newer.id] = newer.score_percent - older.score_percent;
+    }
+    return map;
+  }, [data]);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
@@ -195,79 +222,131 @@ export function MockExamHistory() {
                     <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-4 py-3">
                       Date
                     </th>
-                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-4 py-3">
-                      Exam
+                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 w-16">
+                      Type
                     </th>
-                    <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-4 py-3 w-24">
+                    <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 w-32">
                       Score
                     </th>
-                    <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-4 py-3 w-24 hidden sm:table-cell">
+                    <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-3 py-3 w-24">
                       Correct
                     </th>
-                    <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-4 py-3 w-24 hidden md:table-cell">
-                      Time
+                    <th className="text-left font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-4 py-3">
+                      Weak areas
                     </th>
-                    <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-4 py-3 w-24">
-                      Result
+                    <th className="text-right font-semibold text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 px-4 py-3 w-20">
+                      Time
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.items.map((item, idx) => (
-                    <tr
-                      key={item.id}
-                      onClick={() => navigate(`/mock-exams/history/${item.id}`)}
-                      className={`border-b border-slate-100 dark:border-slate-800 last:border-0 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
-                        idx % 2 === 0
-                          ? 'bg-white dark:bg-slate-900'
-                          : 'bg-slate-50/50 dark:bg-slate-900/50'
-                      }`}
-                    >
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                        {formatDate(item.submitted_at)}
-                      </td>
-                      <td className="px-4 py-3 text-slate-900 dark:text-slate-100 font-medium truncate max-w-[240px]">
-                        {item.title}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span
-                          className={`font-mono text-sm font-bold tabular-nums ${
-                            item.passed
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : 'text-rose-600 dark:text-rose-400'
-                          }`}
-                        >
-                          {Math.round(item.score_percent)}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right hidden sm:table-cell">
-                        <span className="font-mono text-sm text-slate-700 dark:text-slate-300 tabular-nums">
-                          {item.correct_count}
-                          <span className="text-slate-400 dark:text-slate-500">
-                            /{item.total_questions}
+                  {data.items.map((item, idx) => {
+                    const trend = trendByAttemptId[item.id];
+                    const trendIsUp = trend !== null && trend > 0.5;
+                    const trendIsDown = trend !== null && trend < -0.5;
+
+                    return (
+                      <tr
+                        key={item.id}
+                        onClick={() => navigate(`/mock-exams/history/${item.id}`)}
+                        className={`border-b border-slate-100 dark:border-slate-800 last:border-0 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
+                          idx % 2 === 0
+                            ? 'bg-white dark:bg-slate-900'
+                            : 'bg-slate-50/50 dark:bg-slate-900/50'
+                        }`}
+                      >
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                          {formatDate(item.submitted_at)}
+                        </td>
+
+                        {/* Compact badge */}
+                        <td className="px-3 py-3">
+                          <span className="inline-flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                            {presetBadge(item.title)}
                           </span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right hidden md:table-cell text-slate-600 dark:text-slate-400 font-mono text-sm tabular-nums">
-                        {formatDuration(item.duration_seconds)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span
-                          className={`inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                            item.passed
-                              ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30'
-                              : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30'
-                          }`}
-                        >
-                          {item.passed ? 'Pass' : 'Fail'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+
+                        {/* Score with trend arrow */}
+                        <td className="px-3 py-3 text-right whitespace-nowrap">
+                          <div className="inline-flex items-center gap-1.5 justify-end">
+                            <span
+                              className={`font-mono text-sm font-bold tabular-nums ${
+                                item.passed
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : 'text-rose-600 dark:text-rose-400'
+                              }`}
+                            >
+                              {Math.round(item.score_percent)}%
+                            </span>
+                            {trend === null ? (
+                              <span className="inline-flex items-center text-slate-300 dark:text-slate-600">
+                                <Minus className="h-3 w-3" />
+                              </span>
+                            ) : trendIsUp ? (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                <TrendingUp className="h-3 w-3" />
+                                +{Math.round(trend)}
+                              </span>
+                            ) : trendIsDown ? (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                                <TrendingDown className="h-3 w-3" />
+                                {Math.round(trend)}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-slate-300 dark:text-slate-600">
+                                <Minus className="h-3 w-3" />
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="px-3 py-3 text-right">
+                          <span className="font-mono text-sm text-slate-700 dark:text-slate-300 tabular-nums">
+                            {item.correct_count}
+                            <span className="text-slate-400 dark:text-slate-500">
+                              /{item.total_questions}
+                            </span>
+                          </span>
+                        </td>
+
+                        {/* Weak areas */}
+                        <td className="px-4 py-3">
+                          {item.weak_areas && item.weak_areas.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {item.weak_areas.map((area, i) => (
+                                <span
+                                  key={i}
+                                  className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 max-w-[160px] truncate"
+                                  title={area}
+                                >
+                                  {area}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600 text-xs">
+                              —
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400 font-mono text-sm tabular-nums">
+                          {formatDuration(item.duration_seconds)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
+
+          {/* Pagination note */}
+          {data.stats.has_more && (
+            <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+              Showing {data.items.length} of {data.stats.total_attempts} attempts
+            </p>
+          )}
         </>
       )}
     </div>
