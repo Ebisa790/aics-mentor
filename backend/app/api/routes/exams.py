@@ -446,3 +446,204 @@ def start_targeted_exam(
             for q in questions
         ],
     }
+
+# ============================================================
+# EXAM HISTORY
+# ============================================================
+
+def _format_question_options(q) -> dict:
+    """Return {option_a, option_b, option_c, option_d} from a Question row,
+    handling both the individual-columns layout and the legacy choices dict."""
+    raw_choices = getattr(q, "choices", []) or []
+    if isinstance(raw_choices, str):
+        try:
+            raw_choices = json.loads(raw_choices)
+        except Exception:
+            raw_choices = []
+
+    if isinstance(raw_choices, dict):
+        return {
+            "option_a": getattr(q, "option_a", None) or raw_choices.get("0") or raw_choices.get("a") or raw_choices.get("A") or "",
+            "option_b": getattr(q, "option_b", None) or raw_choices.get("1") or raw_choices.get("b") or raw_choices.get("B") or "",
+            "option_c": getattr(q, "option_c", None) or raw_choices.get("2") or raw_choices.get("c") or raw_choices.get("C") or "",
+            "option_d": getattr(q, "option_d", None) or raw_choices.get("3") or raw_choices.get("d") or raw_choices.get("D") or "",
+        }
+    if isinstance(raw_choices, (list, tuple)):
+        return {
+            "option_a": getattr(q, "option_a", None) or (raw_choices[0] if len(raw_choices) > 0 else ""),
+            "option_b": getattr(q, "option_b", None) or (raw_choices[1] if len(raw_choices) > 1 else ""),
+            "option_c": getattr(q, "option_c", None) or (raw_choices[2] if len(raw_choices) > 2 else ""),
+            "option_d": getattr(q, "option_d", None) or (raw_choices[3] if len(raw_choices) > 3 else ""),
+        }
+    return {
+        "option_a": getattr(q, "option_a", None) or "",
+        "option_b": getattr(q, "option_b", None) or "",
+        "option_c": getattr(q, "option_c", None) or "",
+        "option_d": getattr(q, "option_d", None) or "",
+    }
+
+
+@router.get("/history")
+def list_exam_history(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List the current user's past mock exam attempts (newest first)."""
+    from sqlalchemy import func as sqlfunc
+
+    rows = (
+        db.query(Attempt, Quiz)
+        .join(Quiz, Attempt.quiz_id == Quiz.id)
+        .filter(
+            Attempt.student_id == current_user.id,
+            Quiz.generated_mode == GeneratedExamMode.MOCK,
+            Attempt.status == AttemptStatus.GRADED,
+        )
+        .order_by(Attempt.submitted_at.desc().nullslast())
+        .limit(max(1, min(limit, 100)))
+        .all()
+    )
+
+    items = []
+    for attempt, quiz in rows:
+        total_q = (
+            db.query(sqlfunc.count(AttemptAnswer.id))
+            .filter(AttemptAnswer.attempt_id == attempt.id)
+            .scalar()
+            or 0
+        )
+        correct_q = (
+            db.query(sqlfunc.count(AttemptAnswer.id))
+            .filter(
+                AttemptAnswer.attempt_id == attempt.id,
+                AttemptAnswer.is_correct == True,
+            )
+            .scalar()
+            or 0
+        )
+
+        # Attempt.started_at is set at submit time on the current code path,
+        # so use quiz.created_at → attempt.submitted_at for duration.
+        duration_seconds = None
+        if quiz.created_at and attempt.submitted_at:
+            try:
+                duration_seconds = int(
+                    (attempt.submitted_at - quiz.created_at).total_seconds()
+                )
+            except Exception:
+                duration_seconds = None
+
+        items.append({
+            "id": str(attempt.id),
+            "quiz_id": str(quiz.id),
+            "title": quiz.title,
+            "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None,
+            "score_percent": float(attempt.score_percent or 0.0),
+            "total_questions": int(total_q),
+            "correct_count": int(correct_q),
+            "passed": float(attempt.score_percent or 0.0) >= 50.0,
+            "duration_seconds": duration_seconds,
+        })
+
+    scores = [i["score_percent"] for i in items]
+    stats = {
+        "total_attempts": len(items),
+        "average_score": round(sum(scores) / len(scores), 2) if scores else 0.0,
+        "best_score": max(scores) if scores else 0.0,
+        "last_score": scores[0] if scores else 0.0,
+    }
+
+    return {"items": items, "stats": stats}
+
+
+@router.get("/history/{attempt_id}")
+def get_exam_attempt_detail(
+    attempt_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Full detail of a past mock exam attempt (questions, answers, explanations)."""
+    try:
+        attempt_uuid = uuid.UUID(attempt_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid attempt ID format.")
+
+    attempt = db.get(Attempt, attempt_uuid)
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found.")
+
+    if attempt.student_id != current_user.id:
+        raise HTTPException(status_code=403, detail="This attempt belongs to another student.")
+
+    quiz = db.get(Quiz, attempt.quiz_id)
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found.")
+
+    answers = (
+        db.query(AttemptAnswer)
+        .options(joinedload(AttemptAnswer.question))
+        .filter(AttemptAnswer.attempt_id == attempt.id)
+        .all()
+    )
+
+    # Preserve the order the questions appeared in the exam.
+    qq_order = {
+        str(qq.question_id): qq.order_index
+        for qq in (
+            db.query(QuizQuestion)
+            .filter(QuizQuestion.quiz_id == quiz.id)
+            .all()
+        )
+    }
+    answers.sort(key=lambda a: qq_order.get(str(a.question_id), 0))
+
+    results = []
+    for ans in answers:
+        q = ans.question
+        if not q:
+            continue
+
+        course_name = None
+        course_id_val = getattr(q, "course_id", None)
+        if course_id_val:
+            c = db.get(Course, course_id_val)
+            course_name = c.name if c else None
+
+        opts = _format_question_options(q)
+        raw_correct = (
+            getattr(q, "correct_answer", None)
+            or getattr(q, "correct_option", None)
+            or getattr(q, "answer", None)
+        )
+
+        results.append({
+            "question_id": str(q.id),
+            "prompt": getattr(q, "question_text", None) or getattr(q, "prompt", ""),
+            "option_a": opts["option_a"],
+            "option_b": opts["option_b"],
+            "option_c": opts["option_c"],
+            "option_d": opts["option_d"],
+            "user_answer": ans.student_answer or "",
+            "correct_answer": normalize_answer(raw_correct) if raw_correct else "",
+            "is_correct": bool(ans.is_correct),
+            "explanation": getattr(q, "explanation", None),
+            "course_id": str(course_id_val) if course_id_val else None,
+            "course_name": course_name,
+        })
+
+    correct_count = sum(1 for r in results if r["is_correct"])
+    total_count = len(results)
+    score_percent = float(attempt.score_percent or 0.0)
+
+    return {
+        "id": str(attempt.id),
+        "quiz_id": str(quiz.id),
+        "title": quiz.title,
+        "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None,
+        "score_percent": score_percent,
+        "total_questions": total_count,
+        "correct_count": correct_count,
+        "passed": score_percent >= 50.0,
+        "results": results,
+    }
