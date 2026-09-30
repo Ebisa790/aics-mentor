@@ -486,11 +486,29 @@ def _format_question_options(q) -> dict:
 @router.get("/history")
 def list_exam_history(
     limit: int = 20,
+    offset: int = 0,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """List the current user's past mock exam attempts (newest first)."""
     from sqlalchemy import func as sqlfunc
+    from app.models.quiz import Question as QuestionModel
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+
+    # Total count for pagination
+    total_count = (
+        db.query(sqlfunc.count(Attempt.id))
+        .join(Quiz, Attempt.quiz_id == Quiz.id)
+        .filter(
+            Attempt.student_id == current_user.id,
+            Quiz.generated_mode == GeneratedExamMode.MOCK,
+            Attempt.status == AttemptStatus.GRADED,
+        )
+        .scalar()
+        or 0
+    )
 
     rows = (
         db.query(Attempt, Quiz)
@@ -501,7 +519,8 @@ def list_exam_history(
             Attempt.status == AttemptStatus.GRADED,
         )
         .order_by(Attempt.submitted_at.desc().nullslast())
-        .limit(max(1, min(limit, 100)))
+        .offset(safe_offset)
+        .limit(safe_limit)
         .all()
     )
 
@@ -523,8 +542,33 @@ def list_exam_history(
             or 0
         )
 
-        # Attempt.started_at is set at submit time on the current code path,
-        # so use quiz.created_at → attempt.submitted_at for duration.
+        # Weak areas: for each wrong answer, get its course name, count them
+        wrong_rows = (
+            db.query(QuestionModel.course_id)
+            .join(AttemptAnswer, AttemptAnswer.question_id == QuestionModel.id)
+            .filter(
+                AttemptAnswer.attempt_id == attempt.id,
+                AttemptAnswer.is_correct == False,
+            )
+            .all()
+        )
+
+        course_counts: dict[str, int] = {}
+        for (course_id_val,) in wrong_rows:
+            if not course_id_val:
+                continue
+            c = db.get(Course, course_id_val)
+            if c and c.name:
+                course_counts[c.name] = course_counts.get(c.name, 0) + 1
+
+        # Sort by most wrong, take top 3
+        weak_areas = [
+            name
+            for name, _count in sorted(
+                course_counts.items(), key=lambda kv: kv[1], reverse=True
+            )[:3]
+        ]
+
         duration_seconds = None
         if quiz.created_at and attempt.submitted_at:
             try:
@@ -544,17 +588,38 @@ def list_exam_history(
             "correct_count": int(correct_q),
             "passed": float(attempt.score_percent or 0.0) >= 50.0,
             "duration_seconds": duration_seconds,
+            "weak_areas": weak_areas,
         })
 
-    scores = [i["score_percent"] for i in items]
+    # Stats — computed across ALL attempts, not just this page
+    all_scores = [
+        float(s or 0.0)
+        for (s,) in (
+            db.query(Attempt.score_percent)
+            .join(Quiz, Attempt.quiz_id == Quiz.id)
+            .filter(
+                Attempt.student_id == current_user.id,
+                Quiz.generated_mode == GeneratedExamMode.MOCK,
+                Attempt.status == AttemptStatus.GRADED,
+            )
+            .all()
+        )
+    ]
+
     stats = {
-        "total_attempts": len(items),
-        "average_score": round(sum(scores) / len(scores), 2) if scores else 0.0,
-        "best_score": max(scores) if scores else 0.0,
-        "last_score": scores[0] if scores else 0.0,
+        "total_attempts": total_count,
+        "average_score": round(sum(all_scores) / len(all_scores), 2) if all_scores else 0.0,
+        "best_score": max(all_scores) if all_scores else 0.0,
+        "last_score": all_scores[0] if all_scores else 0.0,
+        "has_more": (safe_offset + safe_limit) < total_count,
     }
 
-    return {"items": items, "stats": stats}
+    return {
+        "items": items,
+        "stats": stats,
+        "offset": safe_offset,
+        "limit": safe_limit,
+    }
 
 
 @router.get("/history/{attempt_id}")
