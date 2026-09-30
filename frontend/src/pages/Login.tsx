@@ -39,7 +39,7 @@ export function LoginPage() {
   const [trustDevice, setTrustDevice] = useState(true)
   const [twoFAMethod, setTwoFAMethod] = useState<'app' | 'email'>('app')
   const [emailCodeSent, setEmailCodeSent] = useState(false)
-
+  const [showResend, setShowResend] = useState(false)
   const handleTwoFACodeChange = (value: string) => {
     setTwoFACode(value.replace(/[^0-9]/g, '').slice(0, 6))
   }
@@ -192,8 +192,25 @@ export function LoginPage() {
         navigate('/dashboard')
       }
     } catch (err: any) {
-      const detail = err?.friendlyMessage || err?.response?.data?.detail
+      const rawDetail = err?.response?.data?.detail
       const status = err?.response?.status
+
+      // Email verification error — handle FIRST, before the generic 403 branch
+      if (
+        status === 403 &&
+        rawDetail &&
+        typeof rawDetail === 'object' &&
+        rawDetail.error === 'email_not_verified'
+      ) {
+        setError(
+          rawDetail.message ||
+            'Please verify your email before logging in. Check your inbox for the verification link.'
+        )
+        setShowResend(true)
+        return
+      }
+
+      const detail = err?.friendlyMessage || rawDetail
 
       if (status === 401) {
         setError('Incorrect email or password. Please try again.')
@@ -363,7 +380,7 @@ export function LoginPage() {
             </div>
 
             {/* Error */}
-            {error && (
+                        {error && (
               <div className="mx-6 sm:mx-8 mb-4">
                 <div
                   role="alert"
@@ -381,6 +398,16 @@ export function LoginPage() {
                           Contact Support
                         </Link>
                         {' '}to request reactivation.
+                      </span>
+                    )}
+                    {showResend && (
+                      <span className="block mt-1.5">
+                        <Link
+                          to="/resend-verification"
+                          className="font-semibold text-red-700 dark:text-red-300 underline hover:text-red-900 dark:hover:text-red-100"
+                        >
+                          Resend verification email →
+                        </Link>
                       </span>
                     )}
                   </span>

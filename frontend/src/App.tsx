@@ -23,6 +23,8 @@ import { NotesIndexPage } from './pages/NotesIndexPage'
 import { PrivacyPolicyPage } from './pages/PrivacyPolicy'
 import { TermsOfServicePage } from './pages/TermsOfService'
 import { Quiz } from './pages/Quiz'
+import { VerifyEmailPage } from './pages/VerifyEmail'
+import { ResendVerificationPage } from './pages/ResendVerification'
 import { MockExamPage } from './pages/MockExamPage'
 import { TutorPage } from './pages/Tutor'
 import { MaterialsPage } from './pages/Materials'
@@ -56,6 +58,8 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/support" element={<SupportPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+<Route path="/resend-verification" element={<ResendVerificationPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/payment/callback" element={<PaymentCallbackPage />} />
@@ -78,7 +82,7 @@ export default function App() {
               <Route path="/mock-exam" element={<MockExamPage />} />
               <Route path="/mock-exams" element={<MockExamPage />} />
               <Route path="/mock-exams/history" element={<MockExamHistory />} />
-<Route path="/mock-exams/history/:attemptId" element={<MockExamPastResult />} />
+              <Route path="/mock-exams/history/:attemptId" element={<MockExamPastResult />} />
               <Route path="/tutor" element={<TutorPage />} />
               <Route path="/materials" element={<MaterialsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
