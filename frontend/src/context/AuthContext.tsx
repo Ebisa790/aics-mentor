@@ -176,13 +176,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, fullName: string) => {
     try {
-      // Create the account. The backend sends a verification email.
-      // Do NOT auto-login — the user must verify first.
       await authApi.register({ email, password, full_name: fullName })
     } catch (err: any) {
-      if (err?.response?.status === 400) {
-        throw new Error('An account with this email already exists.')
+      // Prefer the backend's actual error message.
+      // Your API wraps errors as { success: false, error: "...", status_code: N }
+      const detail =
+        err?.response?.data?.error ||
+        err?.response?.data?.detail ||
+        err?.friendlyMessage
+
+      if (typeof detail === 'string' && detail.length > 0) {
+        throw new Error(detail)
       }
+
+      // Fallback for status codes we don't have specific messages for
+      if (err?.response?.status === 400) {
+        throw new Error('Please check your details and try again.')
+      }
+
       throw err
     }
   }
