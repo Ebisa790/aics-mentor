@@ -22,6 +22,7 @@ interface MockExamResultsProps {
   onNewExam: () => void;
   onGoDashboard: () => void;
   onGetAiExplanation: (item: ExamResultItem) => void;
+  readOnly?: boolean;
 }
 
 export function MockExamResults({
@@ -33,6 +34,7 @@ export function MockExamResults({
   onNewExam,
   onGoDashboard,
   onGetAiExplanation,
+  readOnly = false,
 }: MockExamResultsProps) {
   const [selectedCourse, setSelectedCourse] = React.useState<string | null>(null);
   const reviewSectionRef = React.useRef<HTMLDivElement>(null);
@@ -117,7 +119,7 @@ export function MockExamResults({
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
-          {incorrectItems.length > 0 && (
+                 {!readOnly && incorrectItems.length > 0 && (
             <button
               type="button"
               onClick={onTargetedRetake}
@@ -135,7 +137,7 @@ export function MockExamResults({
             onClick={onNewExam}
             className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold px-5 py-3 rounded-xl transition active:scale-95 flex items-center gap-2"
           >
-            <span>New Exam</span>
+                        <span>{readOnly ? 'Start New Exam' : 'New Exam'}</span>
           </button>
           <button
             type="button"
