@@ -89,7 +89,8 @@ def _process_exam_generation(payload: GenerateExamRequest, db: Session, current_
         title = f"National Exit Exam Simulation ({requested_count}-Question Mock)"
         quiz_type = QuizType.FULL_SIMULATION
         generated_mode = GeneratedExamMode.MOCK
-        time_limit = MOCK_TIME_LIMIT_MINUTES if requested_count >= 50 else 60
+        # Matches frontend presets: 1.2 min per question
+        time_limit = max(24, round(requested_count * 1.2))
         target_course_id = None
 
         # Pass student_id to prefer unseen questions
