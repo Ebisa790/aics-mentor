@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
-import { 
-  Crown, 
-  Check, 
-  ShieldCheck, 
+import {
+  Crown,
+  Check,
+  ShieldCheck,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  ChevronDown,
+  Clock,
+  CreditCard,
 } from 'lucide-react'
 import {
   paymentApi,
@@ -17,10 +20,46 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { ManualPaymentModal } from '../components/ManualPaymentModal'
 
+// Concrete, outcome-focused features (fallback if plan has none)
+const DEFAULT_FEATURES = [
+  'Take unlimited practice quizzes — no waiting between attempts',
+  'Practice with full mock exams (20, 50, or 100 questions)',
+  'Read every course note across all 16 CS subjects',
+  'Ask the Study Assistant any question, any time',
+  'See exactly which subjects need more work',
+  'Review past attempts and learn from every mistake',
+]
+
+const FAQS = [
+  {
+    q: 'What if I don\u2019t have Telebirr?',
+    a: 'You can pay with Telebirr, CBE, or Awash Bank. All three are accepted through the bank transfer option.',
+  },
+  {
+    q: 'Can I pay from someone else\u2019s phone?',
+    a: 'Yes. Use a parent\u2019s or friend\u2019s phone to send the payment. Just make sure to submit the exact reference number from that transaction.',
+  },
+  {
+    q: 'How long until my access is activated?',
+    a: 'Usually within a few hours, and always within 24 hours. You\u2019ll get an email as soon as your account is upgraded.',
+  },
+]
+
+function daysUntilExam(examDate: string | null | undefined): number | null {
+  if (!examDate) return null
+  const target = new Date(examDate)
+  if (isNaN(target.getTime())) return null
+  target.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diff = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  return diff > 0 ? diff : null
+}
+
 export function PricingPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { isPremium, refreshUser } = useAuth()
+  const { user, isPremium, refreshUser } = useAuth()
   const [pricing, setPricing] = useState<PricingPlan | null>(null)
   const [loading, setLoading] = useState(true)
   const [initializing, setInitializing] = useState(false)
@@ -32,8 +71,6 @@ export function PricingPage() {
 
   useEffect(() => {
     fetchPricing()
-    // Fetch manual payment options in parallel so we know
-    // whether Chapa is live and which banks are available.
     manualPaymentApi
       .getOptions()
       .then(setManualOptions)
@@ -49,7 +86,7 @@ export function PricingPage() {
       setPricing(primaryPlan ?? null)
     } catch (err: unknown) {
       console.error('Failed to fetch pricing:', err)
-      setError('Couldn\'t load pricing. Please try again later.')
+      setError("Couldn't load pricing. Please try again later.")
     } finally {
       setLoading(false)
     }
@@ -65,32 +102,27 @@ export function PricingPage() {
     setError(null)
 
     try {
-      // Refresh user data to ensure valid token
       await refreshUser()
-      
       const res = await paymentApi.initializePayment({ plan_id: pricing.id })
 
       if (res?.checkout_url) {
-        // Redirect to Chapa checkout
         window.location.href = res.checkout_url
       } else {
         throw new Error('Checkout URL was not returned. Please try again.')
       }
     } catch (err: unknown) {
       setInitializing(false)
-      
+
       if (axios.isAxiosError(err)) {
         const status = err.response?.status
         const detail = err.response?.data?.detail
-        
+
         if (status === 401) {
           setError('Your session has expired. Please log in again.')
-          // Redirect to login after 2 seconds
           setTimeout(() => navigate('/login'), 2000)
         } else if (typeof detail === 'string') {
           setError(detail)
         } else if (typeof detail === 'object' && detail !== null) {
-          // Handle object detail (like cooldown errors)
           const detailObj = detail as any
           setError(detailObj.message || 'Failed to initialize payment.')
         } else {
@@ -104,26 +136,25 @@ export function PricingPage() {
     }
   }
 
-  const defaultFeatures = [
-    'Unlimited quizzes (no cooldown)',
-    '100-question Exit Exam Simulator',
-    'Full access to all 16 CS course notes',
-    'Study Assistant for explanations',
-    'Advanced analytics and readiness score',
-    'Previous exam practice and review',
-  ]
+  const featuresToDisplay: string[] =
+    pricing?.features?.length ? pricing.features : DEFAULT_FEATURES
 
-  const featuresToDisplay: string[] = pricing?.features?.length ? pricing.features : defaultFeatures
+  const chapaIsLive = manualOptions?.chapa_live === true
+  const chapaUnderReview = manualOptions !== null && manualOptions.chapa_live === false
+  const examDays = daysUntilExam(user?.exam_date)
 
+  // ── Premium state ────────────────────────────────────────
   if (isPremium) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 bg-gradient-to-b from-indigo-50 to-white">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl max-w-md w-full p-8 text-center border border-indigo-100">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 bg-gradient-to-b from-indigo-50 to-white dark:from-slate-950 dark:to-slate-950">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl max-w-md w-full p-8 text-center border border-indigo-100 dark:border-slate-800">
+          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
             <Crown className="w-8 h-8 text-amber-500 fill-amber-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">You have Premium</h1>
-          <p className="text-gray-600 mt-2 text-sm">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            You have Premium
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-2 text-sm">
             You already have full access to all premium features.
           </p>
           <button
@@ -137,32 +168,43 @@ export function PricingPage() {
     )
   }
 
+  // ── Main pricing page ────────────────────────────────────
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 bg-gradient-to-b from-indigo-50 to-white">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen py-12 px-4 sm:px-6 bg-gradient-to-b from-indigo-50 to-white dark:from-slate-950 dark:to-slate-950">
+      <div className="max-w-3xl mx-auto">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center text-sm text-slate-600 dark:text-slate-400 hover:text-indigo-600 mb-8 transition-colors"
+          className="inline-flex items-center text-sm text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 mb-8 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
           Back
         </button>
 
+        {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-500/15 px-3 py-1 rounded-full uppercase tracking-wider mb-4">
             <Crown className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
             Premium
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100">
             Get Full Access
           </h1>
-          <p className="text-gray-600 mt-3 text-sm md:text-base">
-            One-time payment. Lifetime access.
+          <p className="text-slate-600 dark:text-slate-400 mt-3 text-sm md:text-base">
+            One payment. Access to everything, for as long as you need it.
           </p>
+
+          {examDays !== null && (
+            <p className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-3.5 py-2 rounded-full">
+              <Clock className="w-3.5 h-3.5" />
+              Your exam is in {examDays} {examDays === 1 ? 'day' : 'days'} — every
+              practice session counts.
+            </p>
+          )}
         </div>
 
+        {/* Reason notice */}
         {reason && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 mb-6 text-sm">
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 rounded-xl p-4 mb-6 text-sm">
             {reason === 'mock_exam_upgrade' && 'Upgrade to access the Mock Exam Simulator.'}
             {reason === 'quiz_limit' && 'Upgrade for unlimited quizzes with no cooldown.'}
             {reason === 'notes_limit' && 'Upgrade for full course notes.'}
@@ -171,13 +213,15 @@ export function PricingPage() {
         )}
 
         {loading ? (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-12 text-center">
-            <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto" />
-            <p className="text-gray-500 mt-4 text-sm">Loading pricing...</p>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-12 text-center border border-slate-200 dark:border-slate-800">
+            <Loader2 className="w-10 h-10 text-indigo-600 dark:text-indigo-400 animate-spin mx-auto" />
+            <p className="text-slate-500 dark:text-slate-400 mt-4 text-sm">
+              Loading pricing...
+            </p>
           </div>
         ) : error && !pricing ? (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-8 text-center">
-            <p className="text-red-600 text-sm">{error}</p>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-8 text-center border border-slate-200 dark:border-slate-800">
+            <p className="text-rose-600 dark:text-rose-400 text-sm">{error}</p>
             <button
               onClick={fetchPricing}
               className="mt-4 px-4 py-2 bg-indigo-600 text-white text-sm rounded-xl hover:bg-indigo-700"
@@ -186,115 +230,164 @@ export function PricingPage() {
             </button>
           </div>
         ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-indigo-100">
-            {/* Plan Header - Uses dynamic pricing from database */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-center text-white">
-              <h2 className="text-xl font-bold mb-2">{pricing?.name || 'Premium'}</h2>
-              
-              {/* Show actual amount from database - NO hardcoded fallback */}
-              {pricing ? (
-                <div className="text-4xl font-black">
-                  {pricing.amount} <span className="text-lg">{pricing.currency}</span>
-                </div>
-              ) : (
-                <div className="text-4xl font-black">
-                  <Loader2 className="w-8 h-8 animate-spin inline" />
-                </div>
-              )}
-              
-              <p className="text-indigo-200 text-sm mt-2">One-time payment · Lifetime access</p>
-            </div>
+          <>
+            {/* Plan card */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+              {/* Plan header */}
+              <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-8 text-center text-white">
+                <h2 className="text-xl font-bold mb-2">
+                  {pricing?.name || 'Premium'}
+                </h2>
 
-            <div className="p-8">
-              {/* Features */}
-              <ul className="space-y-3">
-                {featuresToDisplay.map((feature: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-3 text-sm text-gray-700">
-                    <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
+                {pricing ? (
+                  <div className="text-4xl font-black">
+                    {pricing.amount}{' '}
+                    <span className="text-lg font-bold opacity-90">
+                      {pricing.currency}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-4xl font-black">
+                    <Loader2 className="w-8 h-8 animate-spin inline" />
+                  </div>
+                )}
 
-              <div className="flex items-center justify-center gap-4 mt-6 text-xs text-slate-500">
-                <span className="flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  Secure Payment
-                </span>
+                <p className="text-indigo-100 text-sm mt-2">
+                  One-time payment · Full lifetime access
+                </p>
               </div>
 
-              {error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl">
-                  {error}
-                </div>
-              )}
+              <div className="p-6 sm:p-8">
+                {/* Features */}
+                <ul className="space-y-3.5">
+                  {featuresToDisplay.map((feature: string, idx: number) => (
+                    <li
+                      key={idx}
+                      className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300"
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20 mt-0.5">
+                        <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
+                      </span>
+                      <span className="leading-relaxed">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
-                          {/* Chapa under-review notice */}
-              {manualOptions && !manualOptions.chapa_live && (
-                <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-relaxed text-amber-800">
-                  <ShieldCheck className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
-                  <div>
-                    <span className="font-bold block mb-0.5">
-                      Online card payment is under review
-                    </span>
-                    While our payment provider finishes review, please use
-                    the bank transfer option below. Your access is activated
-                    within 24 hours.
+                {/* Error */}
+                {error && (
+                  <div className="mt-6 p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs rounded-xl">
+                    {error}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Payment buttons */}
-              <div className="mt-4 space-y-3">
-                {/* Chapa button — disabled when not live */}
-                <button
-                  onClick={handleCheckout}
-                  disabled={
-                    initializing ||
-                    !pricing ||
-                    (manualOptions?.chapa_live === false)
-                  }
-                  className={`w-full font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 ${
-                    manualOptions?.chapa_live === false
-                      ? 'bg-slate-200 text-slate-500 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600'
-                      : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 disabled:opacity-60'
-                  }`}
-                >
-                  {initializing ? (
+                {/* CTA area */}
+                <div className="mt-6 space-y-3">
+                  {chapaIsLive ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Redirecting...</span>
+                      {/* Chapa primary */}
+                      <button
+                        onClick={handleCheckout}
+                        disabled={initializing || !pricing}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/20 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        {initializing ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Redirecting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-5 h-5" />
+                            <span>
+                              Pay {pricing?.amount} {pricing?.currency} with card
+                            </span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Manual bank transfer secondary */}
+                      <button
+                        onClick={() => setShowManualModal(true)}
+                        disabled={!pricing}
+                        className="w-full bg-white dark:bg-slate-900 border-2 border-emerald-500 dark:border-emerald-500 text-emerald-700 dark:text-emerald-400 font-bold py-3.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        <ShieldCheck className="w-5 h-5" />
+                        <span>Or pay via bank transfer</span>
+                      </button>
                     </>
                   ) : (
                     <>
-                      <Crown className="w-5 h-5 fill-amber-400 text-amber-400" />
-                      <span>
-                        Pay {pricing?.amount} {pricing?.currency} with Chapa
-                      </span>
+                      {/* Bank transfer primary when Chapa off */}
+                      <button
+                        onClick={() => setShowManualModal(true)}
+                        disabled={!pricing}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        <ShieldCheck className="w-5 h-5" />
+                        <span>
+                          Pay {pricing?.amount} {pricing?.currency} via bank transfer
+                        </span>
+                      </button>
+
+                      {/* Card payment coming soon note */}
+                      {chapaUnderReview && (
+                        <p className="text-center text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5">
+                          <CreditCard className="w-3.5 h-3.5" />
+                          Card payment coming soon
+                        </p>
+                      )}
                     </>
                   )}
-                </button>
+                </div>
 
-                {/* Manual bank transfer button */}
-                <button
-                  onClick={() => setShowManualModal(true)}
-                  disabled={!pricing}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition shadow-lg shadow-emerald-500/20 disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  <ShieldCheck className="w-5 h-5" />
-                  <span>
-                    Pay {pricing?.amount} {pricing?.currency} via Bank Transfer
+                {/* Trust line */}
+                <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-5 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    Verified within 24 hours
                   </span>
-                </button>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-emerald-500" />
+                    Instant activation after verification
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* FAQ */}
+            <div className="mt-8">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider mb-3 text-center">
+                Common questions
+              </h3>
+
+              <div className="space-y-2">
+                {FAQS.map((faq, idx) => (
+                  <details
+                    key={idx}
+                    className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors"
+                  >
+                    <summary className="flex items-center justify-between gap-4 cursor-pointer px-5 py-4 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors list-none">
+                      <span>{faq.q}</span>
+                      <ChevronDown className="w-4 h-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="px-5 pb-4 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                      {faq.a}
+                    </div>
+                  </details>
+                ))}
               </div>
 
-              <p className="text-center text-xs text-slate-400 mt-4">
-                {manualOptions?.chapa_live
-                  ? 'Pay via Chapa or bank transfer. Both activate instantly or within 24 hours.'
-                  : 'Bank transfer is verified manually within 24 hours.'}
+              <p className="mt-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                Still have questions?{' '}
+                <button
+                  onClick={() => navigate('/support')}
+                  className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Contact support
+                </button>
               </p>
             </div>
-          </div>
+          </>
         )}
       </div>
 
