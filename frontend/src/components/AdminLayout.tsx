@@ -166,9 +166,10 @@ export function AdminLayout() {
         {/* Footer */}
         <div className="p-3 border-t border-white/10 shrink-0 space-y-2">
           {/* Back to student view */}
+                 
           <Link
             to="/dashboard"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 hover:text-emerald-200 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to student view</span>
