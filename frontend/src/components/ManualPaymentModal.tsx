@@ -13,6 +13,7 @@ import {
   X,
   QrCode,
   Keyboard,
+  type LucideIcon,
 } from 'lucide-react'
 import { formatMoney } from '../utils/format'
 import {
@@ -24,11 +25,13 @@ import {
 interface ManualPaymentModalProps {
   isOpen: boolean
   onClose: () => void
-  planId?: string
   onSuccess?: () => void
 }
 
-const bankMeta: Record<ManualBank, { label: string; icon: any; hint: string }> = {
+const bankMeta: Record<
+  ManualBank,
+  { label: string; icon: LucideIcon; hint: string }
+> = {
   cbe: {
     label: 'CBE',
     icon: Building2,
@@ -47,7 +50,6 @@ const bankMeta: Record<ManualBank, { label: string; icon: any; hint: string }> =
 }
 
 // Client-side format hints matching backend validation.
-// Users see green/amber feedback as they type — fewer rejections.
 const bankPatterns: Record<ManualBank, RegExp> = {
   cbe: /^(FT[A-Z0-9]{8,16}|[A-Za-z0-9]{15,25})$/,
   telebirr: /^[A-Z0-9]{10,14}$/,
@@ -56,38 +58,27 @@ const bankPatterns: Record<ManualBank, RegExp> = {
 
 const bankFormatHint: Record<ManualBank, string> = {
   cbe: 'From your CBE SMS: tap the receipt link, then find the FT reference (e.g. FT26265HR71H). Or paste the SMS link code directly.',
-  telebirr: 'The Transaction Number from your Telebirr SMS or app (10 characters, e.g. DIM41VUFVQ)',
-  awash: 'The Transaction ID from your Awash SMS or receipt (14-16 digits, e.g. 260922130393530)',
+  telebirr:
+    'The Transaction Number from your Telebirr SMS or app (10 characters, e.g. DIM41VUFVQ)',
+  awash:
+    'The Transaction ID from your Awash SMS or receipt (14-16 digits, e.g. 260922130393530)',
 }
 
-// USSD codes for quick mobile payment.
 const bankUssd: Record<ManualBank, string> = {
   cbe: '*889#',
   telebirr: '*127#',
   awash: '*901#',
 }
 
-// Friendly per-bank instruction shown above the USSD code.
 const bankUssdHint: Record<ManualBank, string> = {
   cbe: 'Dial from the phone registered with CBE Birr',
   telebirr: 'Dial from the phone registered with Telebirr',
   awash: 'Dial from the phone registered with Awash',
 }
 
-// localStorage key for in-progress form state.
-// Cleared after successful submit, or on manual clear.
-// Auto-expires after 24 hours so stale data never resurfaces.
 const DRAFT_KEY = 'manual_payment_draft_v1'
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000
 
-
-/**
- * Small 3-step progress indicator shown at the top of the payment flow.
- * Steps light up as the student progresses:
- *   1. Choose bank
- *   2. Send money
- *   3. Submit reference
- */
 function StepIndicator({
   step1Done,
   step2Done,
@@ -122,7 +113,11 @@ function StepIndicator({
                       : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
                 }`}
               >
-                {isDone ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : step.n}
+                {isDone ? (
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                ) : (
+                  step.n
+                )}
               </div>
               <span
                 className={`mt-1.5 text-center text-[10px] font-semibold leading-tight ${
@@ -155,7 +150,6 @@ function StepIndicator({
   )
 }
 
-
 export function ManualPaymentModal({
   isOpen,
   onClose,
@@ -182,8 +176,6 @@ export function ManualPaymentModal({
   const [confirmSent, setConfirmSent] = useState(false)
   const [confirmUnderstood, setConfirmUnderstood] = useState(false)
   const [confirmAmount, setConfirmAmount] = useState('')
-  // Exact-amount gate: null = unanswered, true = yes exact, false = no different
-  const [sentExactAmount, setSentExactAmount] = useState<boolean | null>(null)
 
   // ── Draft persistence helpers ──────────────────────────────
   const clearDraft = () => {
@@ -234,8 +226,6 @@ export function ManualPaymentModal({
     }
   }
 
-  // Restore draft on open — but don't overwrite a fresh modal state
-  // if the user just opened it after a successful submit.
   useEffect(() => {
     if (!isOpen) return
     const draft = loadDraft()
@@ -248,17 +238,22 @@ export function ManualPaymentModal({
     if (draft.note) setNote(draft.note)
   }, [isOpen])
 
-  // Save draft whenever any field changes.
   useEffect(() => {
     if (!isOpen) return
     if (success) return
     if (loading) return
     saveDraft(selectedBank, reference, senderName, senderPhone, note)
-  }, [isOpen, selectedBank, reference, senderName, senderPhone, note, success, loading])
+  }, [
+    isOpen,
+    selectedBank,
+    reference,
+    senderName,
+    senderPhone,
+    note,
+    success,
+    loading,
+  ])
 
-  /*
-   * Load available banks + plan when the modal opens.
-   */
   useEffect(() => {
     if (!isOpen) return
 
@@ -275,7 +270,6 @@ export function ManualPaymentModal({
     setConfirmSent(false)
     setConfirmUnderstood(false)
     setConfirmAmount('')
-    setSentExactAmount(null)
 
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -285,7 +279,6 @@ export function ManualPaymentModal({
       .then((data) => {
         if (!isMounted) return
         setOptions(data)
-        // Pre-select the first bank so the user sees details immediately
         if (data.banks.length > 0) {
           setSelectedBank(data.banks[0].bank)
         }
@@ -294,7 +287,7 @@ export function ManualPaymentModal({
         if (!isMounted) return
         console.error('Failed to load manual payment options:', err)
         setError(
-          'We could not load the manual payment options. Please try again.'
+          'We could not load the manual payment options. Please try again.',
         )
       })
       .finally(() => {
@@ -307,16 +300,13 @@ export function ManualPaymentModal({
     }
   }, [isOpen])
 
-  /*
-   * ESC closes the modal unless a submission is in progress.
-   */
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen && !submitting) {
         onClose()
       }
     },
-    [isOpen, submitting, onClose]
+    [isOpen, submitting, onClose],
   )
 
   useEffect(() => {
@@ -329,29 +319,22 @@ export function ManualPaymentModal({
   const selectedBankInfo =
     options?.banks.find((b) => b.bank === selectedBank) ?? null
 
-  // Live validation of the reference against the selected bank's format
   const referenceIsValid = selectedBank
     ? bankPatterns[selectedBank].test(reference)
     : false
 
-  // Progress indicator state
   const step1Done = selectedBank !== null
   const step2Done = step1Done && options !== null
   const step3Done = referenceIsValid
   const currentStep: 1 | 2 | 3 = !step1Done ? 1 : !step3Done ? 2 : 3
 
-  // Confirmation gate validity
   const typedAmountNum = parseFloat(confirmAmount.replace(/,/g, '').trim())
   const amountMatches =
     !!options &&
     !isNaN(typedAmountNum) &&
     Math.abs(typedAmountNum - Number(options.amount)) < 0.01
 
-  const gatesPassed =
-    confirmSent &&
-    confirmUnderstood &&
-    sentExactAmount === true &&
-    amountMatches
+  const gatesPassed = confirmSent && confirmUnderstood && amountMatches
 
   const handleCopy = async (text: string, field: string) => {
     try {
@@ -359,7 +342,7 @@ export function ManualPaymentModal({
       setCopiedField(field)
       window.setTimeout(() => setCopiedField(null), 1500)
     } catch {
-      /* ignore — clipboard is best-effort */
+      /* ignore */
     }
   }
 
@@ -393,13 +376,11 @@ export function ManualPaymentModal({
     setError(null)
 
     try {
-      // 1) Initiate: create the pending payment + get tx_ref
       const initiated = await manualPaymentApi.initiate({
         plan_id: options.plan_id,
         bank: selectedBank,
       })
 
-      // 2) Submit the bank reference + confirmation gates
       await manualPaymentApi.submit({
         tx_ref: initiated.tx_ref,
         bank_reference: reference.trim(),
@@ -419,11 +400,9 @@ export function ManualPaymentModal({
       if (axios.isAxiosError(err)) {
         const status = err.response?.status
         const data = err.response?.data
-        // Backend may return { detail: "..." } OR { error: "..." }
         const rawDetail = data?.detail
         const rawError = data?.error
 
-        // Extract a plain string message from whatever shape we got
         let message: string | null = null
         if (typeof rawDetail === 'string') {
           message = rawDetail
@@ -433,17 +412,14 @@ export function ManualPaymentModal({
           message = rawDetail[0].msg
         }
 
-        // Special-case common status codes with clearer copy
         if (status === 429) {
-          message =
-            'Too many attempts. Please wait a few minutes and try again.'
+          message = 'Too many attempts. Please wait a few minutes and try again.'
         } else if (status === 401) {
           message = 'Your session expired. Please log in again.'
         } else if (status === 403) {
           message = message || 'You are not allowed to do that right now.'
         } else if (status && status >= 500) {
-          message =
-            message || 'Server error. Please try again in a moment.'
+          message = message || 'Server error. Please try again in a moment.'
         }
 
         if (!message) {
@@ -451,7 +427,6 @@ export function ManualPaymentModal({
             'We could not submit your payment. Please check your connection and try again.'
         }
 
-        // Duplicate-reference errors go inline next to the field
         const lower = message.toLowerCase()
         if (
           lower.includes('reference is already in use') ||
@@ -473,9 +448,22 @@ export function ManualPaymentModal({
     }
   }
 
+  // Hint shown when submit is disabled
+  const submitDisabledReason = (() => {
+    if (submitting) return null
+    if (!referenceIsValid) return 'Enter a valid reference number to continue.'
+    if (!confirmSent)
+      return 'Check the confirmation box to enable submit.'
+    if (!amountMatches)
+      return 'Type the exact amount you sent to enable submit.'
+    if (!confirmUnderstood)
+      return 'Accept the reference verification note to enable submit.'
+    return null
+  })()
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="manual-payment-modal-title"
@@ -487,10 +475,10 @@ export function ManualPaymentModal({
     >
       <div
         id="manual-payment-modal"
-        className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+        className="relative w-full max-w-lg sm:max-w-2xl lg:max-w-3xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
       >
         {/* Header */}
-        <div className="relative overflow-hidden px-6 pt-6 pb-4 sm:px-7 sm:pt-7">
+        <div className="relative overflow-hidden px-6 pt-6 pb-4 sm:px-8 sm:pt-7">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500" />
 
           <button
@@ -526,7 +514,7 @@ export function ManualPaymentModal({
         </div>
 
         {/* Content */}
-        <div className="px-6 pb-6 sm:px-7 sm:pb-7">
+        <div className="px-6 pb-6 sm:px-8 sm:pb-8">
           {loading ? (
             <div className="space-y-4 py-6 animate-pulse">
               <div className="h-16 rounded-2xl bg-slate-100 dark:bg-slate-800" />
@@ -587,7 +575,7 @@ export function ManualPaymentModal({
                       Email confirmation
                     </p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      You&apos;ll be notified when approved
+                      You'll be notified when approved
                     </p>
                   </div>
                 </div>
@@ -610,7 +598,7 @@ export function ManualPaymentModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-2 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700"
+                className="mt-2 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-700"
               >
                 Close
               </button>
@@ -641,7 +629,7 @@ export function ManualPaymentModal({
                 currentStep={currentStep}
               />
 
-              {/* Amount card — big, copyable, impossible to miss */}
+              {/* Amount card */}
               <div className="rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 dark:border-emerald-500/40 dark:from-emerald-950/40 dark:via-slate-900 dark:to-teal-950/30">
                 <div className="text-center">
                   <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
@@ -650,9 +638,7 @@ export function ManualPaymentModal({
 
                   <button
                     type="button"
-                    onClick={() =>
-                      handleCopy(String(options.amount), 'amount')
-                    }
+                    onClick={() => handleCopy(String(options.amount), 'amount')}
                     className="group mt-3 inline-flex items-center gap-3 rounded-2xl bg-white px-5 py-3 shadow-sm ring-1 ring-emerald-200 transition hover:bg-emerald-50 dark:bg-slate-950 dark:ring-emerald-500/30 dark:hover:bg-slate-900"
                     title="Tap to copy the exact amount"
                   >
@@ -670,12 +656,15 @@ export function ManualPaymentModal({
                   </button>
 
                   <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                    For: <span className="font-semibold text-slate-700 dark:text-slate-300">{options.plan_name}</span>
+                    For:{' '}
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      {options.plan_name}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* USSD shortcut — appears once a bank is selected */}
+              {/* USSD shortcut */}
               {selectedBank && (
                 <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-500/30 dark:bg-indigo-500/10">
                   <div className="flex items-start gap-3">
@@ -756,7 +745,10 @@ export function ManualPaymentModal({
                         </span>
                         {isSelected && (
                           <span className="absolute right-3 sm:right-1 top-1/2 sm:top-1 -translate-y-1/2 sm:translate-y-0 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500">
-                            <Check className="h-2.5 w-2.5 text-white" strokeWidth={4} />
+                            <Check
+                              className="h-2.5 w-2.5 text-white"
+                              strokeWidth={4}
+                            />
                           </span>
                         )}
                       </button>
@@ -767,7 +759,7 @@ export function ManualPaymentModal({
 
               {/* Bank details */}
               {selectedBankInfo && (
-                <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+                <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50 sm:p-5">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Step 2 — Send the exact amount to
                   </div>
@@ -802,31 +794,37 @@ export function ManualPaymentModal({
                     </div>
                   )}
 
-                  {/* QR view — Telebirr only, desktop only, active tab only */}
-                  {selectedBankInfo.bank === 'telebirr' && payMethod === 'qr' && (
-                    <div className="hidden sm:flex flex-col items-center rounded-xl border border-emerald-200 bg-white px-4 py-4 dark:border-emerald-500/30 dark:bg-slate-900">
-                      <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                        Scan with your Telebirr app
+                  {/* QR view — Telebirr, desktop only, active tab */}
+                  {selectedBankInfo.bank === 'telebirr' &&
+                    payMethod === 'qr' && (
+                      <div className="hidden sm:grid grid-cols-[auto_1fr] gap-5 items-center rounded-xl border border-emerald-200 bg-white p-5 dark:border-emerald-500/30 dark:bg-slate-900">
+                        <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200 dark:ring-slate-700">
+                          <img
+                            src="/telebirr-qr.png"
+                            alt="Telebirr payment QR code"
+                            className="h-40 w-40 rounded-lg"
+                          />
+                        </div>
+
+                        <div className="text-left">
+                          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                            Scan with your Telebirr app
+                          </div>
+
+                          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                            Open the Telebirr app, tap the scan icon, and point
+                            at this QR. Your phone will show our phone number —
+                            tap it, then enter{' '}
+                            <strong className="text-slate-700 dark:text-slate-200">
+                              {options.amount} {options.currency}
+                            </strong>{' '}
+                            and send.
+                          </p>
+                        </div>
                       </div>
+                    )}
 
-                      <img
-                        src="/telebirr-qr.png"
-                        alt="Telebirr payment QR code"
-                        className="h-40 w-40 rounded-lg bg-white p-2 ring-1 ring-slate-200 dark:ring-slate-700"
-                      />
-
-                      <p className="mt-3 max-w-[280px] text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                        Open the Telebirr app, tap the scan icon, and point at this QR.
-                        Your phone will show our phone number — tap it, then enter{' '}
-                        <strong className="text-slate-700 dark:text-slate-200">
-                          {options.amount} {options.currency}
-                        </strong>{' '}
-                        and send.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Copy details view — always on mobile; on desktop when "Copy details" tab active, or for non-Telebirr banks */}
+                  {/* Copy details view */}
                   <div
                     className={`space-y-2.5 ${
                       selectedBankInfo.bank === 'telebirr' && payMethod === 'qr'
@@ -880,7 +878,6 @@ export function ManualPaymentModal({
                       )}
                     </button>
 
-                    {/* Copy all details button */}
                     <button
                       type="button"
                       onClick={handleCopyAll}
@@ -923,13 +920,10 @@ export function ManualPaymentModal({
                     type="text"
                     value={reference}
                     onChange={(e) => {
-                      // Auto-uppercase and strip spaces/dashes users
-                      // accidentally include when copying.
                       const cleaned = e.target.value
                         .toUpperCase()
                         .replace(/\s+/g, '')
                       setReference(cleaned)
-                      // Any edit clears the previous duplicate error
                       if (referenceError) setReferenceError(null)
                     }}
                     placeholder={
@@ -953,7 +947,6 @@ export function ManualPaymentModal({
                     }`}
                   />
 
-                  {/* Live format hint */}
                   {reference.length > 0 && (
                     <p
                       className={`mt-1.5 flex items-center gap-1.5 text-[11px] font-medium ${
@@ -1004,14 +997,12 @@ export function ManualPaymentModal({
                         onChange={(e) => {
                           const checked = e.target.checked
                           setConfirmSent(checked)
-                          // Unchecking resets the exact-amount gate
                           if (!checked) {
-                            setSentExactAmount(null)
                             setConfirmAmount('')
                           }
                         }}
                         disabled={submitting}
-                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600"
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-600"
                       />
                       <span className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
                         I have sent{' '}
@@ -1022,84 +1013,33 @@ export function ManualPaymentModal({
                       </span>
                     </label>
 
-                    {/* Exact-amount gate — appears once the first checkbox is checked */}
                     {confirmSent && (
                       <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-                        <p className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Did you send{' '}
-                          <strong className="text-slate-900 dark:text-white">
-                            {options?.amount} {options?.currency}
-                          </strong>{' '}
-                          exactly?
-                        </p>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setSentExactAmount(true)}
-                            disabled={submitting}
-                            className={`rounded-lg border-2 px-3 py-2 text-xs font-bold transition ${
-                              sentExactAmount === true
-                                ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-400'
-                                : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'
-                            }`}
-                          >
-                            Yes, exact amount
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setSentExactAmount(false)}
-                            disabled={submitting}
-                            className={`rounded-lg border-2 px-3 py-2 text-xs font-bold transition ${
-                              sentExactAmount === false
-                                ? 'border-rose-500 bg-rose-50 text-rose-700 dark:border-rose-500 dark:bg-rose-500/10 dark:text-rose-400'
-                                : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'
-                            }`}
-                          >
-                            No, different
-                          </button>
-                        </div>
-
-                        {sentExactAmount === false && (
-                          <div className="mt-2.5 rounded-lg border border-rose-200 bg-rose-50 p-2.5 dark:border-rose-500/30 dark:bg-rose-500/10">
-                            <p className="text-[11px] leading-relaxed text-rose-700 dark:text-rose-400">
-                              You must send the{' '}
-                              <strong>exact amount</strong> shown above. Please
-                              cancel this and send the correct amount first,
-                              then come back and submit.
-                            </p>
-                          </div>
-                        )}
-
-                        {sentExactAmount === true && (
-                          <div className="mt-3">
-                            <label className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                              Type the amount you sent to confirm{' '}
-                              <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={confirmAmount}
-                              onChange={(e) => setConfirmAmount(e.target.value)}
-                              placeholder={options ? String(options.amount) : '500'}
-                              disabled={submitting}
-                              className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 disabled:opacity-50 dark:bg-slate-950 dark:text-white ${
-                                confirmAmount.length === 0
-                                  ? 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700'
-                                  : amountMatches
-                                    ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500 dark:border-emerald-500/60'
-                                    : 'border-amber-400 focus:border-amber-500 focus:ring-amber-500 dark:border-amber-500/60'
-                              }`}
-                            />
-                            {confirmAmount.length > 0 && !amountMatches && (
-                              <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                                <AlertCircle className="h-3 w-3" />
-                                Amount doesn&apos;t match. Please type exactly{' '}
-                                {options ? `${options.amount}` : ''}.
-                              </p>
-                            )}
-                          </div>
+                        <label className="mb-1 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                          Type the amount you sent to confirm{' '}
+                          <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={confirmAmount}
+                          onChange={(e) => setConfirmAmount(e.target.value)}
+                          placeholder={options ? String(options.amount) : '500'}
+                          disabled={submitting}
+                          className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 disabled:opacity-50 dark:bg-slate-950 dark:text-white ${
+                            confirmAmount.length === 0
+                              ? 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700'
+                              : amountMatches
+                                ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500 dark:border-emerald-500/60'
+                                : 'border-amber-400 focus:border-amber-500 focus:ring-amber-500 dark:border-amber-500/60'
+                          }`}
+                        />
+                        {confirmAmount.length > 0 && !amountMatches && (
+                          <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                            <AlertCircle className="h-3 w-3" />
+                            Amount doesn't match. Please type exactly{' '}
+                            {options ? `${options.amount}` : ''}.
+                          </p>
                         )}
                       </div>
                     )}
@@ -1108,13 +1048,16 @@ export function ManualPaymentModal({
                       <input
                         type="checkbox"
                         checked={confirmUnderstood}
-                        onChange={(e) => setConfirmUnderstood(e.target.checked)}
+                        onChange={(e) =>
+                          setConfirmUnderstood(e.target.checked)
+                        }
                         disabled={submitting}
-                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600"
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-600"
                       />
                       <span className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                        I understand that submitting a <strong>fake or reused
-                        reference</strong> will result in a permanent ban.
+                        I understand that submitting a{' '}
+                        <strong>fake or reused reference</strong> will result
+                        in a permanent ban.
                       </span>
                     </label>
                   </div>
@@ -1192,6 +1135,13 @@ export function ManualPaymentModal({
                   </div>
                 </div>
               </div>
+
+              {/* Submit hint */}
+              {submitDisabledReason && (
+                <p className="text-center text-[11px] text-slate-500 dark:text-slate-400">
+                  {submitDisabledReason}
+                </p>
+              )}
 
               {/* Actions */}
               <div className="flex gap-3 pt-1">
