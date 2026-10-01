@@ -30,7 +30,7 @@ import { TutorPage } from './pages/Tutor'
 import { MaterialsPage } from './pages/Materials'
 import { ProfilePage } from './pages/Profile'
 import { AdminPage } from './pages/Admin'
-import { AdminUsersPage } from './pages/AdminUsers'  
+import { AdminUsersPage } from './pages/AdminUsers'
 import { CourseContentManagerPage } from './pages/CourseContentManager'
 import { AdminPricingPage } from './pages/AdminPricing'
 import { AdminCoursesPage } from './pages/AdminCourses'
@@ -59,7 +59,7 @@ export default function App() {
           <Route path="/support" element={<SupportPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
-<Route path="/resend-verification" element={<ResendVerificationPage />} />
+          <Route path="/resend-verification" element={<ResendVerificationPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/payment/callback" element={<PaymentCallbackPage />} />
@@ -67,8 +67,10 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
 
-          {/* Protected Routes (Require Authentication) */}
+          {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
+
+            {/* Student area — AppLayout */}
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/exam-blueprint" element={<ExamBlueprintPage />} />
@@ -77,7 +79,6 @@ export default function App() {
               <Route path="/courses/:courseId/notes" element={<CourseNotesPage />} />
               <Route path="/notes" element={<NotesIndexPage />} />
               <Route path="/courses/:courseId/flashcards" element={<FlashcardPage />} />
-              <Route path="/admin/courses/:courseId/flashcards" element={<AdminFlashcardReview />} />
               <Route path="/quizzes/:quizId" element={<Quiz />} />
               <Route path="/mock-exam" element={<MockExamPage />} />
               <Route path="/mock-exams" element={<MockExamPage />} />
@@ -87,31 +88,33 @@ export default function App() {
               <Route path="/materials" element={<MaterialsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/payment/manual/status" element={<ManualPaymentStatusPage />} />
-              
-              {/* Admin Routes (Require Admin Role) */}
-              <Route element={<AdminRoute />}>
-                <Route element={<AdminLayout />}>
-                  <Route path="/admin" element={<AdminPage />} />
-                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                  <Route path="/admin/drills" element={<AdminDrillManagement />} />
-                  <Route path="/admin/question-coverage" element={<AdminQuestionCoverage />} />
-                  <Route path="/admin/support" element={<AdminSupportDashboard />} />
-                  <Route path="/admin/transactions" element={<AdminTransactionsPage />} />
-                  <Route path="/admin/manual-payments" element={<AdminManualPaymentsPage />} />
-                  <Route path="/admin/manual-payments/help" element={<AdminManualPaymentsHelpPage />} />
-                  <Route path="/admin/users" element={<AdminUsersPage />} />
-                  <Route path="/admin/pricing" element={<AdminPricingPage />} />
-                  <Route path="/admin/courses" element={<AdminCoursesPage />} />
-                  <Route path="/admin/courses/:id" element={<CourseContentManagerPage />} />
-                  <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
-                  <Route path="/admin/review" element={<AdminReviewQueuePage />} />
-                  <Route path="/admin/courses/:courseId/notes/review" element={<AdminNoteReview />} />
-                </Route>
+            </Route>
+
+            {/* Admin area — AdminLayout (separate from student area) */}
+            <Route element={<AdminRoute />}>
+              <Route element={<AdminLayout />}>
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/admin/drills" element={<AdminDrillManagement />} />
+                <Route path="/admin/question-coverage" element={<AdminQuestionCoverage />} />
+                <Route path="/admin/support" element={<AdminSupportDashboard />} />
+                <Route path="/admin/transactions" element={<AdminTransactionsPage />} />
+                <Route path="/admin/manual-payments" element={<AdminManualPaymentsPage />} />
+                <Route path="/admin/manual-payments/help" element={<AdminManualPaymentsHelpPage />} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
+                <Route path="/admin/pricing" element={<AdminPricingPage />} />
+                <Route path="/admin/courses" element={<AdminCoursesPage />} />
+                <Route path="/admin/courses/:id" element={<CourseContentManagerPage />} />
+                <Route path="/admin/announcements" element={<AdminAnnouncementsPage />} />
+                <Route path="/admin/review" element={<AdminReviewQueuePage />} />
+                <Route path="/admin/courses/:courseId/notes/review" element={<AdminNoteReview />} />
+                <Route path="/admin/courses/:courseId/flashcards" element={<AdminFlashcardReview />} />
               </Route>
             </Route>
+
           </Route>
 
-          {/* 404 Page */}
+          {/* 404 */}
           <Route path="*" element={
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
               <div className="text-center">
