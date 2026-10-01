@@ -103,41 +103,6 @@ function Stat({
   )
 }
 
-function ToolButton({
-  icon: Icon,
-  label,
-  hint,
-  onClick,
-  locked = false,
-}: {
-  icon: typeof Target
-  label: string
-  hint: string
-  onClick: () => void
-  locked?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/40"
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <Icon className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-            <span className="truncate">{label}</span>
-            {locked && <Lock className="h-3 w-3 shrink-0 text-amber-500" />}
-          </div>
-          <div className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
-            {hint}
-          </div>
-        </div>
-      </div>
-      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5" />
-    </button>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────
 // Dashboard
