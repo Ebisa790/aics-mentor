@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { 
-
-  ArrowLeft, 
-  ChevronLeft, 
+import {
+  ArrowLeft,
+  ChevronLeft,
   ChevronRight,
   RotateCcw,
   Shuffle,
   Layers,
   Sparkles,
   Award,
+  Info,
+  Trash2,
 } from 'lucide-react'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || ''
+const INTRO_SEEN_KEY = 'flashcard_intro_seen_v1'
 
 interface Flashcard {
   id: string
@@ -35,19 +37,20 @@ interface SRSState {
   [cardId: string]: CardSRSState
 }
 
-// Study tips for human touch
+type Rating = 'again' | 'hard' | 'good' | 'easy'
+
 const STUDY_TIPS = [
-  "Try saying the answer out loud before flipping the card.",
-  "Reviewing before bed helps your brain remember better.",
-  "Take a short break after every 25 cards.",
+  'Try saying the answer out loud before flipping the card.',
+  'Reviewing before bed helps your brain remember better.',
+  'Take a short break after every 25 cards.',
   "If you're memorizing the order, hit shuffle.",
-  "Write down cards you keep missing. It helps.",
+  'Write down cards you keep missing. It helps.',
 ]
 
 export function FlashcardPage() {
   const { courseId } = useParams<{ courseId: string }>()
   const navigate = useNavigate()
-  
+
   const [allFlashcards, setAllFlashcards] = useState<Flashcard[]>([])
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -60,12 +63,24 @@ export function FlashcardPage() {
     document.documentElement.classList.contains('dark')
   )
   const [dailyTip, setDailyTip] = useState<string>(STUDY_TIPS[0])
-  
+
+  // FIX 1 — first-visit explainer
+  const [showIntro, setShowIntro] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(INTRO_SEEN_KEY) !== 'true'
+    } catch {
+      return true
+    }
+  })
+
+  // FIX 2 — post-rating toast
+  const [toast, setToast] = useState<string | null>(null)
+
   const [srsState, setSrsState] = useState<SRSState>(() => {
     const saved = localStorage.getItem('flashcard_srs_state')
     return saved ? JSON.parse(saved) : {}
   })
-  
+
   const [sessionStats, setSessionStats] = useState({
     reviewed: 0,
     newLearned: 0,
@@ -74,10 +89,10 @@ export function FlashcardPage() {
   })
 
   const [showCompletion, setShowCompletion] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   useEffect(() => {
     fetchFlashcards()
-    // Pick a random study tip
     setDailyTip(STUDY_TIPS[Math.floor(Math.random() * STUDY_TIPS.length)])
   }, [courseId])
 
@@ -85,7 +100,10 @@ export function FlashcardPage() {
     const observer = new MutationObserver(() => {
       setIsDarkMode(document.documentElement.classList.contains('dark'))
     })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
     return () => observer.disconnect()
   }, [])
 
@@ -95,6 +113,9 @@ export function FlashcardPage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts while any modal is open
+      if (showIntro || showResetConfirm) return
+
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
         handleFlip()
@@ -106,28 +127,33 @@ export function FlashcardPage() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isFlipped, currentIndex, flashcards, srsState])
+  }, [isFlipped, currentIndex, flashcards, srsState, showIntro, showResetConfirm])
 
   const fetchFlashcards = async () => {
     try {
       setLoading(true)
       const token = localStorage.getItem('access_token')
-      const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}/flashcards`, {
-        headers: { 'Authorization': 'Bearer ' + token }
-      })
-      if (!response.ok) throw new Error('Couldn\'t load your flashcards. Tap Retry to try again.')
+      const response = await fetch(
+        `${API_BASE_URL}/api/courses/${courseId}/flashcards`,
+        { headers: { Authorization: 'Bearer ' + token } }
+      )
+      if (!response.ok)
+        throw new Error("Couldn't load your flashcards. Tap Retry to try again.")
       const data = await response.json()
       const allCards: Flashcard[] = data.flashcards || []
       setAllFlashcards(allCards)
-      
+
       const dueCards = getDueCards(allCards)
       setFlashcards(dueCards.length > 0 ? dueCards : allCards.slice(0, 10))
-      
+
       setIsPremium(data.is_premium || false)
       setTotalCards(data.total || 0)
     } catch (err) {
       const friendly = (err as any)?.friendlyMessage
-      setError(friendly || (err instanceof Error ? err.message : 'Couldn\'t load your flashcards.'))
+      setError(
+        friendly ||
+          (err instanceof Error ? err.message : "Couldn't load your flashcards.")
+      )
     } finally {
       setLoading(false)
     }
@@ -135,19 +161,19 @@ export function FlashcardPage() {
 
   const getDueCards = (cards: Flashcard[]): Flashcard[] => {
     const now = new Date()
-    const dueCards = cards.filter(card => {
+    return cards.filter((card) => {
       const state = srsState[card.id]
       if (!state || state.state === 'NEW') return true
       if (state.state === 'MASTERED') return false
-      if (state.dueDate) {
-        return new Date(state.dueDate) <= now
-      }
+      if (state.dueDate) return new Date(state.dueDate) <= now
       return true
     })
-    return dueCards
   }
 
-  const calculateNextInterval = (state: CardSRSState | undefined, rating: 'again' | 'hard' | 'good' | 'easy'): CardSRSState => {
+  const calculateNextInterval = (
+    state: CardSRSState | undefined,
+    rating: Rating
+  ): CardSRSState => {
     const current = state || {
       state: 'NEW' as const,
       repetitions: 0,
@@ -189,7 +215,12 @@ export function FlashcardPage() {
     dueDate.setDate(dueDate.getDate() + intervalDays)
 
     return {
-      state: intervalDays >= 21 ? 'MASTERED' : repetitions > 0 ? 'REVIEW' : 'LEARNING',
+      state:
+        intervalDays >= 21
+          ? 'MASTERED'
+          : repetitions > 0
+            ? 'REVIEW'
+            : 'LEARNING',
       repetitions,
       intervalDays,
       easeFactor,
@@ -200,48 +231,68 @@ export function FlashcardPage() {
 
   const currentCard = flashcards[currentIndex]
 
-  const handleFlip = () => {
-    setIsFlipped(!isFlipped)
+  const handleFlip = () => setIsFlipped(!isFlipped)
+
+  // FIX 2 — helpers that show the toast after each rating
+  const showToast = (msg: string) => {
+    setToast(msg)
+    window.setTimeout(() => setToast(null), 2200)
+  }
+
+  const humanInterval = (days: number): string => {
+    if (days === 0) return 'See again soon'
+    if (days === 1) return 'Tomorrow'
+    return `In ${days} days`
   }
 
   const handleAgain = () => {
     if (!currentCard) return
-    updateSRS(currentCard.id, 'again')
+    const next = updateSRS(currentCard.id, 'again')
+    showToast(`Didn't get it · ${humanInterval(next.intervalDays)}`)
     nextCard()
   }
 
   const handleHard = () => {
     if (!currentCard) return
-    updateSRS(currentCard.id, 'hard')
+    const next = updateSRS(currentCard.id, 'hard')
+    showToast(`Almost there · ${humanInterval(next.intervalDays)}`)
     nextCard()
   }
 
   const handleGood = () => {
     if (!currentCard) return
-    updateSRS(currentCard.id, 'good')
+    const next = updateSRS(currentCard.id, 'good')
+    showToast(`Got it · ${humanInterval(next.intervalDays)}`)
     nextCard()
   }
 
   const handleEasy = () => {
     if (!currentCard) return
-    updateSRS(currentCard.id, 'easy')
+    const next = updateSRS(currentCard.id, 'easy')
+    showToast(`Too easy · ${humanInterval(next.intervalDays)}`)
     nextCard()
   }
 
-  const updateSRS = (cardId: string, rating: 'again' | 'hard' | 'good' | 'easy') => {
-    setSrsState(prev => {
-      const updatedState = calculateNextInterval(prev[cardId], rating)
-      const newState = { ...prev, [cardId]: updatedState }
-      
-      setSessionStats(prevStats => ({
-        ...prevStats,
-        reviewed: prevStats.reviewed + 1,
-        newLearned: updatedState.state === 'REVIEW' && (!prev[cardId] || prev[cardId].state === 'NEW') ? prevStats.newLearned + 1 : prevStats.newLearned,
-        mastered: updatedState.state === 'MASTERED' ? prevStats.mastered + 1 : prevStats.mastered,
-      }))
-      
-      return newState
-    })
+  const updateSRS = (cardId: string, rating: Rating): CardSRSState => {
+    const updatedState = calculateNextInterval(srsState[cardId], rating)
+    const newState = { ...srsState, [cardId]: updatedState }
+    setSrsState(newState)
+
+    setSessionStats((prevStats) => ({
+      ...prevStats,
+      reviewed: prevStats.reviewed + 1,
+      newLearned:
+        updatedState.state === 'REVIEW' &&
+        (!srsState[cardId] || srsState[cardId].state === 'NEW')
+          ? prevStats.newLearned + 1
+          : prevStats.newLearned,
+      mastered:
+        updatedState.state === 'MASTERED'
+          ? prevStats.mastered + 1
+          : prevStats.mastered,
+    }))
+
+    return updatedState
   }
 
   const nextCard = () => {
@@ -261,18 +312,36 @@ export function FlashcardPage() {
 
   const prevCard = () => {
     setIsFlipped(false)
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1)
-    }
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1)
   }
 
-  const restartReview = () => {
+  // FIX 3 — "Start over" only resets the session, not SRS progress
+  const restartSession = () => {
     setIsFlipped(false)
     setCurrentIndex(0)
+    setSessionStats({
+      reviewed: 0,
+      newLearned: 0,
+      mastered: 0,
+      startTime: Date.now(),
+    })
+    setFlashcards(allFlashcards.slice(0, 10))
+  }
+
+  // FIX 3 — separate, deliberate action for wiping all SRS progress
+  const resetAllProgress = () => {
     setSrsState({})
-    setSessionStats({ reviewed: 0, newLearned: 0, mastered: 0, startTime: Date.now() })
-    const firstCards = allFlashcards.slice(0, 10)
-    setFlashcards(firstCards)
+    setSessionStats({
+      reviewed: 0,
+      newLearned: 0,
+      mastered: 0,
+      startTime: Date.now(),
+    })
+    setFlashcards(allFlashcards.slice(0, 10))
+    setCurrentIndex(0)
+    setIsFlipped(false)
+    setShowResetConfirm(false)
+    showToast('Progress reset')
   }
 
   const shuffleCards = () => {
@@ -284,38 +353,70 @@ export function FlashcardPage() {
 
   const getWeightLabel = (weight: string) => {
     switch (weight) {
-      case 'HIGH': return 'Exam favorite'
-      case 'MEDIUM': return 'Likely on exam'
-      case 'LOW': return 'Good to know'
-      default: return weight
+      case 'HIGH':
+        return 'Exam favorite'
+      case 'MEDIUM':
+        return 'Likely on exam'
+      case 'LOW':
+        return 'Good to know'
+      default:
+        return weight
     }
   }
 
   const getWeightColor = (weight: string) => {
     switch (weight) {
-      case 'HIGH': return isDarkMode ? 'bg-red-900/50 text-red-300 border-red-700' : 'bg-red-100 text-red-700 border-red-200'
-      case 'MEDIUM': return isDarkMode ? 'bg-amber-900/50 text-amber-300 border-amber-700' : 'bg-amber-100 text-amber-700 border-amber-200'
-      case 'LOW': return isDarkMode ? 'bg-emerald-900/50 text-emerald-300 border-emerald-700' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
-      default: return isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
+      case 'HIGH':
+        return isDarkMode
+          ? 'bg-red-900/50 text-red-300 border-red-700'
+          : 'bg-red-100 text-red-700 border-red-200'
+      case 'MEDIUM':
+        return isDarkMode
+          ? 'bg-amber-900/50 text-amber-300 border-amber-700'
+          : 'bg-amber-100 text-amber-700 border-amber-200'
+      case 'LOW':
+        return isDarkMode
+          ? 'bg-emerald-900/50 text-emerald-300 border-emerald-700'
+          : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+      default:
+        return isDarkMode
+          ? 'bg-slate-800 text-slate-300 border-slate-700'
+          : 'bg-slate-100 text-slate-600 border-slate-200'
     }
   }
 
   const getStateLabel = (state: string) => {
     switch (state) {
-      case 'NEW': return 'New'
-      case 'LEARNING': return 'Learning'
-      case 'REVIEW': return 'Due for review'
-      case 'MASTERED': return 'Mastered'
-      default: return state
+      case 'NEW':
+        return 'New'
+      case 'LEARNING':
+        return 'Learning'
+      case 'REVIEW':
+        return 'Due for review'
+      case 'MASTERED':
+        return 'Mastered'
+      default:
+        return state
     }
   }
 
   const srsStats = {
-    new: allFlashcards.filter(c => !srsState[c.id] || srsState[c.id].state === 'NEW').length,
-    learning: allFlashcards.filter(c => srsState[c.id]?.state === 'LEARNING').length,
-    review: allFlashcards.filter(c => srsState[c.id]?.state === 'REVIEW').length,
-    mastered: allFlashcards.filter(c => srsState[c.id]?.state === 'MASTERED').length,
+    new: allFlashcards.filter((c) => !srsState[c.id] || srsState[c.id].state === 'NEW').length,
+    learning: allFlashcards.filter((c) => srsState[c.id]?.state === 'LEARNING').length,
+    review: allFlashcards.filter((c) => srsState[c.id]?.state === 'REVIEW').length,
+    mastered: allFlashcards.filter((c) => srsState[c.id]?.state === 'MASTERED').length,
   }
+
+  const dismissIntro = () => {
+    setShowIntro(false)
+    try {
+      localStorage.setItem(INTRO_SEEN_KEY, 'true')
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // ── Loading / Error / Empty states (unchanged) ─────────────
 
   if (loading) {
     return (
@@ -333,7 +434,12 @@ export function FlashcardPage() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="text-center">
           <p className="text-red-600">{error}</p>
-          <button onClick={fetchFlashcards} className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl">Try Again</button>
+          <button
+            onClick={fetchFlashcards}
+            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     )
@@ -346,124 +452,247 @@ export function FlashcardPage() {
           <div className="w-20 h-20 mx-auto bg-indigo-100 dark:bg-indigo-950/50 rounded-2xl flex items-center justify-center mb-4">
             <Layers className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Nothing to review right now</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Come back tomorrow for a quick review. You're all caught up!</p>
-          <button onClick={restartReview} className="px-5 py-2.5 bg-indigo-600 text-white text-sm rounded-xl hover:bg-indigo-500 transition-colors">Start Fresh</button>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            Nothing to review right now
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            Come back tomorrow for a quick review. You're all caught up!
+          </p>
+          <button
+            onClick={restartSession}
+            className="px-5 py-2.5 bg-indigo-600 text-white text-sm rounded-xl hover:bg-indigo-500 transition-colors"
+          >
+            Start Fresh
+          </button>
         </div>
       </div>
     )
   }
 
+  const sessionProgress = flashcards.length > 0
+    ? Math.round(((currentIndex + 1) / flashcards.length) * 100)
+    : 0
+
   return (
-    <div className={`min-h-screen py-8 px-4 transition-colors active:scale-95 ${isDarkMode ? 'bg-slate-950' : 'bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50'}`}>
+    <div
+      className={`min-h-screen py-8 px-4 transition-colors ${
+        isDarkMode
+          ? 'bg-slate-950'
+          : 'bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50'
+      }`}
+    >
       <div className="max-w-2xl mx-auto">
-        {/* Premium Banner */}
+        {/* Premium banner */}
         {!isPremium && totalCards > flashcards.length && (
-          <div className={`mb-4 p-4 rounded-2xl border text-center ${isDarkMode ? 'bg-amber-950/30 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
-            <p className={`text-sm font-semibold ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+          <div
+            className={`mb-4 p-4 rounded-2xl border text-center ${
+              isDarkMode ? 'bg-amber-950/30 border-amber-800' : 'bg-amber-50 border-amber-200'
+            }`}
+          >
+            <p
+              className={`text-sm font-semibold ${
+                isDarkMode ? 'text-amber-300' : 'text-amber-700'
+              }`}
+            >
               You're seeing {allFlashcards.length} of {totalCards} cards. Upgrade for the full set.
             </p>
-            <button onClick={() => navigate('/pricing')} className="mt-2 px-4 py-2 bg-amber-600 text-white text-sm font-bold rounded-xl hover:bg-amber-500 transition-colors">
+            <button
+              onClick={() => navigate('/pricing')}
+              className="mt-2 px-4 py-2 bg-amber-600 text-white text-sm font-bold rounded-xl hover:bg-amber-500 transition-colors"
+            >
               See All Cards
             </button>
           </div>
         )}
 
-        {/* Study Tip */}
-        <div className={`mb-4 px-4 py-3 rounded-2xl text-xs flex items-start gap-2 ${isDarkMode ? 'bg-indigo-950/30 text-indigo-300' : 'bg-indigo-50 text-indigo-700'}`}>
+        {/* Study tip */}
+        <div
+          className={`mb-4 px-4 py-3 rounded-2xl text-xs flex items-start gap-2 ${
+            isDarkMode
+              ? 'bg-indigo-950/30 text-indigo-300'
+              : 'bg-indigo-50 text-indigo-700'
+          }`}
+        >
           <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
           <span>{dailyTip}</span>
         </div>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <button onClick={() => navigate(-1)} className={`flex items-center text-sm font-semibold transition-colors active:scale-95 ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-indigo-600'}`}>
+          <button
+            onClick={() => navigate(-1)}
+            className={`flex items-center text-sm font-semibold transition-colors ${
+              isDarkMode
+                ? 'text-slate-400 hover:text-white'
+                : 'text-slate-600 hover:text-indigo-600'
+            }`}
+          >
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </button>
-          
+
           <div className="flex items-center gap-2">
-            <button onClick={shuffleCards} className={`p-2 rounded-xl border transition-all active:scale-95 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-500 hover:text-indigo-600'}`} title="Shuffle cards">
+            <button
+              onClick={shuffleCards}
+              className={`p-2 rounded-xl border transition-all ${
+                isDarkMode
+                  ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                  : 'bg-white border-slate-200 text-slate-500 hover:text-indigo-600'
+              }`}
+              title="Shuffle cards"
+            >
               <Shuffle className="w-4 h-4" />
             </button>
-            
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-white text-slate-700 border border-slate-200'}`}>
-              {flashcards.length} cards to review
+
+            {/* FIX 5 — clearer session copy */}
+            <span
+              className={`text-xs font-bold px-3 py-1.5 rounded-full ${
+                isDarkMode
+                  ? 'bg-slate-800 text-slate-300'
+                  : 'bg-white text-slate-700 border border-slate-200'
+              }`}
+            >
+              {flashcards.length} in this session
             </span>
           </div>
         </div>
 
-        {/* Progress Overview */}
-        <div className={`mb-6 p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+        {/* FIX 4 — Progress overview now shows session progress, not state bar */}
+        <div
+          className={`mb-6 p-4 rounded-2xl border ${
+            isDarkMode
+              ? 'bg-slate-900 border-slate-800'
+              : 'bg-white border-slate-200 shadow-sm'
+          }`}
+        >
           <div className="grid grid-cols-4 gap-2 mb-4">
             <div className="text-center">
-              <div className={`text-lg font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{srsStats.new}</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">New</div>
+              <div className={`text-lg font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                {srsStats.new}
+              </div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                New
+              </div>
             </div>
             <div className="text-center">
-              <div className={`text-lg font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>{srsStats.learning}</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Learning</div>
+              <div className={`text-lg font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                {srsStats.learning}
+              </div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Learning
+              </div>
             </div>
             <div className="text-center">
-              <div className={`text-lg font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>{srsStats.review}</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Review</div>
+              <div className={`text-lg font-bold ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+                {srsStats.review}
+              </div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Review
+              </div>
             </div>
+            {/* FIX 6 — Mastered tooltip */}
             <div className="text-center">
-              <div className={`text-lg font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{srsStats.mastered}</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Mastered</div>
+              <div className={`text-lg font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                {srsStats.mastered}
+              </div>
+              <div
+                className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 inline-flex items-center gap-0.5 cursor-help"
+                title="A card becomes Mastered after it's been reviewed 4+ times and you keep rating it 'Got it' or 'Too easy' over about 3 weeks."
+              >
+                Mastered
+                <Info className="h-2.5 w-2.5 opacity-60" />
+              </div>
             </div>
           </div>
 
-          <div className={`h-2 rounded-full overflow-hidden flex ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-            {srsStats.new > 0 && <div className="h-full bg-blue-500" style={{ width: (srsStats.new / allFlashcards.length) * 100 + '%' }} />}
-            {srsStats.learning > 0 && <div className="h-full bg-amber-500" style={{ width: (srsStats.learning / allFlashcards.length) * 100 + '%' }} />}
-            {srsStats.review > 0 && <div className="h-full bg-purple-500" style={{ width: (srsStats.review / allFlashcards.length) * 100 + '%' }} />}
-            {srsStats.mastered > 0 && <div className="h-full bg-emerald-500" style={{ width: (srsStats.mastered / allFlashcards.length) * 100 + '%' }} />}
+          {/* Session progress bar (replaces the state bar) */}
+          <div className={`h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+            <div
+              className="h-full bg-indigo-500 transition-all duration-300"
+              style={{ width: `${sessionProgress}%` }}
+            />
           </div>
 
           <div className="flex justify-between mt-3 text-[10px] font-semibold">
-            <span className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>Card {currentIndex + 1} of {flashcards.length}</span>
-            <span className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>Tap card or press Space to flip</span>
+            <span className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>
+              Card {currentIndex + 1} of {flashcards.length}
+            </span>
+            <span className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>
+              Tap card or press Space to flip
+            </span>
           </div>
         </div>
 
         {/* Flashcard */}
         {currentCard && (
           <div>
-            <div 
+            <div
               onClick={handleFlip}
-              className={`relative cursor-pointer rounded-3xl shadow-xl border p-8 min-h-[320px] flex flex-col items-center justify-center text-center transition-all active:scale-95 duration-300 hover:shadow-2xl ${
-                isDarkMode ? 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700' : 'bg-gradient-to-br from-white to-slate-50 border-slate-200'
+              className={`relative cursor-pointer rounded-3xl shadow-xl border p-8 min-h-[320px] flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-2xl ${
+                isDarkMode
+                  ? 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700'
+                  : 'bg-gradient-to-br from-white to-slate-50 border-slate-200'
               }`}
             >
-              <span className={`absolute top-4 right-4 px-2.5 py-1 rounded-full text-[10px] font-bold border ${getWeightColor(currentCard.exam_weight)}`}>
+              <span
+                className={`absolute top-4 right-4 px-2.5 py-1 rounded-full text-[10px] font-bold border ${getWeightColor(
+                  currentCard.exam_weight
+                )}`}
+              >
                 {getWeightLabel(currentCard.exam_weight)}
               </span>
 
               {currentCard.module_title && (
-                <span className={`absolute top-4 left-4 px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                <span
+                  className={`absolute top-4 left-4 px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider ${
+                    isDarkMode
+                      ? 'bg-slate-800 text-slate-400'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
                   {currentCard.module_title}
                 </span>
               )}
 
-              {srsState[currentCard.id] && srsState[currentCard.id].state !== 'NEW' && (
-                <span className={`absolute bottom-4 left-4 px-2 py-1 rounded-md text-[9px] font-bold ${srsState[currentCard.id].state === 'MASTERED' ? 'bg-emerald-100 text-emerald-700' : srsState[currentCard.id].state === 'REVIEW' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {getStateLabel(srsState[currentCard.id].state)}
-                </span>
-              )}
+              {srsState[currentCard.id] &&
+                srsState[currentCard.id].state !== 'NEW' && (
+                  <span
+                    className={`absolute bottom-4 left-4 px-2 py-1 rounded-md text-[9px] font-bold ${
+                      srsState[currentCard.id].state === 'MASTERED'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : srsState[currentCard.id].state === 'REVIEW'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-amber-100 text-amber-700'
+                    }`}
+                  >
+                    {getStateLabel(srsState[currentCard.id].state)}
+                  </span>
+                )}
 
-              <div className={`transition-all active:scale-95 duration-300 transform ${isFlipped ? 'scale-95' : 'scale-100'}`}>
+              <div className={`transition-transform duration-300 ${isFlipped ? 'scale-95' : 'scale-100'}`}>
                 {!isFlipped ? (
                   <div>
-                    <p className={`text-2xl font-bold leading-relaxed ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    <p
+                      className={`text-2xl font-bold leading-relaxed ${
+                        isDarkMode ? 'text-white' : 'text-slate-900'
+                      }`}
+                    >
                       {currentCard.front}
                     </p>
-                    <p className={`text-xs mt-6 flex items-center justify-center gap-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                    <p
+                      className={`text-xs mt-6 flex items-center justify-center gap-1 ${
+                        isDarkMode ? 'text-slate-500' : 'text-slate-400'
+                      }`}
+                    >
                       <Sparkles className="w-3 h-3" /> Tap to see the answer
                     </p>
                   </div>
                 ) : (
                   <div>
-                    <p className={`text-lg leading-relaxed ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+                    <p
+                      className={`text-lg leading-relaxed ${
+                        isDarkMode ? 'text-slate-200' : 'text-slate-700'
+                      }`}
+                    >
                       {currentCard.back}
                     </p>
                   </div>
@@ -471,54 +700,209 @@ export function FlashcardPage() {
               </div>
             </div>
 
-            {/* Rating Buttons - Human labels */}
+            {/* FIX 7 — Rating buttons with explanatory prompt */}
             {isFlipped && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-6">
-                <button onClick={handleAgain} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all active:scale-95 hover:scale-105 ${isDarkMode ? 'bg-red-950/50 border border-red-800 text-red-300 hover:bg-red-950/70' : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'}`}>
-                  <span className="text-sm font-bold">Didn't get it</span>
-                  <span className="text-[9px] opacity-70">See again soon</span>
-                </button>
-                <button onClick={handleHard} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all active:scale-95 hover:scale-105 ${isDarkMode ? 'bg-amber-950/50 border border-amber-800 text-amber-300 hover:bg-amber-950/70' : 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100'}`}>
-                  <span className="text-sm font-bold">Almost there</span>
-                  <span className="text-[9px] opacity-70">1 day</span>
-                </button>
-                <button onClick={handleGood} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all active:scale-95 hover:scale-105 ${isDarkMode ? 'bg-emerald-950/50 border border-emerald-800 text-emerald-300 hover:bg-emerald-950/70' : 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'}`}>
-                  <span className="text-sm font-bold">Got it</span>
-                  <span className="text-[9px] opacity-70">3 days</span>
-                </button>
-                <button onClick={handleEasy} className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all active:scale-95 hover:scale-105 ${isDarkMode ? 'bg-blue-950/50 border border-blue-800 text-blue-300 hover:bg-blue-950/70' : 'bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100'}`}>
-                  <span className="text-sm font-bold">Too easy!</span>
-                  <span className="text-[9px] opacity-70">7 days</span>
-                </button>
+              <div className="mt-6">
+                <p
+                  className={`text-center text-xs font-semibold mb-3 ${
+                    isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                  }`}
+                >
+                  How well did you remember this?
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    onClick={handleAgain}
+                    className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all hover:scale-105 ${
+                      isDarkMode
+                        ? 'bg-red-950/50 border border-red-800 text-red-300 hover:bg-red-950/70'
+                        : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'
+                    }`}
+                  >
+                    <span className="text-sm font-bold">Didn't get it</span>
+                    <span className="text-[9px] opacity-70">See again soon</span>
+                  </button>
+                  <button
+                    onClick={handleHard}
+                    className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all hover:scale-105 ${
+                      isDarkMode
+                        ? 'bg-amber-950/50 border border-amber-800 text-amber-300 hover:bg-amber-950/70'
+                        : 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100'
+                    }`}
+                  >
+                    <span className="text-sm font-bold">Almost there</span>
+                    <span className="text-[9px] opacity-70">Tomorrow</span>
+                  </button>
+                  <button
+                    onClick={handleGood}
+                    className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all hover:scale-105 ${
+                      isDarkMode
+                        ? 'bg-emerald-950/50 border border-emerald-800 text-emerald-300 hover:bg-emerald-950/70'
+                        : 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <span className="text-sm font-bold">Got it</span>
+                    <span className="text-[9px] opacity-70">In 3 days</span>
+                  </button>
+                  <button
+                    onClick={handleEasy}
+                    className={`flex flex-col items-center gap-1 px-3 py-3 rounded-2xl font-semibold transition-all hover:scale-105 ${
+                      isDarkMode
+                        ? 'bg-blue-950/50 border border-blue-800 text-blue-300 hover:bg-blue-950/70'
+                        : 'bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100'
+                    }`}
+                  >
+                    <span className="text-sm font-bold">Too easy!</span>
+                    <span className="text-[9px] opacity-70">In 7 days</span>
+                  </button>
+                </div>
               </div>
             )}
 
             {/* Navigation */}
             <div className="flex items-center justify-between mt-6">
-              <button onClick={prevCard} disabled={currentIndex === 0} className={`p-2.5 rounded-xl border transition-all active:scale-95 disabled:opacity-30 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+              <button
+                onClick={prevCard}
+                disabled={currentIndex === 0}
+                className={`p-2.5 rounded-xl border transition-all disabled:opacity-30 ${
+                  isDarkMode
+                    ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button onClick={restartReview} className={`flex items-center gap-1.5 text-sm font-medium transition-colors active:scale-95 ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-indigo-600'}`}>
-                <RotateCcw className="w-3.5 h-3.5" /> Start over
+
+              {/* FIX 3 — "Start over" now only resets the session */}
+              <button
+                onClick={restartSession}
+                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                  isDarkMode
+                    ? 'text-slate-400 hover:text-white'
+                    : 'text-slate-500 hover:text-indigo-600'
+                }`}
+                title="Restart this session (your progress is kept)"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Restart session
               </button>
-              <button onClick={nextCard} disabled={currentIndex === flashcards.length - 1} className={`p-2.5 rounded-xl border transition-all active:scale-95 disabled:opacity-30 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+
+              <button
+                onClick={nextCard}
+                disabled={currentIndex === flashcards.length - 1}
+                className={`p-2.5 rounded-xl border transition-all disabled:opacity-30 ${
+                  isDarkMode
+                    ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Keyboard Hints */}
-            <div className={`flex items-center justify-center gap-3 mt-4 text-[10px] ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>
-              <span><kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono">Space</kbd> Flip</span>
-              <span><kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono">1-4</kbd> Rate</span>
+            {/* Keyboard hints + reset progress link */}
+            <div
+              className={`flex flex-wrap items-center justify-center gap-4 mt-4 text-[10px] ${
+                isDarkMode ? 'text-slate-600' : 'text-slate-400'
+              }`}
+            >
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono">
+                  Space
+                </kbd>{' '}
+                Flip
+              </span>
+              <span>
+                <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono">
+                  1-4
+                </kbd>{' '}
+                Rate
+              </span>
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className={`inline-flex items-center gap-1 transition-colors ${
+                  isDarkMode
+                    ? 'text-slate-600 hover:text-rose-400'
+                    : 'text-slate-400 hover:text-rose-600'
+                }`}
+                title="Reset all flashcard progress"
+              >
+                <Trash2 className="w-3 h-3" />
+                Reset progress
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Completion Modal */}
+      {/* FIX 2 — Post-rating toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div
+            className={`rounded-full px-4 py-2.5 text-sm font-semibold shadow-xl ${
+              isDarkMode
+                ? 'bg-slate-800 text-white border border-slate-700'
+                : 'bg-slate-900 text-white'
+            }`}
+          >
+            {toast}
+          </div>
+        </div>
+      )}
+
+      {/* FIX 1 — First-visit explainer */}
+      {showIntro && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div
+            className={`rounded-3xl max-w-md w-full p-7 shadow-2xl ${
+              isDarkMode
+                ? 'bg-slate-900 border border-slate-700'
+                : 'bg-white'
+            }`}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
+                <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <h2 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                How flashcards work here
+              </h2>
+            </div>
+
+            <div className={`space-y-3 text-sm leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+              <p>
+                Flip a card, then rate how well you remembered it. The app decides
+                when to show it again — <strong>easy cards come back later</strong>,
+                harder ones come back sooner.
+              </p>
+              <p>
+                This is called <strong>spaced repetition</strong>. It's the same
+                idea behind Anki and Duolingo. It helps you remember longer with
+                less total review time.
+              </p>
+              <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                A card is <strong>Mastered</strong> after you've reviewed it 4+ times
+                over a few weeks.
+              </p>
+            </div>
+
+            <button
+              onClick={dismissIntro}
+              className="mt-6 w-full py-3 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition-colors"
+            >
+              Got it — start reviewing
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Completion modal */}
       {showCompletion && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-          <div className={`rounded-3xl max-w-md w-full p-8 text-center shadow-2xl ${isDarkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white'}`}>
+          <div
+            className={`rounded-3xl max-w-md w-full p-8 text-center shadow-2xl ${
+              isDarkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white'
+            }`}
+          >
             <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-emerald-500 to-indigo-600 flex items-center justify-center mb-4">
               <Award className="w-8 h-8 text-white" />
             </div>
@@ -528,7 +912,7 @@ export function FlashcardPage() {
             <p className={`text-sm mb-5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               You reviewed {sessionStats.reviewed} cards today.
             </p>
-            
+
             <div className={`space-y-3 mb-6 p-4 rounded-2xl ${isDarkMode ? 'bg-slate-800' : 'bg-slate-50'}`}>
               <div className="flex justify-between text-sm">
                 <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Cards reviewed</span>
@@ -536,17 +920,74 @@ export function FlashcardPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>New cards learned</span>
-                <span className={`font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{sessionStats.newLearned}</span>
+                <span className={`font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                  {sessionStats.newLearned}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Mastered</span>
-                <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{sessionStats.mastered}</span>
+                <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                  {sessionStats.mastered}
+                </span>
               </div>
             </div>
 
-            <button onClick={() => setShowCompletion(false)} className="w-full py-3 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition-colors">
+            <button
+              onClick={() => setShowCompletion(false)}
+              className="w-full py-3 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition-colors"
+            >
               Keep going
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* FIX 3 — Reset progress confirmation */}
+      {showResetConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowResetConfirm(false)
+          }}
+        >
+          <div
+            className={`rounded-3xl max-w-sm w-full p-6 shadow-2xl ${
+              isDarkMode ? 'bg-slate-900 border border-slate-700' : 'bg-white'
+            }`}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div>
+                <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Reset all progress?
+                </h3>
+                <p className={`text-xs mt-1 leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Every card goes back to "New". You'll lose your review
+                  history and any Mastered cards.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${
+                  isDarkMode
+                    ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={resetAllProgress}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-500 transition-colors"
+              >
+                Yes, reset
+              </button>
+            </div>
           </div>
         </div>
       )}
