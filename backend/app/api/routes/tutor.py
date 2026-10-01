@@ -22,16 +22,18 @@ router = APIRouter(prefix="/api/tutor", tags=["tutor"])
 
 MODE_INSTRUCTIONS = {
     TutorMode.BEGINNER: (
-        "Explain the concept in the simplest possible terms, as if to someone encountering it "
-        "for the first time. Use everyday analogies before technical vocabulary."
+        "Explain in the simplest possible terms, as if to someone encountering this for the "
+        "first time. Use one everyday analogy before introducing technical vocabulary. "
+        "Target length: 150-250 words."
     ),
     TutorMode.ADVANCED: (
-        "Give a technical, exam-level explanation: precise definitions, algorithms or code where "
-        "relevant, edge cases, and how this tends to appear in the Ethiopian CS exit exam."
+        "Give a technical, exam-level explanation: precise definition, algorithms or code if "
+        "relevant, edge cases, and how this tends to appear in the Ethiopian CS exit exam. "
+        "Target length: 350-500 words."
     ),
     TutorMode.EXPLANATION: (
-        "Explain the topic clearly: definition, a concrete example, and how it connects to the "
-        "wider course. Balance rigor with clarity."
+        "Explain clearly: definition, one concrete example, and how it connects to the wider "
+        "course. Balance rigor with clarity. Target length: 250-400 words."
     ),
 }
 
@@ -46,18 +48,22 @@ def _build_system_prompt(user: User, course: Course | None, mode: TutorMode) -> 
     base = (
         f"You are the AI tutor inside AI-CS Mentor, helping {user.full_name} prepare for the "
         "Ethiopian Ministry of Education Computer Science Exit Exam.\n"
-        f"Mode: {MODE_INSTRUCTIONS[mode]}\n"
-        "Ground your answers in standard, correct computer science content for a BSc CS curriculum. "
-        "If you are not confident about a fact, say so rather than guessing. Where useful, mention how "
-        "the topic tends to be tested on the exit exam. Keep responses focused and exam-relevant rather "
-        "than exhaustive. Always format your response in clean, readable Markdown (headings, bullet "
-        "points, and tables where helpful)."
+        f"Mode: {MODE_INSTRUCTIONS[mode]}\n\n"
+        "STRICT RESPONSE RULES — follow all of them:\n"
+        "- Stay within the target word range above. Absolute maximum: 500 words.\n"
+        "- No preamble, no greeting, no 'Great question'. Start directly with the answer.\n"
+        "- Use short Markdown: bold labels, bullets, or a compact table. At most one code block if truly needed.\n"
+        "- Give ONE concrete example, not three. Skip 'this may appear on the exam' commentary unless the student asks.\n"
+        "- If the topic needs more than the word limit, cover the essential idea and end with: "
+        "'Ask me to go deeper on any part.'\n\n"
+        "Ground answers in correct BSc-level CS content. If unsure about a fact, say so briefly instead "
+        "of padding the answer."
     )
 
     if course is None:
         return base + (
-            "\n\nNo specific course is selected — support may span the full MoE CS Exit Exam syllabus. "
-            "If the student's question is broad, help them narrow it to a specific course or topic."
+            "\n\nNo specific course is selected. If the question is broad, answer it briefly and "
+            "suggest the student pick a course from the dropdown for a more focused explanation."
         )
 
     course_title = getattr(course, "title", getattr(course, "name", "Course"))
@@ -65,12 +71,11 @@ def _build_system_prompt(user: User, course: Course | None, mode: TutorMode) -> 
     description_line = f"- Focus: {course.description}\n" if getattr(course, "description", None) else ""
     
     return base + (
-        "\n\n--- Active course context ---\n"
-        f"- Course: {course_title}\n"
-        f"{code_line}"
+        "\n\n--- Active course ---\n"
+        f"- {course_title}"
+        f"{(' (' + course.code + ')') if getattr(course, 'code', None) else ''}\n"
         f"- Category: {getattr(course, 'category', 'CS Core')}\n"
-        f"{description_line}"
-        f"Tailor explanations and any practice problems to the scope of {course_title}."
+        f"Tailor the answer to the scope of {course_title}."
     )
 
 
@@ -170,7 +175,7 @@ def chat(
                     model=model_name,
                     messages=groq_messages,
                     temperature=0.5,
-                    max_tokens=1500,
+                    max_tokens=1000,
                 )
                 reply_text = completion.choices[0].message.content
                 if reply_text and reply_text.strip():
@@ -331,7 +336,7 @@ def chat_stream(
                     model=model_name,
                     messages=groq_messages,
                     temperature=0.5,
-                    max_tokens=1500,
+                    max_tokens=1000,
                     stream=True,
                 )
                 started = False
