@@ -273,9 +273,8 @@ export function LandingPage() {
       <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20 transition-transform duration-300 group-hover:scale-105">
+                     <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20 transition-transform duration-300 group-hover:scale-105">
               <GraduationCap className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white" />
             </div>
 
             <div>
@@ -457,10 +456,10 @@ export function LandingPage() {
                   onClick={openPracticeModal}
                   className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-800 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-lg hover:shadow-slate-200/50"
                 >
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-100">
+                                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-100">
                     <Play className="h-3 w-3 fill-current" />
                   </span>
-                  Try sample questions
+                  Try a sample question
                 </button>
               </div>
 
@@ -493,21 +492,21 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                <div className="border-r border-slate-200 px-4">
+                                <div className="border-r border-slate-200 px-4">
                   <div className="text-2xl font-black tracking-tight text-slate-950">
-                    100
+                    2,700+
                   </div>
                   <div className="mt-1 text-[11px] font-medium text-slate-500">
-                    Mock Questions
+                    Practice Questions
                   </div>
                 </div>
 
-                <div className="pl-4">
+                              <div className="pl-4">
                   <div className="text-2xl font-black tracking-tight text-slate-950">
-                    Tutor
+                    24/7
                   </div>
                   <div className="mt-1 text-[11px] font-medium text-slate-500">
-                    Study Support
+                    Study Assistant
                   </div>
                 </div>
               </div>
@@ -622,9 +621,9 @@ export function LandingPage() {
                 </h2>
               </div>
 
-              <p className="max-w-md text-sm leading-6 text-slate-500">
-                Move between courses and see the core concepts you should
-                expect during your preparation.
+                           <p className="max-w-md text-sm leading-6 text-slate-500">
+                Browse all 16 courses. See the concepts each one covers on
+                the exit exam.
               </p>
             </div>
 
@@ -687,7 +686,7 @@ export function LandingPage() {
                   onClick={openPracticeModal}
                   className="group inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:-translate-y-0.5 hover:bg-indigo-700"
                 >
-                  Try sample questions
+                                  Try a sample question
                   <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </button>
               </div>
@@ -894,8 +893,8 @@ export function LandingPage() {
                 onClick={openPracticeModal}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-bold text-slate-700 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:text-indigo-600 hover:shadow-lg"
               >
-                <Play className="h-4 w-4 fill-current" />
-                Try sample questions
+                              <Play className="h-4 w-4 fill-current" />
+                Try a sample question
               </button>
             </div>
 
@@ -1181,8 +1180,8 @@ export function LandingPage() {
 
               <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="text-xs font-bold text-white">
-                    Ready for more?
+                                   <div className="text-xs font-bold text-white">
+                    Ready to practice?
                   </div>
 
                   <div className="mt-1 text-[10px] text-slate-500">
