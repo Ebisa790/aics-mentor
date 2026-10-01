@@ -6,10 +6,7 @@ import {
   CheckCircle2,
   Crown,
   Lock,
-  Pin,
   Terminal,
-  AlertTriangle,
-  BookOpen,
   Target,
 } from 'lucide-react'
 
@@ -18,8 +15,6 @@ import { apiClient } from '../api/client'
 import type { Announcement } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 import UpgradeModal from '../components/UpgradeModal'
-import { ExamCountdown } from '../components/ExamCountdown'
-import { HeroIllustration } from '../components/HeroIllustration'
 import { CodeTraceDebuggerModal } from '../components/CodeTraceDebuggerModal'
 
 // ─────────────────────────────────────────────────────────────
@@ -51,7 +46,7 @@ interface DashboardData {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Announcement display maps (unchanged)
+// Announcement display maps
 // ─────────────────────────────────────────────────────────────
 
 const ANNOUNCEMENT_LABEL: Record<Announcement['announcement_type'], string> = {
@@ -61,13 +56,91 @@ const ANNOUNCEMENT_LABEL: Record<Announcement['announcement_type'], string> = {
 }
 
 const ANNOUNCEMENT_BADGE: Record<Announcement['announcement_type'], string> = {
-  moe_update: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20',
-  exam_notice: 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20',
-  platform_news: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20',
+  moe_update:
+    'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20',
+  exam_notice:
+    'bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20',
+  platform_news:
+    'bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20',
 }
 
 // ─────────────────────────────────────────────────────────────
-// Component
+// Small helpers (in-file, to keep the layout readable)
+// ─────────────────────────────────────────────────────────────
+
+function Stat({
+  label,
+  value,
+  sub,
+  accent = 'default',
+}: {
+  label: string
+  value: string | number
+  sub?: string
+  accent?: 'default' | 'warn' | 'success'
+}) {
+  const valueClass =
+    accent === 'warn'
+      ? 'text-amber-600 dark:text-amber-400'
+      : accent === 'success'
+        ? 'text-emerald-600 dark:text-emerald-400'
+        : 'text-slate-900 dark:text-slate-100'
+
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        {label}
+      </div>
+      <div className={`mt-1 font-display text-2xl font-bold tabular-nums ${valueClass}`}>
+        {value}
+      </div>
+      {sub && (
+        <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-500 truncate">
+          {sub}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ToolButton({
+  icon: Icon,
+  label,
+  hint,
+  onClick,
+  locked = false,
+}: {
+  icon: typeof Target
+  label: string
+  hint: string
+  onClick: () => void
+  locked?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/40"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <Icon className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            <span className="truncate">{label}</span>
+            {locked && <Lock className="h-3 w-3 shrink-0 text-amber-500" />}
+          </div>
+          <div className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
+            {hint}
+          </div>
+        </div>
+      </div>
+      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5" />
+    </button>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Dashboard
 // ─────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
@@ -83,10 +156,9 @@ export function DashboardPage() {
 
   const hasPremiumAccess = isPremium || isAdmin
 
-  // ── Load announcements (unchanged behavior) ────────────────
+  // ── Announcements
   useEffect(() => {
     let isMounted = true
-
     announcementApi
       .list()
       .then((res: any) => {
@@ -95,16 +167,14 @@ export function DashboardPage() {
         setAnnouncements(Array.isArray(data) ? data : [])
       })
       .catch((err) => console.error("Couldn't load announcements:", err))
-
     return () => {
       isMounted = false
     }
   }, [])
 
-  // ── Load dashboard snapshot ────────────────────────────────
+  // ── Dashboard snapshot
   useEffect(() => {
     let isMounted = true
-
     apiClient
       .get<DashboardData>('/api/dashboard/me')
       .then((res: { data: DashboardData }) => {
@@ -112,12 +182,10 @@ export function DashboardPage() {
       })
       .catch((err: unknown) => {
         console.warn('Dashboard data failed to load:', err)
-        // Silently degrade — dashboard still renders without stats
       })
       .finally(() => {
         if (isMounted) setLoadingDashboard(false)
       })
-
     return () => {
       isMounted = false
     }
@@ -131,6 +199,33 @@ export function DashboardPage() {
   })()
 
   const firstName = user?.full_name?.split(' ')[0] ?? 'Student'
+  const streak = dashboard?.streak_days ?? 0
+  const lastActivity = dashboard?.last_activity
+  const weakest = (dashboard?.weakest_subjects ?? []).slice(0, 3)
+
+  // Days to exam (nullable)
+  const daysToExam = (() => {
+    if (!user?.exam_date) return null
+    const target = new Date(user.exam_date)
+    if (isNaN(target.getTime())) return null
+    target.setHours(0, 0, 0, 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const diff = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    return Math.max(0, diff)
+  })()
+
+  // Recent average — from recent_activity scores (safe math only)
+  const recentAvg = (() => {
+    if (!dashboard?.recent_activity?.length) return null
+    const scores = dashboard.recent_activity
+      .map((a) => a.score)
+      .filter((s) => typeof s === 'number' && !isNaN(s))
+    if (!scores.length) return null
+    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+  })()
+
+  const recentAttempts = dashboard?.recent_activity?.length ?? 0
 
   const openUpgradeModal = (message?: string) => {
     setUpgradeMessage(message ?? null)
@@ -144,7 +239,7 @@ export function DashboardPage() {
       )
       return
     }
-    navigate('/mock-exam')
+    navigate('/mock-exams')
   }
 
   const handleTutorClick = () => {
@@ -157,311 +252,234 @@ export function DashboardPage() {
     navigate('/tutor')
   }
 
-  const streak = dashboard?.streak_days ?? 0
-  const lastActivity = dashboard?.last_activity
-  const weakest = dashboard?.weakest_subjects ?? []
-
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8">
       {/* =========================================================
-          HERO — personal, motivating, honest
-      ========================================================= */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 px-6 py-8 sm:px-8 sm:py-10">
-        <div className="relative z-10 flex items-start justify-between gap-6">
-          <div className="flex-1 min-w-0">
-            {/* Greeting */}
-            <h1 className="font-display text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
-              {greeting}, {firstName}.
-            </h1>
-
-            {/* Personal line — the real hook */}
-            <p className="mt-2 text-sm leading-relaxed text-slate-300 sm:text-base">
-              {streak > 0 && (
-                <>
-                  <span className="font-semibold text-amber-300">
-                    {streak} {streak === 1 ? 'day' : 'days'} in a row.
-                  </span>{' '}
-                </>
-              )}
-              {lastActivity ? (
-                <>
-                  Last up:{' '}
-                  <span className="text-slate-100">{lastActivity.label}</span>
-                  {' — '}
-                  {lastActivity.relative_when}.
-                </>
-              ) : (
-                <>Ready to start your first session?</>
-              )}
-            </p>
-
-            {/* Badges — minimal */}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {isPremium && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-300 ring-1 ring-amber-500/20">
-                  <Crown className="h-3 w-3 fill-amber-400" />
-                  Premium
-                </span>
-              )}
-              {isAdmin && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-blue-300 ring-1 ring-blue-500/20">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Admin
-                </span>
-              )}
-            </div>
-
-            {/* Actions — Continue first, then Start Mock */}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-              {lastActivity && lastActivity.course_id ? (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/courses/${lastActivity.course_id}`)}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98]"
-                >
-                  Continue {lastActivity.label}
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => navigate('/courses')}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98]"
-                >
-                  Browse courses
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={handleMockExamClick}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 px-5 py-2.5 text-sm font-semibold text-white ring-1 ring-white/10 transition hover:bg-white/15 active:scale-[0.98]"
-              >
-                {!hasPremiumAccess && <Lock className="h-3.5 w-3.5" />}
-                Start a Mock Exam
-              </button>
-            </div>
-          </div>
-
-          <HeroIllustration className="hidden h-32 w-32 shrink-0 opacity-80 lg:block" />
-        </div>
-      </section>
-
-      {/* =========================================================
-          EXAM METRICS — countdown + Focus Area
-      ========================================================= */}
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ExamCountdown examDate={user?.exam_date ?? null} />
-
-        {/* Focus Area — replaces "Exam Target" */}
-        {loadingDashboard ? (
-          <div className="animate-pulse rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-            <div className="h-3 w-24 rounded bg-slate-200 dark:bg-slate-800" />
-            <div className="mt-3 h-3 w-40 rounded bg-slate-200 dark:bg-slate-800" />
-          </div>
-        ) : weakest.length > 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-              Where to focus
-            </div>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Based on your last few quizzes:
-            </p>
-
-            <div className="mt-3 space-y-2">
-              {weakest.map((s) => (
-                <div
-                  key={s.course_id}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-950/50"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                      {s.course_name}
-                    </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {s.attempts} attempts · {s.average_score}% average
-                    </div>
-                  </div>
-                  <Link
-                    to={`/courses/${s.course_id}`}
-                    className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700"
-                  >
-                    Practice
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              <Target className="h-3.5 w-3.5 text-emerald-500" />
-              Where to focus
-            </div>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              Take a couple more quizzes and we'll show you which subjects
-              need your attention.
-            </p>
-            <Link
-              to="/courses"
-              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-            >
-              Browse courses
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-        )}
-      </section>
-
-      {/* =========================================================
-          TOOLS — Mock Exam hero, others supporting
+          HEADER — greeting + primary actions, no card
       ========================================================= */}
       <section className="space-y-4">
-        <div>
-          <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Tools
-          </h2>
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-            Pick what fits your time.
-          </p>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+            {greeting}, {firstName}.
+          </h1>
+          {streak > 0 && (
+            <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+              {streak} {streak === 1 ? 'day' : 'days'} in a row.
+            </span>
+          )}
         </div>
 
-        {/* Mock Exam — full width hero */}
-        <button
-          type="button"
-          onClick={handleMockExamClick}
-          className="group relative flex w-full items-center justify-between gap-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-left transition hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
-        >
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-blue-500" />
-              <span className="text-base font-semibold text-slate-900 dark:text-white">
-                Mock Exam
-              </span>
-              {!hasPremiumAccess && <Lock className="h-3.5 w-3.5 text-amber-500" />}
-            </div>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-              Full 100-question simulation under real exam conditions. Strict timing, no
-              hints. Best way to check if you're ready.
-            </p>
-            <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
-              {hasPremiumAccess ? 'Begin exam' : 'Upgrade to unlock'}
-              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+        {lastActivity ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Last up:{' '}
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              {lastActivity.label}
             </span>
-          </div>
-          <div className="hidden sm:flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-500/10">
-            <Target className="h-6 w-6 text-blue-500" />
-          </div>
-        </button>
+            {' · '}
+            {lastActivity.relative_when}
+            {typeof lastActivity.score === 'number' && (
+              <>
+                {' · '}
+                <span
+                  className={
+                    lastActivity.score >= 50
+                      ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+                      : 'text-rose-600 dark:text-rose-400 font-medium'
+                  }
+                >
+                  {Math.round(lastActivity.score)}%
+                </span>
+              </>
+            )}
+          </p>
+        ) : (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Start your first quiz when you're ready.
+          </p>
+        )}
 
-        {/* Two smaller tools */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {lastActivity?.course_id ? (
+            <button
+              type="button"
+              onClick={() => navigate(`/courses/${lastActivity.course_id}`)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[0.98] dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            >
+              Continue {lastActivity.label}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate('/courses')}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-[0.98] dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            >
+              Browse courses
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={() => setIsCodeTraceOpen(true)}
-            className="group flex flex-col rounded-xl border border-slate-200 bg-white p-5 text-left transition hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+            onClick={handleMockExamClick}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-[0.98] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
           >
-            <div className="flex items-center gap-2 text-slate-900 dark:text-white">
-              <Terminal className="h-4 w-4 text-emerald-500" />
-              <span className="text-sm font-semibold">Code Trace</span>
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              Step through C++, DSA, and OS execution line by line.
-            </p>
-            <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-              Open
-              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-            </span>
+            {!hasPremiumAccess && <Lock className="h-3.5 w-3.5 text-amber-500" />}
+            Start a Mock Exam
           </button>
 
-          <button
-            type="button"
-            onClick={handleTutorClick}
-            className="group flex flex-col rounded-xl border border-slate-200 bg-white p-5 text-left transition hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
-          >
-            <div className="flex items-center gap-2 text-slate-900 dark:text-white">
-              <Bot className="h-4 w-4 text-purple-500" />
-              <span className="text-sm font-semibold">Study Assistant</span>
-              {!hasPremiumAccess && <Lock className="h-3 w-3 text-amber-500" />}
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-              Ask about any concept and get clear explanations.
-            </p>
-            <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-400">
-              {hasPremiumAccess ? 'Ask a question' : 'Upgrade to unlock'}
-              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+          {isPremium && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-500/20 dark:text-amber-400">
+              <Crown className="h-3 w-3 fill-current" />
+              Premium
             </span>
-          </button>
+          )}
+          {isAdmin && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-blue-700 ring-1 ring-blue-500/20 dark:text-blue-400">
+              <CheckCircle2 className="h-3 w-3" />
+              Admin
+            </span>
+          )}
         </div>
       </section>
 
       {/* =========================================================
-          FREE TIER TEASE (only for free users)
+          STATS STRIP — 4 numbers, no card
+      ========================================================= */}
+      <section className="grid grid-cols-2 gap-x-6 gap-y-5 border-y border-slate-200 py-5 dark:border-slate-800 sm:grid-cols-4">
+        <Stat
+          label="Days to exam"
+          value={daysToExam !== null ? daysToExam : '—'}
+          sub={daysToExam === null ? 'Set in profile' : undefined}
+          accent={daysToExam !== null && daysToExam <= 30 ? 'warn' : 'default'}
+        />
+        <Stat
+          label="Recent average"
+          value={recentAvg !== null ? `${recentAvg}%` : '—'}
+          sub={
+            recentAvg === null && !loadingDashboard
+              ? 'Take a quiz'
+              : undefined
+          }
+        />
+        <Stat
+          label="Recent attempts"
+          value={recentAttempts > 0 ? recentAttempts : '—'}
+          sub={recentAttempts === 0 && !loadingDashboard ? 'No history yet' : undefined}
+        />
+        <Stat
+          label="Streak"
+          value={streak > 0 ? `${streak}d` : '—'}
+          accent={streak > 0 ? 'success' : 'default'}
+        />
+      </section>
+
+      {/* =========================================================
+          WHERE TO FOCUS — plain list, no card
+      ========================================================= */}
+      {loadingDashboard ? (
+        <section className="space-y-3">
+          <div className="h-3 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-10 animate-pulse rounded bg-slate-100 dark:bg-slate-900" />
+          <div className="h-10 animate-pulse rounded bg-slate-100 dark:bg-slate-900" />
+        </section>
+      ) : weakest.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Where to focus
+          </h2>
+          <div className="divide-y divide-slate-200 dark:divide-slate-800">
+            {weakest.map((s) => (
+              <div
+                key={s.course_id}
+                className="flex items-center justify-between gap-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {s.course_name}
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    {s.attempts} attempt{s.attempts === 1 ? '' : 's'} ·{' '}
+                    {Math.round(s.average_score)}% average
+                  </div>
+                </div>
+                <Link
+                  to={`/courses/${s.course_id}`}
+                  className="shrink-0 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                >
+                  Practice →
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section className="space-y-3">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Where to focus
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Take a few quizzes and we'll show which subjects need attention.
+          </p>
+          <Link
+            to="/courses"
+            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+          >
+            Browse courses
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </section>
+      )}
+
+      {/* =========================================================
+          TOOLS — compact row
+      ========================================================= */}
+      <section className="space-y-3">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Tools
+        </h2>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <ToolButton
+            icon={Target}
+            label="Mock Exam"
+            hint="20 / 50 / 100 questions"
+            onClick={handleMockExamClick}
+            locked={!hasPremiumAccess}
+          />
+          <ToolButton
+            icon={Terminal}
+            label="Code Trace"
+            hint="C++ · DSA · OS"
+            onClick={() => setIsCodeTraceOpen(true)}
+          />
+          <ToolButton
+            icon={Bot}
+            label="Study Assistant"
+            hint="Ask any concept"
+            onClick={handleTutorClick}
+            locked={!hasPremiumAccess}
+          />
+        </div>
+      </section>
+
+      {/* =========================================================
+          FREE TIER — compact strip
       ========================================================= */}
       {!hasPremiumAccess && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-slate-500" />
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                  You're on the free plan
-                </h3>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                    What you have
-                  </p>
-                  <ul className="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500">·</span>
-                      1 quiz every 3 hours
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500">·</span>
-                      20% of course notes
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-500">·</span>
-                      3 code traces per day
-                    </li>
-                  </ul>
-                </div>
-
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    What's locked
-                  </p>
-                  <ul className="mt-2 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-                    <li className="flex items-start gap-2">
-                      <Lock className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
-                      Unlimited quizzes
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Lock className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
-                      Full course notes
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Lock className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
-                      Mock Exam Simulator
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Lock className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
-                      Study Assistant
-                    </li>
-                  </ul>
-                </div>
-              </div>
+        <section className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/50">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                You're on the free plan
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                1 quiz every 3 hours · 20% of notes · 3 code traces per day
+              </p>
             </div>
-
             <button
               type="button"
               onClick={() => openUpgradeModal()}
-              className="shrink-0 self-start rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+              className="shrink-0 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
             >
               See Premium
             </button>
@@ -470,17 +488,19 @@ export function DashboardPage() {
       )}
 
       {/* =========================================================
-          ANNOUNCEMENTS (unchanged)
+          ANNOUNCEMENTS — only when there are any
       ========================================================= */}
       {announcements.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Announcements
             </h2>
-            <span className="text-xs text-slate-400 dark:text-slate-500">
-              {Math.min(announcements.length, 3)} of {announcements.length}
-            </span>
+            {announcements.length > 3 && (
+              <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                Showing 3 of {announcements.length}
+              </span>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -490,25 +510,19 @@ export function DashboardPage() {
                 className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    {announcement.is_pinned && (
-                      <Pin className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                    )}
-                    <span className="truncate text-sm font-medium text-slate-900 dark:text-white">
-                      {announcement.title}
-                    </span>
+                  <div className="min-w-0 text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {announcement.title}
                   </div>
-
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       ANNOUNCEMENT_BADGE[announcement.announcement_type] ||
                       'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                     }`}
                   >
-                    {ANNOUNCEMENT_LABEL[announcement.announcement_type] || 'Notice'}
+                    {ANNOUNCEMENT_LABEL[announcement.announcement_type] ||
+                      'Notice'}
                   </span>
                 </div>
-
                 <p className="mt-1.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                   {announcement.content}
                 </p>
