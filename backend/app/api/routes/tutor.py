@@ -144,11 +144,14 @@ def chat(
         db.flush()
 
         # 4. Pull recent message window (latest 20 messages)
+               # 4. Pull recent message window.
+        # 6 = current user message + ~2.5 rounds of prior chat.
+        # Sending fewer tokens keeps us under Groq's free-tier TPM cap.
         history_desc = (
             db.query(AIMessage)
             .filter(AIMessage.conversation_id == conversation.id)
             .order_by(AIMessage.created_at.desc())
-            .limit(20)
+            .limit(6)
             .all()
         )
         history = list(reversed(history_desc))
@@ -297,11 +300,13 @@ def chat_stream(
     db.add(user_message)
     db.flush()
 
+    # Send only the last 6 messages (current user msg + ~2.5 prior rounds).
+    # See /chat for the token-budget reasoning.
     history_desc = (
         db.query(AIMessage)
         .filter(AIMessage.conversation_id == conversation.id)
         .order_by(AIMessage.created_at.desc())
-        .limit(20)
+        .limit(6)
         .all()
     )
     history = list(reversed(history_desc))
