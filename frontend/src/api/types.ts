@@ -29,13 +29,12 @@ export interface User {
   weaknesses_summary: string | null
   subscription_tier: SubscriptionTier
   is_2fa_enabled?: boolean
+  email_verified?: boolean
   subscription_expires_at?: string | null
   is_premium?: boolean
   ai_usage_count?: number
   created_at: string
-  
   is_active: boolean;
- 
 }
 
 export interface AdminUser {
