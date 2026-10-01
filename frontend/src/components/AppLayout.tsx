@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Crown,
+  Wallet,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -24,8 +25,10 @@ const NAV_ITEMS = [
   { to: '/courses', label: 'Courses', icon: BookOpen },
   { to: '/notes', label: 'Notes', icon: FileText },
   { to: '/mock-exams', label: 'Mock Exams', icon: FileQuestion },
+  { to: '/exam-blueprint', label: 'Exam Blueprint', icon: FileText },
   { to: '/tutor', label: 'Study Assistant', icon: MessageCircle },
   { to: '/support', label: 'Support', icon: LifeBuoy },
+  { to: '/payment/manual/status', label: 'My Bank Payments', icon: Wallet },
 ]
 
 // Map route prefix → header title
