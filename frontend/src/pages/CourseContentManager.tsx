@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { marked } from 'marked'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+
 import { adminApi, courseApi } from '../api'
 import type {
   AIGenerateResponse,
@@ -12,8 +12,25 @@ import type {
   ReviewStatus,
 } from '../api/types'
 import { AIDraftModal } from '../components/AIDraftModal'
-import { FormattedQuestionText } from '../components/FormattedQuestionText'
-import { Archive, CheckCircle2, XCircle, Pencil, Trash2, ChevronLeft, ChevronRight, ClipboardCheck, Plus, Search } from 'lucide-react'
+import {
+  ArrowLeft,
+  BookOpen,
+  ClipboardCheck,
+  Search,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  FileText,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Sparkles,
+  Loader2,
+  X,
+} from 'lucide-react'
 
 interface DuplicateGroup {
   count?: number
@@ -23,15 +40,138 @@ interface DuplicateGroup {
 type Tab = 'notes' | 'questions'
 
 const REVIEW_BADGE: Record<ReviewStatus, string> = {
-  generated: 'bg-canvas text-ink/60',
-  under_review: 'bg-warn/10 text-warn',
-  approved: 'bg-accent-light text-accent-dark',
-  rejected: 'bg-danger/10 text-danger',
-  archived: 'bg-ink/5 text-ink/40',
+  generated:
+    'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400',
+  under_review:
+    'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',
+  approved:
+    'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400',
+  rejected: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400',
+  archived:
+    'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
 }
+
+const PAGE_SIZE = 20
+
+const EMPTY_NOTE_FORM = {
+  title: '',
+  content: '',
+  material_type: 'note' as MaterialContentType,
+  is_ai_generated: false,
+}
+
+const EMPTY_QUESTION_FORM = {
+  question_text: '',
+  option_a: '',
+  option_b: '',
+  option_c: '',
+  option_d: '',
+  correct_option: 'A' as 'A' | 'B' | 'C' | 'D',
+  explanation: '',
+  difficulty: 'medium' as ExamDifficulty,
+  is_ai_generated: false,
+  ai_topic: undefined as string | undefined,
+}
+
+// ============================================================
+// Reusable confirm dialog (replaces native confirm())
+// ============================================================
+
+interface ConfirmState {
+  title: string
+  message: string
+  confirmLabel: string
+  tone: 'danger' | 'warning'
+  onConfirm: () => void | Promise<void>
+}
+
+function ConfirmDialog({
+  state,
+  isProcessing,
+  onClose,
+}: {
+  state: ConfirmState | null
+  isProcessing: boolean
+  onClose: () => void
+}) {
+  if (!state) return null
+
+  const isDanger = state.tone === 'danger'
+  const iconBg = isDanger
+    ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'
+    : 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400'
+  const btnBg = isDanger
+    ? 'bg-rose-600 hover:bg-rose-700'
+    : 'bg-amber-600 hover:bg-amber-700'
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={() => !isProcessing && onClose()}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}
+          >
+            {isDanger ? (
+              <Trash2 className="h-5 w-5" />
+            ) : (
+              <AlertTriangle className="h-5 w-5" />
+            )}
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              {state.title}
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+              {state.message}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isProcessing}
+            className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => state.onConfirm()}
+            disabled={isProcessing}
+            className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl text-white px-4 py-2.5 text-sm font-bold transition-colors active:scale-95 disabled:opacity-50 ${btnBg}`}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Working…</span>
+              </>
+            ) : (
+              <span>{state.confirmLabel}</span>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
+// Main page
+// ============================================================
 
 export function CourseContentManagerPage() {
   const { id: courseId } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [course, setCourse] = useState<Course | null>(null)
   const [tab, setTab] = useState<Tab>('notes')
 
@@ -53,72 +193,141 @@ export function CourseContentManagerPage() {
   if (!courseId) return null
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div>
-        <Link to="/admin" className="text-sm text-ink/50 hover:text-ink">
-          ← Admin
-        </Link>
-        <h1 className="font-display text-2xl font-semibold mt-2">{course?.name ?? 'Course content'}</h1>
-        <p className="text-ink/60 mt-1">Manage study notes and the practice-question review queue.</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 sticky top-16 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/admin/courses')}
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {course?.name || 'Loading...'}
+                </h1>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {course?.code} • Manage study notes and practice questions
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+              <button
+                onClick={() => setTab('notes')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  tab === 'notes'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span className="hidden sm:inline">Study Notes</span>
+                <span className="sm:hidden">Notes</span>
+              </button>
+              <button
+                onClick={() => setTab('questions')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  tab === 'questions'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                <span className="hidden sm:inline">Practice Questions</span>
+                <span className="sm:hidden">Questions</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex gap-2 border-b border-border">
-        {(['notes', 'questions'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === t ? 'border-accent text-accent-dark' : 'border-transparent text-ink/50 hover:text-ink'
-            }`}
-          >
-            {t === 'notes' ? 'Study Notes' : 'Practice Questions'}
-          </button>
-        ))}
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+        {tab === 'notes' ? (
+          <div>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center mb-6">
+              <FileText className="w-16 h-16 mx-auto text-indigo-300 dark:text-indigo-600 mb-4" />
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                Study Notes Management
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                Generate, review, edit, and approve exam-ready study notes for
+                this course.
+              </p>
+              <button
+                onClick={() =>
+                  navigate(`/admin/courses/${courseId}/notes/review`)
+                }
+                className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20"
+              >
+                <BookOpen className="w-4 h-4" />
+                Open Notes Review
+              </button>
+            </div>
+            <StudyNotesTab courseId={courseId} />
+          </div>
+        ) : (
+          <PracticeQuestionsTab courseId={courseId} />
+        )}
       </div>
-
-      {tab === 'notes' ? <StudyNotesTab courseId={courseId} /> : <PracticeQuestionsTab courseId={courseId} />}
     </div>
   )
 }
 
-// ============================== Study Notes ==============================
-
-const EMPTY_NOTE_FORM = { title: '', content: '', material_type: 'note' as MaterialContentType, is_ai_generated: false }
+// ============================================================
+// Study Notes tab
+// ============================================================
 
 function StudyNotesTab({ courseId }: { courseId: string }) {
   const [materials, setMaterials] = useState<CourseMaterial[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_NOTE_FORM)
-  const [showPreview, setShowPreview] = useState(false)
+ 
   const [showAIModal, setShowAIModal] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
 
-  const load = async () => {
+  const load = async (isCancelled: () => boolean = () => false) => {
     try {
       const res: any = await adminApi.listMaterials(courseId)
       const data = res?.data !== undefined ? res.data : res
-      setMaterials(Array.isArray(data) ? data : [])
+      if (!isCancelled()) setMaterials(Array.isArray(data) ? data : [])
     } catch {
-      setError('Failed to fetch course materials.')
+      if (!isCancelled()) setError('Failed to fetch course materials.')
+    } finally {
+      if (!isCancelled()) setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    load()
+    let cancelled = false
+    load(() => cancelled)
+    return () => {
+      cancelled = true
+    }
   }, [courseId])
 
   const startEdit = (m: CourseMaterial) => {
     setEditingId(m.id)
-    setForm({ title: m.title, content: m.content, material_type: m.material_type, is_ai_generated: m.is_ai_generated })
-    setShowPreview(false)
+    setForm({
+      title: m.title,
+      content: m.content,
+      material_type: m.material_type,
+      is_ai_generated: m.is_ai_generated,
+    })
+   
+    setError(null)
   }
 
   const startNew = () => {
     setEditingId('new')
     setForm(EMPTY_NOTE_FORM)
-    setShowPreview(false)
+
+    setError(null)
   }
 
   const cancelEdit = () => {
@@ -128,7 +337,12 @@ function StudyNotesTab({ courseId }: { courseId: string }) {
 
   const handleAIApply = (result: AIGenerateResponse) => {
     if (result.type !== 'note' || !result.note) return
-    setForm({ title: result.note.title, content: result.note.content, material_type: form.material_type, is_ai_generated: true })
+    setForm({
+      title: result.note.title,
+      content: result.note.content,
+      material_type: form.material_type,
+      is_ai_generated: true,
+    })
     setShowAIModal(false)
     if (editingId === null) setEditingId('new')
   }
@@ -139,7 +353,11 @@ function StudyNotesTab({ courseId }: { courseId: string }) {
     setError(null)
     try {
       if (editingId && editingId !== 'new') {
-        await adminApi.updateMaterial(editingId, { title: form.title, content: form.content, material_type: form.material_type })
+        await adminApi.updateMaterial(editingId, {
+          title: form.title,
+          content: form.content,
+          material_type: form.material_type,
+        })
       } else {
         await adminApi.createMaterial(courseId, form)
       }
@@ -152,117 +370,189 @@ function StudyNotesTab({ courseId }: { courseId: string }) {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this note?')) return
-    await adminApi.deleteMaterial(id)
-    await load()
+  const handleDelete = (id: string) => {
+    setConfirmState({
+      title: 'Delete this note?',
+      message:
+        'The note will be permanently removed from this course. This cannot be undone.',
+      confirmLabel: 'Delete note',
+      tone: 'danger',
+      onConfirm: async () => {
+        setIsSaving(true)
+        try {
+          await adminApi.deleteMaterial(id)
+          await load()
+        } catch {
+          setError('Could not delete this note. Please try again.')
+        } finally {
+          setIsSaving(false)
+          setConfirmState(null)
+        }
+      },
+    })
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Global error (always visible) */}
+      {error && !editingId && (
+        <div className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3.5 py-3 text-sm text-rose-700 dark:text-rose-400 flex items-start justify-between gap-3">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="shrink-0 rounded-md p-0.5 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
+            aria-label="Dismiss error"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {editingId ? (
-        <form onSubmit={handleSubmit} className="card p-5 space-y-3">
-          {error && <div className="text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3"
+        >
+          {error && (
+            <div className="text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 rounded-lg px-3 py-2">
+              {error}
+            </div>
+          )}
           <div className="flex items-center justify-between">
-            <h2 className="font-display font-semibold text-sm">{editingId === 'new' ? 'New note' : 'Edit note'}</h2>
-            <button type="button" onClick={() => setShowAIModal(true)} className="text-xs font-medium text-accent-dark hover:underline">
-               Generate with AI
+            <h2 className="font-bold text-sm text-slate-900 dark:text-white">
+              {editingId === 'new' ? 'New Note' : 'Edit Note'}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowAIModal(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Generate with AI
             </button>
           </div>
           <input
-            className="input"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder="Title"
             required
             value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, title: e.target.value }))
+            }
           />
-          <select
-            className="input"
-            value={form.material_type}
-            onChange={(e) => setForm((f) => ({ ...f, material_type: e.target.value as MaterialContentType }))}
-          >
-            <option value="note">Note</option>
-            <option value="summary">Summary</option>
-            <option value="slide_deck">Slide deck</option>
-          </select>
-          <div className="flex items-center justify-between">
-            <label className="label mb-0">Content (Markdown)</label>
-            <button type="button" onClick={() => setShowPreview((p) => !p)} className="text-xs text-ink/50 hover:text-ink">
-              {showPreview ? 'Edit' : 'Preview'}
-            </button>
-          </div>
-          {showPreview ? (
-            <div
-              className="input min-h-[200px] prose prose-sm max-w-none overflow-auto"
-              dangerouslySetInnerHTML={{ __html: marked.parse(form.content || '_Nothing yet_') as string }}
-            />
-          ) : (
-            <textarea
-              className="input min-h-[200px] font-mono text-sm"
-              required
-              value={form.content}
-              onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-            />
-          )}
+          <textarea
+            className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 font-mono min-h-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Content (Markdown)"
+            required
+            value={form.content}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, content: e.target.value }))
+            }
+          />
           <div className="flex gap-2">
-            <button type="submit" disabled={isSaving} className="btn-primary">
-              {isSaving ? 'Saving…' : 'Save'}
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {isSaving ? 'Saving...' : 'Save'}
             </button>
-            <button type="button" onClick={cancelEdit} className="btn-secondary">
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700"
+            >
               Cancel
             </button>
           </div>
         </form>
       ) : (
-        <button type="button" onClick={startNew} className="btn-primary">
-          + New note
+        <button
+          type="button"
+          onClick={startNew}
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 inline-flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          New Note
         </button>
       )}
 
-      <div className="space-y-2">
-        {materials.length === 0 ? (
-          <div className="card p-4 text-sm text-ink/50">No notes yet.</div>
-        ) : (
-          materials.map((m) => (
-            <div key={m.id} className="card p-4 flex items-center justify-between">
-              <div>
-                <div className="font-medium text-sm">
-                  {m.title} {m.is_ai_generated && <span className="text-xs text-accent-dark ml-1"> AI</span>}
-                </div>
-                <div className="text-xs text-ink/50 mt-0.5">{m.material_type.replace('_', ' ')}</div>
-              </div>
-              <div className="flex gap-3 text-xs font-medium">
-                <button type="button" onClick={() => startEdit(m)} className="text-ink/60 hover:text-ink">
-                  Edit
-                </button>
-                <button type="button" onClick={() => handleDelete(m.id)} className="text-danger hover:underline">
-                  Delete
-                </button>
-              </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500 dark:text-slate-400">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading notes…
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {materials.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 text-sm text-slate-500 dark:text-slate-400 text-center">
+              No notes yet. Click "+ New Note" to add one.
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            materials.map((m) => (
+              <div
+                key={m.id}
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between hover:shadow-md transition-shadow"
+              >
+                <div>
+                  <div className="font-medium text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    {m.title}
+                    {m.is_ai_generated && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 px-1.5 py-0.5 rounded">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        AI
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {m.material_type.replace('_', ' ')}
+                  </div>
+                </div>
+                <div className="flex gap-3 text-xs font-medium">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(m)}
+                    className="flex items-center gap-1 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(m.id)}
+                    className="flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:underline"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
-      {showAIModal && <AIDraftModal courseId={courseId} type="note" onClose={() => setShowAIModal(false)} onApply={handleAIApply} />}
+      {showAIModal && (
+        <AIDraftModal
+          courseId={courseId}
+          type="note"
+          onClose={() => setShowAIModal(false)}
+          onApply={handleAIApply}
+        />
+      )}
+
+      <ConfirmDialog
+        state={confirmState}
+        isProcessing={isSaving}
+        onClose={() => setConfirmState(null)}
+      />
     </div>
   )
 }
 
-// ============================== Practice Questions ==============================
-
-const EMPTY_QUESTION_FORM = {
-  question_text: '',
-  option_a: '',
-  option_b: '',
-  option_c: '',
-  option_d: '',
-  correct_option: 'A' as 'A' | 'B' | 'C' | 'D',
-  explanation: '',
-  difficulty: 'medium' as ExamDifficulty,
-  is_ai_generated: false,
-  ai_topic: undefined as string | undefined,
-}
+// ============================================================
+// Practice Questions tab
+// ============================================================
 
 const STATUS_FILTERS: { value: ReviewStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -279,73 +569,81 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | 'all'>('all')
   const [viewDuplicatesOnly, setViewDuplicatesOnly] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard'>('all')
-  const [aiFilter, setAiFilter] = useState<'all' | 'ai' | 'human'>('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const PAGE_SIZE = 20
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_QUESTION_FORM)
   const [showAIModal, setShowAIModal] = useState(false)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [focusedIdx, setFocusedIdx] = useState(0)
-  const focusedCardRef = useRef<HTMLDivElement | null>(null)
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
 
-  const load = async (isMounted = true) => {
+  // FIX: isCancelled callback pattern
+  const load = async (isCancelled: () => boolean = () => false) => {
     try {
-      const qRes: any = await adminApi.listQuestions(courseId, statusFilter === 'all' ? undefined : statusFilter)
+      const qRes: any = await adminApi.listQuestions(
+        courseId,
+        statusFilter === 'all' ? undefined : statusFilter,
+      )
       const qData = qRes?.data !== undefined ? qRes.data : qRes
-      if (isMounted) setQuestions(Array.isArray(qData) ? qData : [])
+      if (!isCancelled()) setQuestions(Array.isArray(qData) ? qData : [])
     } catch {
-      // Non-blocking catch
+      if (!isCancelled()) setError('Could not load questions.')
     }
 
     try {
       const dupRes: any = await adminApi.listDuplicates(courseId)
       const dupData = dupRes?.data !== undefined ? dupRes.data : dupRes
-      if (isMounted) setDuplicateGroups(Array.isArray(dupData) ? dupData : [])
+      if (!isCancelled())
+        setDuplicateGroups(Array.isArray(dupData) ? dupData : [])
     } catch {
-      // Non-blocking catch
+      /* non-blocking */
     }
+
+    if (!isCancelled()) setIsLoading(false)
   }
 
   useEffect(() => {
-    let isMounted = true
-    load(isMounted)
+    let cancelled = false
+    setIsLoading(true)
+    load(() => cancelled)
     return () => {
-      isMounted = false
+      cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, statusFilter])
 
-  useEffect(() => {
-    setCurrentPage(1)
-    setSelectedIds([])
-  }, [difficultyFilter, aiFilter, searchQuery])
-
   const filteredQuestions = questions.filter((q) => {
-    const matchesStatus = statusFilter === 'all' || q.review_status === statusFilter
-    const matchesSearch = !searchQuery || q.question_text.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesDifficulty = difficultyFilter === 'all' || q.difficulty === difficultyFilter
-    const matchesAi =
-      aiFilter === 'all' ||
-      (aiFilter === 'ai' && q.is_ai_generated) ||
-      (aiFilter === 'human' && !q.is_ai_generated)
-    return matchesStatus && matchesSearch && matchesDifficulty && matchesAi
+    const matchesStatus =
+      statusFilter === 'all' || q.review_status === statusFilter
+    const matchesSearch =
+      !searchQuery ||
+      q.question_text.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesStatus && matchesSearch
   })
 
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE)
   const paginatedQuestions = filteredQuestions.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    currentPage * PAGE_SIZE,
   )
 
   const totalRepeatedCount = duplicateGroups.reduce(
     (sum, g) => sum + Math.max(0, (g.questions?.length || g.count || 0) - 1),
-    0
+    0,
   )
+
+  const stats = {
+    total: questions.length,
+    approved: questions.filter((q) => q.review_status === 'approved').length,
+    inReview: questions.filter(
+      (q) =>
+        q.review_status === 'under_review' || q.review_status === 'generated',
+    ).length,
+    rejected: questions.filter((q) => q.review_status === 'rejected').length,
+  }
 
   const startEdit = (q: ExamQuestion) => {
     setEditingId(q.id)
@@ -361,11 +659,13 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
       is_ai_generated: q.is_ai_generated,
       ai_topic: q.ai_topic ?? undefined,
     })
+    setError(null)
   }
 
   const startNew = () => {
     setEditingId('new')
     setForm(EMPTY_QUESTION_FORM)
+    setError(null)
   }
 
   const cancelEdit = () => {
@@ -375,7 +675,12 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
 
   const handleAIApply = (result: AIGenerateResponse, topic?: string) => {
     if (result.type !== 'question' || !result.question) return
-    setForm({ ...result.question, is_ai_generated: true, ai_topic: topic, difficulty: form.difficulty })
+    setForm({
+      ...result.question,
+      is_ai_generated: true,
+      ai_topic: topic,
+      difficulty: form.difficulty,
+    })
     setShowAIModal(false)
     if (editingId === null) setEditingId('new')
   }
@@ -393,708 +698,616 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
       cancelEdit()
       await load()
     } catch {
-      setError('Could not save this question. If it was already approved, archive it and create a new draft instead.')
+      setError('Could not save this question.')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
-    const target = questions.find((x: ExamQuestion) => x.id === id)
-    const isApproved = target?.review_status === 'approved'
-    const msg = isApproved
-      ? 'This question is APPROVED and live for students. It will be archived and then permanently removed from the exam bank. This cannot be undone. Continue?'
-      : 'Are you sure you want to delete this question? This cannot be undone.'
-    if (!confirm(msg)) return
-    try {
-      await adminApi.deleteQuestion(id)
-      await load()
-    } catch (err) {
-      console.error('Delete failed:', err)
-    }
+  // FIX: use custom confirm modal + error handling
+  const handleDelete = (id: string) => {
+    setConfirmState({
+      title: 'Delete this question?',
+      message:
+        'The question will be permanently removed. This cannot be undone.',
+      confirmLabel: 'Delete question',
+      tone: 'danger',
+      onConfirm: async () => {
+        setIsSaving(true)
+        try {
+          await adminApi.deleteQuestion(id)
+          await load()
+        } catch {
+          setError('Could not delete the question.')
+        } finally {
+          setIsSaving(false)
+          setConfirmState(null)
+        }
+      },
+    })
   }
 
-  const handleBulkDelete = async (ids: string[]) => {
+  const handleBulkDelete = (ids: string[], reason = 'bulk delete') => {
     if (ids.length === 0) return
-    if (!confirm(`Are you sure you want to bulk-delete ${ids.length} question(s)?`)) return
-    setIsSaving(true)
-    try {
-      await adminApi.bulkDeleteQuestions(ids)
-      await load()
-    } catch {
-      setError('Could not complete bulk deletion. Please try again.')
-    } finally {
-      setIsSaving(false)
-    }
+    setConfirmState({
+      title: `Delete ${ids.length} question${ids.length === 1 ? '' : 's'}?`,
+      message: `This will permanently remove ${ids.length} question${
+        ids.length === 1 ? '' : 's'
+      }. This cannot be undone.`,
+      confirmLabel: `Delete ${ids.length}`,
+      tone: 'danger',
+      onConfirm: async () => {
+        setIsSaving(true)
+        try {
+          await adminApi.bulkDeleteQuestions(ids)
+          await load()
+        } catch {
+          setError(`Could not complete ${reason}.`)
+        } finally {
+          setIsSaving(false)
+          setConfirmState(null)
+        }
+      },
+    })
   }
 
-  const handleKeepOneAndDeleteOthers = (group: DuplicateGroup, keepId: string) => {
+  const handleKeepOneAndDeleteOthers = (
+    group: DuplicateGroup,
+    keepId: string,
+  ) => {
     if (!group.questions) return
-    const toDelete = group.questions.filter((q: ExamQuestion) => q.id !== keepId).map((q: ExamQuestion) => q.id)
-    handleBulkDelete(toDelete)
+    const toDelete = group.questions
+      .filter((q: ExamQuestion) => q.id !== keepId)
+      .map((q: ExamQuestion) => q.id)
+    handleBulkDelete(toDelete, 'duplicate cleanup')
   }
 
   const handlePurgeAllDuplicates = () => {
     const toDelete: string[] = []
     duplicateGroups.forEach((group: DuplicateGroup) => {
       if (group.questions && group.questions.length > 1) {
-        group.questions.slice(1).forEach((q: ExamQuestion) => toDelete.push(q.id))
+        group.questions
+          .slice(1)
+          .forEach((q: ExamQuestion) => toDelete.push(q.id))
       }
     })
-    handleBulkDelete(toDelete)
+    handleBulkDelete(toDelete, 'duplicate purge')
   }
 
   const handleApprove = async (id: string) => {
-    await adminApi.reviewQuestion(id, 'approve')
-    await load()
+    setError(null)
+    try {
+      await adminApi.reviewQuestion(id, 'approve')
+      await load()
+    } catch {
+      setError('Could not approve this question.')
+    }
   }
 
   const handleArchive = async (id: string) => {
-    await adminApi.reviewQuestion(id, 'archive')
-    await load()
+    setError(null)
+    try {
+      await adminApi.reviewQuestion(id, 'archive')
+      await load()
+    } catch {
+      setError('Could not archive this question.')
+    }
   }
 
   const confirmReject = async (id: string) => {
     if (!rejectionReason.trim()) return
-    await adminApi.reviewQuestion(id, 'reject', rejectionReason.trim())
-    setRejectingId(null)
-    setRejectionReason('')
-    await load()
-  }
-
-  // ---- Bulk selection ----
-  const toggleSelectOne = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
-  }
-
-  const toggleSelectAllVisible = () => {
-    const visibleIds = filteredQuestions.map((q) => q.id)
-    const allSelected =
-      visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id))
-    if (allSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !visibleIds.includes(id)))
-    } else {
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...visibleIds])))
-    }
-  }
-
-  const handleBatchDelete = async () => {
-    if (selectedIds.length === 0) return
-    if (!confirm(`Delete ${selectedIds.length} question(s) permanently? This cannot be undone.`)) return
-    setIsSaving(true)
     setError(null)
     try {
-      await adminApi.bulkDeleteQuestions(selectedIds)
-      setSelectedIds([])
+      await adminApi.reviewQuestion(id, 'reject', rejectionReason.trim())
+      setRejectingId(null)
+      setRejectionReason('')
       await load()
     } catch {
-      setError('Bulk delete failed.')
-    } finally {
-      setIsSaving(false)
+      setError('Could not reject this question.')
     }
   }
 
-  const handleBatchApprove = async () => {
-    if (selectedIds.length === 0) return
-    if (!confirm(`Approve ${selectedIds.length} question(s)?`)) return
-    setIsSaving(true)
-    setError(null)
-    try {
-      await adminApi.batchReviewQuestions(selectedIds, 'approve')
-      setSelectedIds([])
-      await load()
-    } catch {
-      setError('Bulk approve failed.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  // ---- Keyboard shortcuts + focus management ----
-  useEffect(() => {
-    if (focusedIdx >= filteredQuestions.length) {
-      setFocusedIdx(Math.max(0, filteredQuestions.length - 1))
-    }
-  }, [filteredQuestions.length, focusedIdx])
-
-  useEffect(() => {
-    setFocusedIdx(0)
-  }, [statusFilter, difficultyFilter, aiFilter, searchQuery, courseId])
-
-  useEffect(() => {
-    focusedCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [focusedIdx])
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (target) {
-        const tag = target.tagName
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return
-      }
-      if (editingId !== null || rejectingId !== null) return
-      if (filteredQuestions.length === 0) return
-
-      const focusedQ = paginatedQuestions[focusedIdx]
-      if (!focusedQ) return
-
-      const key = e.key
-
-      if (key === 'j' || key === 'J' || key === 'ArrowDown') {
-        e.preventDefault()
-        if (focusedIdx < paginatedQuestions.length - 1) {
-          setFocusedIdx(focusedIdx + 1)
-        } else if (currentPage < totalPages) {
-          setCurrentPage(currentPage + 1)
-          setFocusedIdx(0)
-        }
-        return
-      }
-      if (key === 'k' || key === 'K' || key === 'ArrowUp') {
-        e.preventDefault()
-        if (focusedIdx > 0) {
-          setFocusedIdx(focusedIdx - 1)
-        } else if (currentPage > 1) {
-          setCurrentPage(currentPage - 1)
-          setFocusedIdx(PAGE_SIZE - 1)
-        }
-        return
-      }
-      if (key === 'a' || key === 'A') {
-        e.preventDefault()
-        handleApprove(focusedQ.id)
-        return
-      }
-      if (key === 'r' || key === 'R') {
-        e.preventDefault()
-        setRejectingId(focusedQ.id)
-        return
-      }
-      if (key === 'd' || key === 'D') {
-        e.preventDefault()
-        handleDelete(focusedQ.id)
-        return
-      }
-      if (key === 'e' || key === 'E') {
-        e.preventDefault()
-        startEdit(focusedQ)
-        return
-      }
-      if (key === 'x' || key === 'X' || key === ' ') {
-        e.preventDefault()
-        toggleSelectOne(focusedQ.id)
-        return
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [focusedIdx, filteredQuestions, paginatedQuestions, editingId, rejectingId, currentPage, totalPages])
-
-  const canEdit = (s: ReviewStatus) => s === 'generated' || s === 'under_review'
-  const canDelete = (_s: ReviewStatus) => true
+  const canEdit = (s: ReviewStatus) =>
+    s === 'generated' || s === 'under_review'
+  const canDelete = (s: ReviewStatus) => s !== 'approved'
   const canArchive = (s: ReviewStatus) => s === 'approved' || s === 'rejected'
 
   return (
     <div className="space-y-6">
-
-      {selectedIds.length > 0 && (
-        <div className="sticky top-2 z-20 flex items-center justify-between gap-3 rounded-2xl border border-indigo-300 bg-indigo-50 px-4 py-2.5 shadow-lg dark:border-indigo-800 dark:bg-indigo-950/80">
-          <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-200">
-            {selectedIds.length} question{selectedIds.length === 1 ? '' : 's'} selected
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedIds([])}
-              className="text-xs px-3 py-1.5 rounded-lg bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300"
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              disabled={isSaving}
-              onClick={handleBatchApprove}
-              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-500 transition-colors disabled:opacity-50"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Approve Selected
-            </button>
-            <button
-              type="button"
-              disabled={isSaving}
-              onClick={handleBatchDelete}
-              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-500 transition-colors disabled:opacity-50"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete Selected
-            </button>
-          </div>
-        </div>
-      )}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex gap-1.5 flex-wrap items-center">
-          <input
-            type="text"
-            placeholder="Search questions..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setCurrentPage(1)
-            }}
-            className="px-3 py-1.5 border border-slate-300 rounded-xl text-xs w-48 focus:outline-none focus:border-indigo-500"
-          />
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => {
-                setStatusFilter(f.value)
-                setViewDuplicatesOnly(false)
-              }}
-              className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
-                !viewDuplicatesOnly && statusFilter === f.value
-                  ? 'bg-primary text-white'
-                  : 'bg-canvas text-ink/60 hover:bg-border'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-
-          <select
-            value={difficultyFilter}
-            onChange={(e) => setDifficultyFilter(e.target.value as typeof difficultyFilter)}
-            className="text-xs px-2.5 py-1 rounded-full border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-indigo-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300"
+      {/* Global error (always visible) */}
+      {error && !editingId && (
+        <div className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3.5 py-3 text-sm text-rose-700 dark:text-rose-400 flex items-start justify-between gap-3">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="shrink-0 rounded-md p-0.5 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
+            aria-label="Dismiss error"
           >
-            <option value="all">Difficulty: All</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-
-          <select
-            value={aiFilter}
-            onChange={(e) => setAiFilter(e.target.value as typeof aiFilter)}
-            className="text-xs px-2.5 py-1 rounded-full border border-slate-300 bg-white text-slate-700 focus:outline-none focus:border-indigo-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300"
-          >
-            <option value="all">Source: All</option>
-            <option value="ai">AI Generated</option>
-            <option value="human">Manually Added</option>
-          </select>
-
-          <label className="inline-flex items-center gap-1.5 text-xs font-medium text-ink/70 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={filteredQuestions.length > 0 && filteredQuestions.every((q) => selectedIds.includes(q.id))}
-              onChange={toggleSelectAllVisible}
-              className="w-3.5 h-3.5 rounded cursor-pointer accent-indigo-600"
-            />
-            Select visible ({filteredQuestions.length})
-          </label>
-
-          {duplicateGroups.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setViewDuplicatesOnly((prev) => !prev)}
-              className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-all flex items-center gap-1 ${
-                viewDuplicatesOnly
-                  ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
-                  : 'bg-amber-500/10 text-amber-700 border-amber-500/30 hover:bg-amber-500/20'
-              }`}
-            >
-              <span>️ Repeated ({totalRepeatedCount})</span>
-            </button>
-          )}
-        </div>
-
-        {editingId === null && (
-          <button type="button" onClick={startNew} className="btn-primary text-sm py-1.5 px-3">
-            + New question
+            <X className="h-3.5 w-3.5" />
           </button>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 rounded-xl bg-canvas/60 border border-border text-[10px] font-mono text-ink/60">
-        <span className="font-semibold uppercase tracking-wider text-ink/40">Shortcuts:</span>
-        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">A</kbd> Approve</span>
-        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">R</kbd> Reject</span>
-        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">D</kbd> Delete</span>
-        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">E</kbd> Edit</span>
-        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">X</kbd> Select</span>
-        <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-border">J</kbd>/<kbd className="px-1.5 py-0.5 rounded bg-white border border-border">K</kbd> Navigate</span>
-      </div>
-
-      {editingId && (
-        <form onSubmit={handleSubmit} className="card p-5 space-y-3">
-          {error && <div className="text-sm text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</div>}
-          <div className="flex items-center justify-between">
-            <h2 className="font-display font-semibold text-sm">{editingId === 'new' ? 'New question' : 'Edit question'}</h2>
-            <button type="button" onClick={() => setShowAIModal(true)} className="text-xs font-medium text-accent-dark hover:underline">
-               AI MCQ Generator
-            </button>
-          </div>
-          <textarea
-            className="input"
-            placeholder="Question text"
-            required
-            value={form.question_text}
-            onChange={(e) => setForm((f) => ({ ...f, question_text: e.target.value }))}
-          />
-          {(['a', 'b', 'c', 'd'] as const).map((key) => (
-            <div key={key} className="flex items-center gap-2">
-              <span className="text-sm font-medium w-5">{key.toUpperCase()}</span>
-              <input
-                className="input"
-                required
-                value={form[`option_${key}` as 'option_a']}
-                onChange={(e) => setForm((f) => ({ ...f, [`option_${key}`]: e.target.value }))}
-              />
-            </div>
-          ))}
-          <div className="flex gap-3">
-            <select
-              className="input"
-              value={form.correct_option}
-              onChange={(e) => setForm((f) => ({ ...f, correct_option: e.target.value as 'A' | 'B' | 'C' | 'D' }))}
-            >
-              {['A', 'B', 'C', 'D'].map((k) => (
-                <option key={k} value={k}>
-                  Correct: {k}
-                </option>
-              ))}
-            </select>
-            <select
-              className="input"
-              value={form.difficulty}
-              onChange={(e) => setForm((f) => ({ ...f, difficulty: e.target.value as ExamDifficulty }))}
-            >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </div>
-          <textarea
-            className="input"
-            placeholder="Explanation"
-            required
-            value={form.explanation}
-            onChange={(e) => setForm((f) => ({ ...f, explanation: e.target.value }))}
-          />
-          <div className="flex gap-2">
-            <button type="submit" disabled={isSaving} className="btn-primary">
-              {isSaving ? 'Saving…' : 'Save'}
-            </button>
-            <button type="button" onClick={cancelEdit} className="btn-secondary">
-              Cancel
-            </button>
-          </div>
-        </form>
+        </div>
       )}
 
-      {/* VIEW MODE A: DUPLICATES MANAGEMENT QUEUE */}
+      {/* Duplicates view OR normal view */}
       {viewDuplicatesOnly ? (
         <div className="space-y-4">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-800 flex items-center justify-between gap-2 flex-wrap">
-            <span>
-              Showing <strong>{duplicateGroups.length} duplicate groups</strong> ({totalRepeatedCount} repeated entry questions). Compare entries to approve one and delete or archive duplicates.
-            </span>
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setViewDuplicatesOnly(false)}
+              className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to all questions
+            </button>
+
+            {duplicateGroups.length > 0 && (
               <button
                 type="button"
                 onClick={handlePurgeAllDuplicates}
-                disabled={isSaving || totalRepeatedCount === 0}
-                className="font-semibold text-danger hover:underline disabled:opacity-50"
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50"
               >
-                ️ Bulk Purge All Duplicates ({totalRepeatedCount})
+                <Trash2 className="w-4 h-4" />
+                Purge all duplicates ({totalRepeatedCount})
               </button>
-              <button type="button" onClick={() => setViewDuplicatesOnly(false)} className="underline font-semibold">
-                Clear Filter
-              </button>
-            </div>
+            )}
           </div>
 
-          {duplicateGroups.map((group: DuplicateGroup, groupIdx: number) => {
-            const groupKey = group.questions?.[0]?.id ?? `group-${groupIdx}`
-            return (
-              <div key={groupKey} className="card p-4 border-2 border-amber-500/30 bg-canvas space-y-3">
-                <div className="flex items-center justify-between border-b border-border pb-2">
-                  <div className="text-xs font-bold text-amber-700 uppercase tracking-wider">
-                    Duplicate Group #{groupIdx + 1} ({group.questions?.length || 0} occurrences)
+          {duplicateGroups.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+              <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-400 mb-3" />
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                No duplicates found
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                This course's questions are all unique.
+              </p>
+            </div>
+          ) : (
+            duplicateGroups.map((group, gi) => (
+              <div
+                key={gi}
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-500/30 overflow-hidden"
+              >
+                <div className="bg-amber-50 dark:bg-amber-500/10 px-4 py-3 border-b border-amber-200 dark:border-amber-500/30">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                      {group.questions?.length || group.count || 0} identical
+                      questions
+                    </span>
                   </div>
-                  {group.questions?.[0]?.id && (
-                    <button
-                      type="button"
-                      onClick={() => handleKeepOneAndDeleteOthers(group, group.questions[0].id)}
-                      disabled={isSaving}
-                      className="text-xs font-medium text-danger hover:underline"
-                    >
-                      Keep Entry #1 & Delete Rest
-                    </button>
-                  )}
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                    Keep the best one — the rest will be deleted.
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3">
-                  {group.questions?.map((q: ExamQuestion, idx: number) => (
-                    <div key={q.id} className="p-3 bg-background border border-border rounded-lg space-y-2">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {(group.questions || []).map((q) => (
+                    <div key={q.id} className="p-4">
                       <div className="flex items-start justify-between gap-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(q.id)}
-                          onChange={() => toggleSelectOne(q.id)}
-                          className="mt-1 w-4 h-4 rounded cursor-pointer accent-indigo-600 shrink-0"
-                        />
-                        <div>
-                          <span className="text-[10px] font-mono text-ink/40">Entry #{idx + 1} · ID: {q.id.slice(0, 8)}</span>
-                          <p className="text-sm font-medium mt-0.5">{q.question_text}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${REVIEW_BADGE[q.review_status as ReviewStatus]}`}
+                            >
+                              {(q.review_status || 'generated').replace(
+                                '_',
+                                ' ',
+                              )}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {q.difficulty}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
+                            {q.question_text}
+                          </p>
                         </div>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${REVIEW_BADGE[q.review_status as ReviewStatus]}`}>
-                          {q.review_status.replace('_', ' ')}
-                        </span>
-                      </div>
-
-                      <div className="text-xs text-ink/50">
-                        {q.difficulty} {q.is_ai_generated && <span className="text-accent-dark">·  AI{q.ai_topic ? `: ${q.ai_topic}` : ''}</span>}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 text-xs font-semibold pt-2 border-t border-border/50">
-                        {(q.review_status === 'generated' || q.review_status === 'under_review') && (
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(q.id)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors dark:bg-emerald-950/40 dark:text-emerald-300"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Keep This One
-                          </button>
-                        )}
-                        {canArchive(q.review_status) && (
-                          <button
-                            type="button"
-                            onClick={() => handleArchive(q.id)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-300"
-                          >
-                            <Archive className="w-3.5 h-3.5" />
-                            Archive
-                          </button>
-                        )}
-                        {canDelete(q.review_status) && (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(q.id)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors dark:bg-red-950/40 dark:text-red-300 ml-auto"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            Delete Duplicate
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleKeepOneAndDeleteOthers(group, q.id)
+                          }
+                          disabled={isSaving}
+                          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Keep this one
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )
-          })}
-        </div>
-      ) : (
-        /* VIEW MODE B: STANDARD QUESTION LIST */
-        <div className="space-y-2">
-          {filteredQuestions.length === 0 ? (
-            questions.length === 0 ? (
-              <div className="card p-12 text-center">
-                <ClipboardCheck className="w-12 h-12 mx-auto text-ink/30 mb-3" />
-                <h3 className="text-base font-semibold text-ink mb-1">No questions yet</h3>
-                <p className="text-sm text-ink/50 mb-4">Add your first question to get started.</p>
-                <button
-                  type="button"
-                  onClick={startNew}
-                  className="btn-primary text-sm px-4 py-2 inline-flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  New Question
-                </button>
-              </div>
-            ) : (
-              <div className="card p-8 text-center">
-                <Search className="w-10 h-10 mx-auto text-ink/30 mb-3" />
-                <h3 className="text-base font-semibold text-ink mb-1">No matches</h3>
-                <p className="text-sm text-ink/50">Try adjusting your search or filters.</p>
-              </div>
-            )
-          ) : (
-            paginatedQuestions.map((q, idx) => (
-              <div
-                key={q.id}
-                ref={focusedIdx === idx ? focusedCardRef : null}
-                onClick={() => setFocusedIdx(idx)}
-                className={`card p-4 cursor-pointer transition-shadow ${focusedIdx === idx ? 'ring-2 ring-indigo-500 ring-inset' : ''}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0 text-ink">
-                    <FormattedQuestionText text={q.question_text} />
-                  </div>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${REVIEW_BADGE[q.review_status as ReviewStatus]}`}>
-                    {q.review_status.replace('_', ' ')}
-                  </span>
-                </div>
-                <div className="text-xs text-ink/50 mt-1">
-                  {q.difficulty} {q.is_ai_generated && <span className="text-accent-dark">· AI{q.ai_topic ? `: ${q.ai_topic}` : ''}</span>}
-                </div>
-
-                {/* Options + correct answer */}
-                <div className="mt-3 space-y-1.5">
-                  {(['A', 'B', 'C', 'D'] as const).map((letter) => {
-                    const optKey = `option_${letter.toLowerCase()}` as 'option_a' | 'option_b' | 'option_c' | 'option_d'
-                    const optValue = q[optKey] || ''
-                    const isCorrect = q.correct_option === letter
-                    return (
-                      <div
-                        key={letter}
-                        className={`flex items-start gap-2 px-2.5 py-1.5 rounded-lg text-xs leading-snug border ${
-                          isCorrect
-                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-200 font-semibold'
-                            : 'bg-canvas border-border text-ink/80'
-                        }`}
-                      >
-                        <span className={`shrink-0 font-mono font-bold ${isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-ink/50'}`}>
-                          {letter}
-                        </span>
-                        <span className="flex-1">{optValue}</span>
-                        {isCorrect && (
-                          <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                            ✓
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Explanation */}
-                {q.explanation && (
-                  <div className="mt-2 text-[11px] text-ink/70 bg-canvas/60 px-2.5 py-1.5 rounded-lg border border-border/50 leading-snug">
-                    <span className="font-bold text-ink/80">💡 </span>
-                    <span>{q.explanation}</span>
-                  </div>
-                )}
-
-                {q.review_status === 'rejected' && q.rejection_reason && (
-                  <div className="text-xs text-danger mt-1">Rejected: {q.rejection_reason}</div>
-                )}
-
-                {rejectingId === q.id ? (
-                  <div className="mt-3 flex gap-2">
-                    <input
-                      className="input text-sm"
-                      placeholder="Reason for rejection"
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      autoFocus
-                    />
-                    <button type="button" onClick={() => confirmReject(q.id)} disabled={!rejectionReason.trim()} className="btn-primary text-sm px-3">
-                      Confirm
-                    </button>
-                    <button type="button" onClick={() => setRejectingId(null)} className="btn-secondary text-sm px-3">
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2 text-xs font-semibold mt-3">
-                    {(q.review_status === 'generated' || q.review_status === 'under_review') && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => handleApprove(q.id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors dark:bg-emerald-950/40 dark:text-emerald-300"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setRejectingId(q.id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors dark:bg-amber-950/40 dark:text-amber-300"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          Reject
-                        </button>
-                      </>
-                    )}
-                    {canEdit(q.review_status) && (
-                      <button
-                        type="button"
-                        onClick={() => startEdit(q)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-300"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                        Edit
-                      </button>
-                    )}
-                    {canArchive(q.review_status) && (
-                      <button
-                        type="button"
-                        onClick={() => handleArchive(q.id)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors dark:bg-slate-800 dark:text-slate-300"
-                      >
-                        <Archive className="w-3.5 h-3.5" />
-                        Archive
-                      </button>
-                    )}
-                    {canDelete(q.review_status) && (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(q.id)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors dark:bg-red-950/40 dark:text-red-300"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
             ))
           )}
         </div>
+      ) : (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                Total
+              </p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                {stats.total}
+              </p>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800 p-4">
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                Approved
+              </p>
+              <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">
+                {stats.approved}
+              </p>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800 p-4">
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                In Review
+              </p>
+              <p className="text-2xl font-bold text-amber-700 dark:text-amber-300 mt-1">
+                {stats.inReview}
+              </p>
+            </div>
+            <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-800 p-4">
+              <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                Rejected
+              </p>
+              <p className="text-2xl font-bold text-red-700 dark:text-red-300 mt-1">
+                {stats.rejected}
+              </p>
+            </div>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search questions..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as ReviewStatus | 'all')
+                setCurrentPage(1)
+              }}
+              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {STATUS_FILTERS.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+            {editingId === null && (
+              <button
+                onClick={startNew}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/20"
+              >
+                <Plus className="w-4 h-4" />
+                New Question
+              </button>
+            )}
+          </div>
+
+          {/* Duplicate warning */}
+          {duplicateGroups.length > 0 && (
+            <button
+              onClick={() => setViewDuplicatesOnly(true)}
+              className="w-full flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl text-left hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+            >
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                  {duplicateGroups.length} duplicate group
+                  {duplicateGroups.length === 1 ? '' : 's'} found (
+                  {totalRepeatedCount} repeated question
+                  {totalRepeatedCount === 1 ? '' : 's'})
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Click to review and clean up duplicates
+                </p>
+              </div>
+            </button>
+          )}
+
+          {/* Editing form */}
+          {editingId && (
+            <form
+              onSubmit={handleSubmit}
+              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3"
+            >
+              {error && (
+                <div className="text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 rounded-lg px-3 py-2">
+                  {error}
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold text-sm text-slate-900 dark:text-white">
+                  {editingId === 'new' ? 'New Question' : 'Edit Question'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowAIModal(true)}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  AI MCQ Generator
+                </button>
+              </div>
+              <textarea
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Question text"
+                required
+                value={form.question_text}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, question_text: e.target.value }))
+                }
+              />
+              {(['a', 'b', 'c', 'd'] as const).map((key) => (
+                <div key={key} className="flex items-center gap-2">
+                  <span className="text-sm font-bold w-5 text-slate-700 dark:text-slate-300">
+                    {key.toUpperCase()}
+                  </span>
+                  <input
+                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder={`Option ${key.toUpperCase()}`}
+                    required
+                    value={form[`option_${key}` as 'option_a']}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        [`option_${key}`]: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              ))}
+              <div className="flex gap-3">
+                <select
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={form.correct_option}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      correct_option: e.target.value as 'A' | 'B' | 'C' | 'D',
+                    }))
+                  }
+                >
+                  {['A', 'B', 'C', 'D'].map((k) => (
+                    <option key={k} value={k}>
+                      Correct: {k}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={form.difficulty}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      difficulty: e.target.value as ExamDifficulty,
+                    }))
+                  }
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+              <textarea
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Explanation"
+                required
+                value={form.explanation}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, explanation: e.target.value }))
+                }
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                  {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Question list */}
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500 dark:text-slate-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading questions…
+            </div>
+          ) : filteredQuestions.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+              <ClipboardCheck className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No questions found
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {paginatedQuestions.map((q) => (
+                <div
+                  key={q.id}
+                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${REVIEW_BADGE[q.review_status as ReviewStatus]}`}
+                        >
+                          {q.review_status === 'approved' && (
+                            <CheckCircle2 className="w-3 h-3" />
+                          )}
+                          {q.review_status === 'under_review' && (
+                            <Clock className="w-3 h-3" />
+                          )}
+                          {q.review_status === 'rejected' && (
+                            <XCircle className="w-3 h-3" />
+                          )}
+                          {(q.review_status || 'generated').replace('_', ' ')}
+                        </span>
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          {q.difficulty}
+                          {q.is_ai_generated && (
+                            <>
+                              <span>•</span>
+                              <Sparkles className="w-3 h-3" />
+                              <span>AI</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                        {q.question_text}
+                      </p>
+                    </div>
+                  </div>
+
+                  {rejectingId === q.id ? (
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        placeholder="Reason for rejection"
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => confirmReject(q.id)}
+                        disabled={!rejectionReason.trim()}
+                        className="px-3 py-2 bg-rose-600 text-white text-sm font-semibold rounded-xl disabled:opacity-50"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => {
+                          setRejectingId(null)
+                          setRejectionReason('')
+                        }}
+                        className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm rounded-xl"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-3 text-xs font-medium mt-3 flex-wrap">
+                      {(q.review_status === 'generated' ||
+                        q.review_status === 'under_review') && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(q.id)}
+                            className="text-emerald-600 dark:text-emerald-400 hover:underline"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => setRejectingId(q.id)}
+                            className="text-rose-600 dark:text-rose-400 hover:underline"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {canEdit(q.review_status) && (
+                        <button
+                          onClick={() => startEdit(q)}
+                          className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {canArchive(q.review_status) && (
+                        <button
+                          onClick={() => handleArchive(q.id)}
+                          className="text-slate-600 dark:text-slate-400 hover:underline"
+                        >
+                          Archive
+                        </button>
+                      )}
+                      {canDelete(q.review_status) && (
+                        <button
+                          onClick={() => handleDelete(q.id)}
+                          className="text-rose-600 dark:text-rose-400 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 border border-slate-300 rounded-lg text-xs disabled:opacity-50"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-xs text-slate-600">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 border border-slate-300 rounded-lg text-xs disabled:opacity-50"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+      {showAIModal && (
+        <AIDraftModal
+          courseId={courseId}
+          type="question"
+          onClose={() => setShowAIModal(false)}
+          onApply={handleAIApply}
+        />
       )}
 
-      {showAIModal && <AIDraftModal courseId={courseId} type="question" onClose={() => setShowAIModal(false)} onApply={handleAIApply} />}
-
-      {/* Floating New Question FAB */}
-      {editingId === null && selectedIds.length === 0 && (
-        <button
-          type="button"
-          onClick={startNew}
-          className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 px-5 py-3 rounded-full bg-indigo-600 text-white text-sm font-bold shadow-2xl shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-500/40 active:scale-95 transition-all"
-          title="Add a new question"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">New Question</span>
-        </button>
-      )}
+      <ConfirmDialog
+        state={confirmState}
+        isProcessing={isSaving}
+        onClose={() => setConfirmState(null)}
+      />
     </div>
   )
 }
