@@ -495,7 +495,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
     await load()
   }
 
-  const canEdit = (s: ReviewStatus) => s === 'generated' || s === 'under_review'
+  const canEdit = (_s: ReviewStatus) => true
   const canDelete = (_s: ReviewStatus) => true
   const canArchive = (s: ReviewStatus) => s === 'approved' || s === 'rejected'
 
