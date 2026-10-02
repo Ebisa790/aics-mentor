@@ -772,7 +772,6 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
           {q.question_text}
         </p>
       </div>
-
       {/* Delete icon button — always visible when allowed */}
       {canDelete(q.review_status) && (
         <button
@@ -883,12 +882,21 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
             Edit
           </button>
         )}
-        {canArchive(q.review_status) && (
+              {canArchive(q.review_status) && (
           <button
             onClick={() => handleArchive(q.id)}
             className="text-slate-600 dark:text-slate-400 hover:underline"
           >
             Archive
+          </button>
+        )}
+        {canDelete(q.review_status) && (
+          <button
+            onClick={() => handleDelete(q.id)}
+            className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:underline"
+          >
+            <Trash2 className="w-3 h-3" />
+            Delete
           </button>
         )}
       </div>
@@ -898,28 +906,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
         </div>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 pt-2">
-          <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+     
                        {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-3 pt-2">
