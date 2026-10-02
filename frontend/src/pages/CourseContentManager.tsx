@@ -496,7 +496,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
   }
 
   const canEdit = (_s: ReviewStatus) => true
-  const canDelete = (_s: ReviewStatus) => true
+  
   const canArchive = (s: ReviewStatus) => s === 'approved' || s === 'rejected'
 
   return (
@@ -772,18 +772,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
           {q.question_text}
         </p>
       </div>
-      {/* Delete icon button — always visible when allowed */}
-      {canDelete(q.review_status) && (
-        <button
-          type="button"
-          onClick={() => handleDelete(q.id)}
-          className="shrink-0 p-2 rounded-lg text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-          title="Delete question"
-          aria-label="Delete question"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      )}
+
     </div>
 
     {/* MCQ options grid */}
