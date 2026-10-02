@@ -496,7 +496,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
   }
 
   const canEdit = (s: ReviewStatus) => s === 'generated' || s === 'under_review'
-  const canDelete = (s: ReviewStatus) => s !== 'approved'
+  const canDelete = (_s: ReviewStatus) => true
   const canArchive = (s: ReviewStatus) => s === 'approved' || s === 'rejected'
 
   return (
@@ -890,15 +890,13 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
             Archive
           </button>
         )}
-        {canDelete(q.review_status) && (
-          <button
-            onClick={() => handleDelete(q.id)}
-            className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:underline"
-          >
-            <Trash2 className="w-3 h-3" />
-            Delete
-          </button>
-        )}
+               <button
+          onClick={() => handleDelete(q.id)}
+          className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:underline"
+        >
+          <Trash2 className="w-3 h-3" />
+          Delete
+        </button>
       </div>
     )}
   </div>
