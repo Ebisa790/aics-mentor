@@ -434,8 +434,13 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
       }
       cancelEdit()
       await load()
-    } catch {
-      setError('Could not save this question.')
+    } catch (err: any) {
+      const detail =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Could not save this question.'
+      setError(typeof detail === 'string' ? detail : JSON.stringify(detail))
     } finally {
       setIsSaving(false)
     }
