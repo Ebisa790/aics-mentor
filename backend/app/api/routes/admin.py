@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, File, Form, status, HTTPException, Reque
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from app.tasks.master_takes import process_master_booklet_task
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import require_admin
 from app.core.ai_client import DEFAULT_MODEL, get_groq_client
 from app.core.database import get_db
 from app.core.rate_limit import limiter
@@ -33,6 +33,7 @@ from app.schemas.admin import (
     AIGenerateResponse,
     AINoteDraft,
     AIQuestionDraft,
+    
     BulkImportResult,
     BulkQuestionRow,
     CourseMaterialOut,
@@ -106,7 +107,7 @@ def _extract_text_universal(file_path: str, filename: str) -> str:
 
 # ============================== Admin Analytics Dashboard ==============================
 
-@router.get("/analytics", dependencies=[Depends(require_admin)])
+@router.get("/analytics")
 def get_analytics_dashboard(db: Session = Depends(get_db)):
     """Returns comprehensive analytics for admin dashboard."""
     from sqlalchemy import func as sql_func
@@ -248,7 +249,7 @@ def get_analytics_dashboard(db: Session = Depends(get_db)):
 
 # ============================== Question Coverage Report ==============================
 
-@router.get("/question-coverage", dependencies=[Depends(require_admin)])
+@router.get("/question-coverage")
 def get_question_coverage(db: Session = Depends(get_db)):
     """Returns question bank coverage report - course breakdown and difficulty distribution."""
     from app.models.course import Course
@@ -330,7 +331,7 @@ def get_question_coverage(db: Session = Depends(get_db)):
 
 
 # ============================== Admin Dashboard Stats ==============================
-@router.get("/revenue-stats", dependencies=[Depends(require_admin)])
+@router.get("/revenue-stats")
 def get_revenue_stats(db: Session = Depends(get_db)):
     """Returns revenue analytics for admin dashboard."""
     from app.models.payment import Payment, PaymentStatus
@@ -395,7 +396,7 @@ def get_revenue_stats(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/stats", dependencies=[Depends(require_admin)])
+@router.get("/stats")
 def get_admin_dashboard_stats(db: Session = Depends(get_db)):
     """Returns overall database counts and per-course question metrics."""
     total_questions = db.query(Question).count()
@@ -430,7 +431,7 @@ def get_admin_dashboard_stats(db: Session = Depends(get_db)):
 
 # ============================== Course materials ==============================
 
-@router.get("/courses/{course_id}/materials", response_model=list[CourseMaterialOut], dependencies=[Depends(require_admin)])
+@router.get("/courses/{course_id}/materials", response_model=list[CourseMaterialOut])
 def list_materials(course_id: uuid.UUID, db: Session = Depends(get_db)):
     _get_course_or_404(db, course_id)
     return (
@@ -441,7 +442,7 @@ def list_materials(course_id: uuid.UUID, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/courses/{course_id}/materials", response_model=CourseMaterialOut, status_code=201, dependencies=[Depends(require_admin)])
+@router.post("/courses/{course_id}/materials", response_model=CourseMaterialOut, status_code=201)
 async def create_material(
     course_id: uuid.UUID,
     file: UploadFile = File(...),
@@ -495,7 +496,7 @@ async def create_material(
     return material
 
 
-@router.put("/materials/{material_id}", response_model=CourseMaterialOut, dependencies=[Depends(require_admin)])
+@router.put("/materials/{material_id}", response_model=CourseMaterialOut)
 def update_material(material_id: uuid.UUID, payload: CourseMaterialUpdate, db: Session = Depends(get_db)):
     material = db.get(CourseMaterial, material_id)
     if not material:
@@ -507,7 +508,7 @@ def update_material(material_id: uuid.UUID, payload: CourseMaterialUpdate, db: S
     return material
 
 
-@router.delete("/materials/{material_id}", status_code=204, dependencies=[Depends(require_admin)])
+@router.delete("/materials/{material_id}", status_code=204)
 def delete_material(material_id: uuid.UUID, db: Session = Depends(get_db)):
     material = db.get(CourseMaterial, material_id)
     if not material:
@@ -552,7 +553,7 @@ def _promote_to_question(db: Session, exam_question: ExamQuestion) -> Question:
     return question
 
 
-@router.get("/courses/{course_id}/questions", response_model=list[ExamQuestionOut], dependencies=[Depends(require_admin)])
+@router.get("/courses/{course_id}/questions", response_model=list[ExamQuestionOut])
 def list_questions(course_id: uuid.UUID, status: str | None = Query(None), db: Session = Depends(get_db)):
     _get_course_or_404(db, course_id)
     query = db.query(ExamQuestion).filter(ExamQuestion.course_id == course_id)
@@ -567,7 +568,7 @@ def list_questions(course_id: uuid.UUID, status: str | None = Query(None), db: S
     return query.order_by(ExamQuestion.created_at.desc()).all()
 
 
-@router.post("/courses/{course_id}/questions", response_model=ExamQuestionOut, status_code=201, dependencies=[Depends(require_admin)])
+@router.post("/courses/{course_id}/questions", response_model=ExamQuestionOut, status_code=201)
 def create_question(
     course_id: uuid.UUID,
     payload: ExamQuestionCreate,
@@ -598,7 +599,7 @@ def create_question(
     return question
 
 
-@router.put("/questions/{question_id}", response_model=ExamQuestionOut, dependencies=[Depends(require_admin)])
+@router.put("/questions/{question_id}", response_model=ExamQuestionOut)
 def update_question(
     question_id: uuid.UUID,
     payload: ExamQuestionUpdate,
@@ -609,20 +610,26 @@ def update_question(
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    if question.review_status in (ReviewStatus.APPROVED, ReviewStatus.REJECTED, ReviewStatus.ARCHIVED):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"Cannot edit a question that's already {question.review_status.value}. "
-                "Archive it and create a fresh draft instead."
-            ),
-        )
-
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(question, field, value)
 
     if question.review_status == ReviewStatus.GENERATED:
         question.review_status = ReviewStatus.UNDER_REVIEW
+
+    # If this question was already promoted to the student bank, keep it in sync
+    if question.promoted_question_id:
+        promoted = db.get(Question, question.promoted_question_id)
+        if promoted:
+            promoted.prompt = question.question_text
+            promoted.choices = {
+                "A": question.option_a,
+                "B": question.option_b,
+                "C": question.option_c,
+                "D": question.option_d,
+            }
+            promoted.correct_answer = question.correct_option
+            promoted.explanation = question.explanation
+            promoted.difficulty = _DIFFICULTY_MAP[question.difficulty]
 
     db.commit()
     db.refresh(question)
@@ -675,7 +682,7 @@ Return a JSON object with a key "questions" containing an array of objects with 
 - "source_type": (string, either "extracted" or "generated")
 """
 
-@router.post("/courses/{course_id}/materials/hybrid-generate", response_model=dict, dependencies=[Depends(require_admin)])
+@router.post("/courses/{course_id}/materials/hybrid-generate", response_model=dict)
 async def hybrid_generate_questions_from_material(
     course_id: uuid.UUID,
     target_count: int = 20,
@@ -786,7 +793,7 @@ async def hybrid_generate_questions_from_material(
         "total_staged": len(created_staging_questions)
     }
 
-@router.post("/courses/{course_id}/materials/hybrid-generate", status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(require_admin)])
+@router.post("/courses/{course_id}/materials/hybrid-generate", status_code=status.HTTP_202_ACCEPTED)
 async def hybrid_generate_specific_course_questions(
     course_id: uuid.UUID,
     target_count: int = Query(20, ge=5, le=100),
@@ -831,7 +838,7 @@ async def hybrid_generate_specific_course_questions(
     }
 
 
-@router.post("/materials/master-hybrid-generate", response_model=dict, status_code=202, dependencies=[Depends(require_admin)])
+@router.post("/materials/master-hybrid-generate", response_model=dict, status_code=202)
 async def master_multi_course_hybrid_generate(
     target_count: int = Query(100, ge=10, le=500),
     file: UploadFile = File(...),
@@ -867,7 +874,7 @@ async def master_multi_course_hybrid_generate(
     }
 
 
-@router.get("/tasks/{task_id}", dependencies=[Depends(require_admin)])
+@router.get("/tasks/{task_id}")
 def get_task_status(task_id: str):
     task_result = AsyncResult(task_id, app=celery_app)
     
@@ -887,7 +894,7 @@ def get_task_status(task_id: str):
     return response_data
 
 
-@router.patch("/questions/{question_id}/review", response_model=ExamQuestionOut, dependencies=[Depends(require_admin)])
+@router.patch("/questions/{question_id}/review", response_model=ExamQuestionOut)
 def review_question(
     question_id: uuid.UUID,
     payload: ReviewAction,
@@ -927,8 +934,8 @@ def review_question(
     return question
 
 
-@router.get("/questions/pending-review", dependencies=[Depends(require_admin)])
-@router.get("/courses/{course_id}/questions/pending-review", dependencies=[Depends(require_admin)])
+@router.get("/questions/pending-review")
+@router.get("/courses/{course_id}/questions/pending-review")
 def get_pending_ai_questions(
     course_id: uuid.UUID | None = None,
     db: Session = Depends(get_db),
@@ -953,28 +960,17 @@ def get_pending_ai_questions(
     }
 
 
-@router.delete("/questions/{question_id}", status_code=204, dependencies=[Depends(require_admin)])
+@router.delete("/questions/{question_id}", status_code=204)
 def delete_question(
     question_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """
-    Delete a question permanently.
-
-    Auto-archives an approved question first, then hard-deletes.
-    Also removes any promoted copy in the active student quiz bank.
-    """
     question = db.get(ExamQuestion, question_id)
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    # If approved, mark as archived first
-    if question.review_status == ReviewStatus.APPROVED:
-        question.review_status = ReviewStatus.ARCHIVED
-        db.flush()
-
-    # Also remove promoted quiz-bank copy if present
+    # Clean up the promoted student-bank row if this question was approved
     if question.promoted_question_id:
         db.query(Question).filter(
             Question.id == question.promoted_question_id
@@ -983,7 +979,7 @@ def delete_question(
     db.delete(question)
     db.commit()
 
-@router.delete("/questions/bulk-delete", status_code=status.HTTP_200_OK, dependencies=[Depends(require_admin)])
+@router.delete("/questions/bulk-delete", status_code=status.HTTP_200_OK)
 def bulk_delete_questions(question_ids:
                            List[uuid.UUID], 
                            db: Session = Depends(get_db),
@@ -1000,7 +996,7 @@ def bulk_delete_questions(question_ids:
     return {"status": "success", "deleted_count": deleted_count}
 
 
-@router.patch("/questions/batch-review", dependencies=[Depends(require_admin)])
+@router.patch("/questions/batch-review")
 def batch_review_questions(
     payload: BatchReviewRequest, 
     db: Session = Depends(get_db),
@@ -1037,7 +1033,7 @@ def batch_review_questions(
     }
 
 
-@router.get("/courses/{course_id}/duplicates", response_model=list[DuplicateGroupResponse], dependencies=[Depends(require_admin)])
+@router.get("/courses/{course_id}/duplicates", response_model=list[DuplicateGroupResponse])
 def get_course_duplicates(
     course_id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -1085,7 +1081,7 @@ def get_course_duplicates(
     return duplicate_groups
 
 
-@router.post("/questions/bulk-delete", status_code=status.HTTP_200_OK, dependencies=[Depends(require_admin)])
+@router.post("/questions/bulk-delete", status_code=status.HTTP_200_OK)
 def bulk_delete_questions(
     payload: BulkDeleteRequest,
     db: Session = Depends(get_db),
@@ -1213,7 +1209,7 @@ def _generate_question(client, course: Course, payload: AIGenerateRequest) -> AI
         )
 
 
-@router.post("/ai/generate", response_model=AIGenerateResponse, dependencies=[Depends(require_admin)])
+@router.post("/ai/generate", response_model=AIGenerateResponse)
 @limiter.limit("20/minute")
 def generate_ai_content(request: Request, payload: AIGenerateRequest, db: Session = Depends(get_db)):
     client = get_groq_client()
@@ -1265,7 +1261,7 @@ def _validate_and_build_questions(course: Course, rows: list[BulkQuestionRow]) -
     return to_add, errors
 
 
-@router.post("/courses/{course_id}/questions/bulk-json", response_model=BulkImportResult, dependencies=[Depends(require_admin)])
+@router.post("/courses/{course_id}/questions/bulk-json", response_model=BulkImportResult)
 def bulk_import_questions_json(course_id: uuid.UUID, payload: list[BulkQuestionRow], db: Session = Depends(get_db)):
     course = _get_course_or_404(db, course_id)
     if not payload:
@@ -1280,7 +1276,7 @@ def bulk_import_questions_json(course_id: uuid.UUID, payload: list[BulkQuestionR
     return BulkImportResult(created=len(to_add), errors=[])
 
 
-@router.post("/questions/bulk-approve", dependencies=[Depends(require_admin)])
+@router.post("/questions/bulk-approve")
 def bulk_approve_questions(request: BulkApproveRequest, db: Session = Depends(get_db)):
     if not request.question_ids:
         raise HTTPException(status_code=400, detail="No question IDs provided.")
@@ -1302,7 +1298,7 @@ def bulk_approve_questions(request: BulkApproveRequest, db: Session = Depends(ge
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/questions/bulk-master-csv", response_model=BulkImportResult, dependencies=[Depends(require_admin)])
+@router.post("/questions/bulk-master-csv", response_model=BulkImportResult)
 async def bulk_import_master_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a .csv file")
@@ -1383,7 +1379,7 @@ async def bulk_import_master_csv(file: UploadFile = File(...), db: Session = Dep
     return BulkImportResult(created=len(to_add), errors=[])
 
 
-@router.post("/courses/{course_id}/questions/bulk-csv", response_model=BulkImportResult, dependencies=[Depends(require_admin)])
+@router.post("/courses/{course_id}/questions/bulk-csv", response_model=BulkImportResult)
 async def bulk_import_questions_csv(course_id: uuid.UUID, file: UploadFile = File(...), db: Session = Depends(get_db)):
     course = _get_course_or_404(db, course_id)
 
