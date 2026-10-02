@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import {  useParams, useNavigate } from 'react-router-dom'
 
 import { adminApi, courseApi } from '../api'
 import type {
@@ -27,9 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Pencil,
-  Sparkles,
-  Loader2,
-  X,
+  Sparkles,     
 } from 'lucide-react'
 
 interface DuplicateGroup {
@@ -40,134 +38,12 @@ interface DuplicateGroup {
 type Tab = 'notes' | 'questions'
 
 const REVIEW_BADGE: Record<ReviewStatus, string> = {
-  generated:
-    'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400',
-  under_review:
-    'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',
-  approved:
-    'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400',
+  generated: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400',
+  under_review: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',
+  approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400',
-  archived:
-    'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+  archived: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
 }
-
-const PAGE_SIZE = 20
-
-const EMPTY_NOTE_FORM = {
-  title: '',
-  content: '',
-  material_type: 'note' as MaterialContentType,
-  is_ai_generated: false,
-}
-
-const EMPTY_QUESTION_FORM = {
-  question_text: '',
-  option_a: '',
-  option_b: '',
-  option_c: '',
-  option_d: '',
-  correct_option: 'A' as 'A' | 'B' | 'C' | 'D',
-  explanation: '',
-  difficulty: 'medium' as ExamDifficulty,
-  is_ai_generated: false,
-  ai_topic: undefined as string | undefined,
-}
-
-// ============================================================
-// Reusable confirm dialog (replaces native confirm())
-// ============================================================
-
-interface ConfirmState {
-  title: string
-  message: string
-  confirmLabel: string
-  tone: 'danger' | 'warning'
-  onConfirm: () => void | Promise<void>
-}
-
-function ConfirmDialog({
-  state,
-  isProcessing,
-  onClose,
-}: {
-  state: ConfirmState | null
-  isProcessing: boolean
-  onClose: () => void
-}) {
-  if (!state) return null
-
-  const isDanger = state.tone === 'danger'
-  const iconBg = isDanger
-    ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'
-    : 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400'
-  const btnBg = isDanger
-    ? 'bg-rose-600 hover:bg-rose-700'
-    : 'bg-amber-600 hover:bg-amber-700'
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={() => !isProcessing && onClose()}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}
-          >
-            {isDanger ? (
-              <Trash2 className="h-5 w-5" />
-            ) : (
-              <AlertTriangle className="h-5 w-5" />
-            )}
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              {state.title}
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-              {state.message}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isProcessing}
-            className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => state.onConfirm()}
-            disabled={isProcessing}
-            className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl text-white px-4 py-2.5 text-sm font-bold transition-colors active:scale-95 disabled:opacity-50 ${btnBg}`}
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Working…</span>
-              </>
-            ) : (
-              <span>{state.confirmLabel}</span>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ============================================================
-// Main page
-// ============================================================
 
 export function CourseContentManagerPage() {
   const { id: courseId } = useParams<{ id: string }>()
@@ -194,6 +70,7 @@ export function CourseContentManagerPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {/* Header */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 sticky top-16 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -214,6 +91,7 @@ export function CourseContentManagerPage() {
               </div>
             </div>
 
+            {/* Tabs */}
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
               <button
                 onClick={() => setTab('notes')}
@@ -244,22 +122,19 @@ export function CourseContentManagerPage() {
         </div>
       </div>
 
+      {/* Content */}
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {tab === 'notes' ? (
           <div>
+            {/* Quick Link to Notes Review */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center mb-6">
               <FileText className="w-16 h-16 mx-auto text-indigo-300 dark:text-indigo-600 mb-4" />
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Study Notes Management
-              </h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Study Notes Management</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                Generate, review, edit, and approve exam-ready study notes for
-                this course.
+                Generate, review, edit, and approve exam-ready study notes for this course.
               </p>
               <button
-                onClick={() =>
-                  navigate(`/admin/courses/${courseId}/notes/review`)
-                }
+                onClick={() => navigate(`/admin/courses/${courseId}/notes/review`)}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20"
               >
                 <BookOpen className="w-4 h-4" />
@@ -276,58 +151,43 @@ export function CourseContentManagerPage() {
   )
 }
 
-// ============================================================
-// Study Notes tab
-// ============================================================
+// ============================== Study Notes ==============================
+
+const EMPTY_NOTE_FORM = { title: '', content: '', material_type: 'note' as MaterialContentType, is_ai_generated: false }
 
 function StudyNotesTab({ courseId }: { courseId: string }) {
   const [materials, setMaterials] = useState<CourseMaterial[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_NOTE_FORM)
- 
+
   const [showAIModal, setShowAIModal] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
 
-  const load = async (isCancelled: () => boolean = () => false) => {
+  const load = async () => {
     try {
       const res: any = await adminApi.listMaterials(courseId)
       const data = res?.data !== undefined ? res.data : res
-      if (!isCancelled()) setMaterials(Array.isArray(data) ? data : [])
+      setMaterials(Array.isArray(data) ? data : [])
     } catch {
-      if (!isCancelled()) setError('Failed to fetch course materials.')
-    } finally {
-      if (!isCancelled()) setIsLoading(false)
+      setError('Failed to fetch course materials.')
     }
   }
 
   useEffect(() => {
-    let cancelled = false
-    load(() => cancelled)
-    return () => {
-      cancelled = true
-    }
+    load()
   }, [courseId])
 
   const startEdit = (m: CourseMaterial) => {
     setEditingId(m.id)
-    setForm({
-      title: m.title,
-      content: m.content,
-      material_type: m.material_type,
-      is_ai_generated: m.is_ai_generated,
-    })
-   
-    setError(null)
+    setForm({ title: m.title, content: m.content, material_type: m.material_type, is_ai_generated: m.is_ai_generated })
+    
   }
 
   const startNew = () => {
     setEditingId('new')
     setForm(EMPTY_NOTE_FORM)
-
-    setError(null)
+    
   }
 
   const cancelEdit = () => {
@@ -337,12 +197,7 @@ function StudyNotesTab({ courseId }: { courseId: string }) {
 
   const handleAIApply = (result: AIGenerateResponse) => {
     if (result.type !== 'note' || !result.note) return
-    setForm({
-      title: result.note.title,
-      content: result.note.content,
-      material_type: form.material_type,
-      is_ai_generated: true,
-    })
+    setForm({ title: result.note.title, content: result.note.content, material_type: form.material_type, is_ai_generated: true })
     setShowAIModal(false)
     if (editingId === null) setEditingId('new')
   }
@@ -353,11 +208,7 @@ function StudyNotesTab({ courseId }: { courseId: string }) {
     setError(null)
     try {
       if (editingId && editingId !== 'new') {
-        await adminApi.updateMaterial(editingId, {
-          title: form.title,
-          content: form.content,
-          material_type: form.material_type,
-        })
+        await adminApi.updateMaterial(editingId, { title: form.title, content: form.content, material_type: form.material_type })
       } else {
         await adminApi.createMaterial(courseId, form)
       }
@@ -370,66 +221,21 @@ function StudyNotesTab({ courseId }: { courseId: string }) {
     }
   }
 
-  const handleDelete = (id: string) => {
-    setConfirmState({
-      title: 'Delete this note?',
-      message:
-        'The note will be permanently removed from this course. This cannot be undone.',
-      confirmLabel: 'Delete note',
-      tone: 'danger',
-      onConfirm: async () => {
-        setIsSaving(true)
-        try {
-          await adminApi.deleteMaterial(id)
-          await load()
-        } catch {
-          setError('Could not delete this note. Please try again.')
-        } finally {
-          setIsSaving(false)
-          setConfirmState(null)
-        }
-      },
-    })
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this note?')) return
+    await adminApi.deleteMaterial(id)
+    await load()
   }
 
   return (
     <div className="space-y-4">
-      {/* Global error (always visible) */}
-      {error && !editingId && (
-        <div className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3.5 py-3 text-sm text-rose-700 dark:text-rose-400 flex items-start justify-between gap-3">
-          <span>{error}</span>
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="shrink-0 rounded-md p-0.5 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
-            aria-label="Dismiss error"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
       {editingId ? (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3"
-        >
-          {error && (
-            <div className="text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 rounded-lg px-3 py-2">
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+          {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/50 rounded-lg px-3 py-2">{error}</div>}
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-sm text-slate-900 dark:text-white">
-              {editingId === 'new' ? 'New Note' : 'Edit Note'}
-            </h2>
-            <button
-              type="button"
-              onClick={() => setShowAIModal(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Generate with AI
+            <h2 className="font-bold text-sm text-slate-900 dark:text-white">{editingId === 'new' ? 'New Note' : 'Edit Note'}</h2>
+            <button type="button" onClick={() => setShowAIModal(true)} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+              ✨ Generate with AI
             </button>
           </div>
           <input
@@ -437,122 +243,76 @@ function StudyNotesTab({ courseId }: { courseId: string }) {
             placeholder="Title"
             required
             value={form.title}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, title: e.target.value }))
-            }
+            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
           />
           <textarea
             className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 font-mono min-h-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder="Content (Markdown)"
             required
             value={form.content}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, content: e.target.value }))
-            }
+            onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
           />
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 disabled:opacity-50 inline-flex items-center gap-2"
-            >
-              {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            <button type="submit" disabled={isSaving} className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 disabled:opacity-50">
               {isSaving ? 'Saving...' : 'Save'}
             </button>
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
+            <button type="button" onClick={cancelEdit} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700">
               Cancel
             </button>
           </div>
         </form>
       ) : (
-        <button
-          type="button"
-          onClick={startNew}
-          className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 inline-flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          New Note
+        <button type="button" onClick={startNew} className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500">
+          + New Note
         </button>
       )}
 
-      {isLoading ? (
-        <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500 dark:text-slate-400">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Loading notes…
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {materials.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 text-sm text-slate-500 dark:text-slate-400 text-center">
-              No notes yet. Click "+ New Note" to add one.
-            </div>
-          ) : (
-            materials.map((m) => (
-              <div
-                key={m.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between hover:shadow-md transition-shadow"
-              >
-                <div>
-                  <div className="font-medium text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    {m.title}
-                    {m.is_ai_generated && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 px-1.5 py-0.5 rounded">
-                        <Sparkles className="w-2.5 h-2.5" />
-                        AI
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {m.material_type.replace('_', ' ')}
-                  </div>
+      <div className="space-y-2">
+        {materials.length === 0 ? (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 text-sm text-slate-500 dark:text-slate-400 text-center">
+            No notes yet. Click "+ New Note" to add one.
+          </div>
+        ) : (
+          materials.map((m) => (
+            <div key={m.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between hover:shadow-md transition-shadow">
+              <div>
+                <div className="font-medium text-sm text-slate-900 dark:text-white">
+                  {m.title} {m.is_ai_generated && <span className="text-xs text-indigo-600 dark:text-indigo-400 ml-1">✨ AI</span>}
                 </div>
-                <div className="flex gap-3 text-xs font-medium">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(m)}
-                    className="flex items-center gap-1 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  >
-                    <Pencil className="w-3.5 h-3.5" /> Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(m.id)}
-                    className="flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:underline"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                  </button>
-                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{m.material_type.replace('_', ' ')}</div>
               </div>
-            ))
-          )}
-        </div>
-      )}
+              <div className="flex gap-3 text-xs font-medium">
+                <button type="button" onClick={() => startEdit(m)} className="flex items-center gap-1 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button type="button" onClick={() => handleDelete(m.id)} className="flex items-center gap-1 text-red-600 dark:text-red-400 hover:underline">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
 
-      {showAIModal && (
-        <AIDraftModal
-          courseId={courseId}
-          type="note"
-          onClose={() => setShowAIModal(false)}
-          onApply={handleAIApply}
-        />
-      )}
-
-      <ConfirmDialog
-        state={confirmState}
-        isProcessing={isSaving}
-        onClose={() => setConfirmState(null)}
-      />
+      {showAIModal && <AIDraftModal courseId={courseId} type="note" onClose={() => setShowAIModal(false)} onApply={handleAIApply} />}
     </div>
   )
 }
 
-// ============================================================
-// Practice Questions tab
-// ============================================================
+// ============================== Practice Questions ==============================
+
+const EMPTY_QUESTION_FORM = {
+  question_text: '',
+  option_a: '',
+  option_b: '',
+  option_c: '',
+  option_d: '',
+  correct_option: 'A' as 'A' | 'B' | 'C' | 'D',
+  explanation: '',
+  difficulty: 'medium' as ExamDifficulty,
+  is_ai_generated: false,
+  ai_topic: undefined as string | undefined,
+}
 
 const STATUS_FILTERS: { value: ReviewStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -570,79 +330,63 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
   const [viewDuplicatesOnly, setViewDuplicatesOnly] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 20
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_QUESTION_FORM)
   const [showAIModal, setShowAIModal] = useState(false)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
 
-  // FIX: isCancelled callback pattern
-  const load = async (isCancelled: () => boolean = () => false) => {
+  const load = async (isMounted = true) => {
     try {
-      const qRes: any = await adminApi.listQuestions(
-        courseId,
-        statusFilter === 'all' ? undefined : statusFilter,
-      )
+      const qRes: any = await adminApi.listQuestions(courseId, statusFilter === 'all' ? undefined : statusFilter)
       const qData = qRes?.data !== undefined ? qRes.data : qRes
-      if (!isCancelled()) setQuestions(Array.isArray(qData) ? qData : [])
+      if (isMounted) setQuestions(Array.isArray(qData) ? qData : [])
     } catch {
-      if (!isCancelled()) setError('Could not load questions.')
+      // Non-blocking catch
     }
 
     try {
       const dupRes: any = await adminApi.listDuplicates(courseId)
       const dupData = dupRes?.data !== undefined ? dupRes.data : dupRes
-      if (!isCancelled())
-        setDuplicateGroups(Array.isArray(dupData) ? dupData : [])
+      if (isMounted) setDuplicateGroups(Array.isArray(dupData) ? dupData : [])
     } catch {
-      /* non-blocking */
+      // Non-blocking catch
     }
-
-    if (!isCancelled()) setIsLoading(false)
   }
 
   useEffect(() => {
-    let cancelled = false
-    setIsLoading(true)
-    load(() => cancelled)
+    let isMounted = true
+    load(isMounted)
     return () => {
-      cancelled = true
+      isMounted = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, statusFilter])
 
   const filteredQuestions = questions.filter((q) => {
-    const matchesStatus =
-      statusFilter === 'all' || q.review_status === statusFilter
-    const matchesSearch =
-      !searchQuery ||
-      q.question_text.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter === 'all' || q.review_status === statusFilter
+    const matchesSearch = !searchQuery || q.question_text.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesStatus && matchesSearch
   })
 
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE)
   const paginatedQuestions = filteredQuestions.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
+    currentPage * PAGE_SIZE
   )
 
   const totalRepeatedCount = duplicateGroups.reduce(
     (sum, g) => sum + Math.max(0, (g.questions?.length || g.count || 0) - 1),
-    0,
+    0
   )
 
   const stats = {
     total: questions.length,
-    approved: questions.filter((q) => q.review_status === 'approved').length,
-    inReview: questions.filter(
-      (q) =>
-        q.review_status === 'under_review' || q.review_status === 'generated',
-    ).length,
-    rejected: questions.filter((q) => q.review_status === 'rejected').length,
+    approved: questions.filter(q => q.review_status === 'approved').length,
+    inReview: questions.filter(q => q.review_status === 'under_review' || q.review_status === 'generated').length,
+    rejected: questions.filter(q => q.review_status === 'rejected').length,
   }
 
   const startEdit = (q: ExamQuestion) => {
@@ -659,13 +403,11 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
       is_ai_generated: q.is_ai_generated,
       ai_topic: q.ai_topic ?? undefined,
     })
-    setError(null)
   }
 
   const startNew = () => {
     setEditingId('new')
     setForm(EMPTY_QUESTION_FORM)
-    setError(null)
   }
 
   const cancelEdit = () => {
@@ -675,12 +417,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
 
   const handleAIApply = (result: AIGenerateResponse, topic?: string) => {
     if (result.type !== 'question' || !result.question) return
-    setForm({
-      ...result.question,
-      is_ai_generated: true,
-      ai_topic: topic,
-      difficulty: form.difficulty,
-    })
+    setForm({ ...result.question, is_ai_generated: true, ai_topic: topic, difficulty: form.difficulty })
     setShowAIModal(false)
     if (editingId === null) setEditingId('new')
   }
@@ -704,133 +441,69 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
     }
   }
 
-  // FIX: use custom confirm modal + error handling
-  const handleDelete = (id: string) => {
-    setConfirmState({
-      title: 'Delete this question?',
-      message:
-        'The question will be permanently removed. This cannot be undone.',
-      confirmLabel: 'Delete question',
-      tone: 'danger',
-      onConfirm: async () => {
-        setIsSaving(true)
-        try {
-          await adminApi.deleteQuestion(id)
-          await load()
-        } catch {
-          setError('Could not delete the question.')
-        } finally {
-          setIsSaving(false)
-          setConfirmState(null)
-        }
-      },
-    })
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this question?')) return
+    await adminApi.deleteQuestion(id)
+    await load()
   }
 
-  const handleBulkDelete = (ids: string[], reason = 'bulk delete') => {
+  const handleBulkDelete = async (ids: string[]) => {
     if (ids.length === 0) return
-    setConfirmState({
-      title: `Delete ${ids.length} question${ids.length === 1 ? '' : 's'}?`,
-      message: `This will permanently remove ${ids.length} question${
-        ids.length === 1 ? '' : 's'
-      }. This cannot be undone.`,
-      confirmLabel: `Delete ${ids.length}`,
-      tone: 'danger',
-      onConfirm: async () => {
-        setIsSaving(true)
-        try {
-          await adminApi.bulkDeleteQuestions(ids)
-          await load()
-        } catch {
-          setError(`Could not complete ${reason}.`)
-        } finally {
-          setIsSaving(false)
-          setConfirmState(null)
-        }
-      },
-    })
+    if (!confirm(`Are you sure you want to bulk-delete ${ids.length} question(s)?`)) return
+    setIsSaving(true)
+    try {
+      await adminApi.bulkDeleteQuestions(ids)
+      await load()
+    } catch {
+      setError('Could not complete bulk deletion.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleKeepOneAndDeleteOthers = (
-    group: DuplicateGroup,
-    keepId: string,
-  ) => {
+  const handleKeepOneAndDeleteOthers = (group: DuplicateGroup, keepId: string) => {
     if (!group.questions) return
-    const toDelete = group.questions
-      .filter((q: ExamQuestion) => q.id !== keepId)
-      .map((q: ExamQuestion) => q.id)
-    handleBulkDelete(toDelete, 'duplicate cleanup')
+    const toDelete = group.questions.filter((q: ExamQuestion) => q.id !== keepId).map((q: ExamQuestion) => q.id)
+    handleBulkDelete(toDelete)
   }
 
   const handlePurgeAllDuplicates = () => {
     const toDelete: string[] = []
     duplicateGroups.forEach((group: DuplicateGroup) => {
       if (group.questions && group.questions.length > 1) {
-        group.questions
-          .slice(1)
-          .forEach((q: ExamQuestion) => toDelete.push(q.id))
+        group.questions.slice(1).forEach((q: ExamQuestion) => toDelete.push(q.id))
       }
     })
-    handleBulkDelete(toDelete, 'duplicate purge')
+    handleBulkDelete(toDelete)
   }
 
   const handleApprove = async (id: string) => {
-    setError(null)
-    try {
-      await adminApi.reviewQuestion(id, 'approve')
-      await load()
-    } catch {
-      setError('Could not approve this question.')
-    }
+    await adminApi.reviewQuestion(id, 'approve')
+    await load()
   }
 
   const handleArchive = async (id: string) => {
-    setError(null)
-    try {
-      await adminApi.reviewQuestion(id, 'archive')
-      await load()
-    } catch {
-      setError('Could not archive this question.')
-    }
+    await adminApi.reviewQuestion(id, 'archive')
+    await load()
   }
 
   const confirmReject = async (id: string) => {
     if (!rejectionReason.trim()) return
-    setError(null)
-    try {
-      await adminApi.reviewQuestion(id, 'reject', rejectionReason.trim())
-      setRejectingId(null)
-      setRejectionReason('')
-      await load()
-    } catch {
-      setError('Could not reject this question.')
-    }
+    await adminApi.reviewQuestion(id, 'reject', rejectionReason.trim())
+    setRejectingId(null)
+    setRejectionReason('')
+    await load()
   }
 
-  const canEdit = (s: ReviewStatus) =>
-    s === 'generated' || s === 'under_review'
+  const canEdit = (s: ReviewStatus) => s === 'generated' || s === 'under_review'
   const canDelete = (s: ReviewStatus) => s !== 'approved'
   const canArchive = (s: ReviewStatus) => s === 'approved' || s === 'rejected'
 
   return (
     <div className="space-y-6">
-      {/* Global error (always visible) */}
-      {error && !editingId && (
-        <div className="rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 px-3.5 py-3 text-sm text-rose-700 dark:text-rose-400 flex items-start justify-between gap-3">
-          <span>{error}</span>
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="shrink-0 rounded-md p-0.5 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
-            aria-label="Dismiss error"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
 
-      {/* Duplicates view OR normal view */}
-      {viewDuplicatesOnly ? (
+      {/* ─────────── DUPLICATES VIEW ─────────── */}
+      {viewDuplicatesOnly && (
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <button
@@ -861,9 +534,6 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
               <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 No duplicates found
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                This course's questions are all unique.
-              </p>
             </div>
           ) : (
             duplicateGroups.map((group, gi) => (
@@ -875,8 +545,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     <span className="text-sm font-bold text-amber-800 dark:text-amber-300">
-                      {group.questions?.length || group.count || 0} identical
-                      questions
+                      {group.questions?.length || group.count || 0} identical questions
                     </span>
                   </div>
                   <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
@@ -886,38 +555,27 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
 
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {(group.questions || []).map((q) => (
-                    <div key={q.id} className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${REVIEW_BADGE[q.review_status as ReviewStatus]}`}
-                            >
-                              {(q.review_status || 'generated').replace(
-                                '_',
-                                ' ',
-                              )}
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              {q.difficulty}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
-                            {q.question_text}
-                          </p>
+                    <div key={q.id} className="p-4 flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${REVIEW_BADGE[q.review_status as ReviewStatus]}`}>
+                            {(q.review_status || 'generated').replace('_', ' ')}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{q.difficulty}</span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleKeepOneAndDeleteOthers(group, q.id)
-                          }
-                          disabled={isSaving}
-                          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Keep this one
-                        </button>
+                        <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
+                          {q.question_text}
+                        </p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => handleKeepOneAndDeleteOthers(group, q.id)}
+                        disabled={isSaving}
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Keep this one
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -925,353 +583,348 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
             ))
           )}
         </div>
-      ) : (
+      )}
+
+      {/* ─────────── MAIN CONTENT (hidden while duplicates open) ─────────── */}
+      {!viewDuplicatesOnly && (
         <>
           {/* Stats Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Total
-              </p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                {stats.total}
-              </p>
-            </div>
-            <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800 p-4">
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                Approved
-              </p>
-              <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">
-                {stats.approved}
-              </p>
-            </div>
-            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800 p-4">
-              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                In Review
-              </p>
-              <p className="text-2xl font-bold text-amber-700 dark:text-amber-300 mt-1">
-                {stats.inReview}
-              </p>
-            </div>
-            <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-800 p-4">
-              <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-                Rejected
-              </p>
-              <p className="text-2xl font-bold text-red-700 dark:text-red-300 mt-1">
-                {stats.rejected}
-              </p>
-            </div>
-          </div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{stats.total}</p>
+        </div>
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800 p-4">
+          <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Approved</p>
+          <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">{stats.approved}</p>
+        </div>
+        <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800 p-4">
+          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">In Review</p>
+          <p className="text-2xl font-bold text-amber-700 dark:text-amber-300 mt-1">{stats.inReview}</p>
+        </div>
+        <div className="bg-red-50 dark:bg-red-950/30 rounded-2xl border border-red-200 dark:border-red-800 p-4">
+          <p className="text-xs text-red-600 dark:text-red-400 font-medium">Rejected</p>
+          <p className="text-2xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.rejected}</p>
+        </div>
+      </div>
 
-          {/* Search and Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search questions..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as ReviewStatus | 'all')
+            setCurrentPage(1)
+          }}
+          className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          {STATUS_FILTERS.map((f) => (
+            <option key={f.value} value={f.value}>{f.label}</option>
+          ))}
+        </select>
+        {editingId === null && (
+          <button onClick={startNew} className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/20">
+            <Plus className="w-4 h-4" />
+            New Question
+          </button>
+        )}
+      </div>
+
+      {/* Duplicate Warning */}
+      {duplicateGroups.length > 0 && !viewDuplicatesOnly && (
+        <button
+          onClick={() => setViewDuplicatesOnly(true)}
+          className="w-full flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl text-left hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+        >
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+              {duplicateGroups.length} duplicate group(s) found ({totalRepeatedCount} repeated questions)
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">Click to review and clean up duplicates</p>
+          </div>
+        </button>
+      )}
+
+      {/* Editing Form */}
+      {editingId && (
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+          {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/50 rounded-lg px-3 py-2">{error}</div>}
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-sm text-slate-900 dark:text-white">{editingId === 'new' ? 'New Question' : 'Edit Question'}</h2>
+            <button type="button" onClick={() => setShowAIModal(true)} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+              ✨ AI MCQ Generator
+            </button>
+          </div>
+          <textarea
+            className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Question text"
+            required
+            value={form.question_text}
+            onChange={(e) => setForm((f) => ({ ...f, question_text: e.target.value }))}
+          />
+          {(['a', 'b', 'c', 'd'] as const).map((key) => (
+            <div key={key} className="flex items-center gap-2">
+              <span className="text-sm font-bold w-5 text-slate-700 dark:text-slate-300">{key.toUpperCase()}</span>
               <input
-                type="text"
-                placeholder="Search questions..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder={`Option ${key.toUpperCase()}`}
+                required
+                value={form[`option_${key}` as 'option_a']}
+                onChange={(e) => setForm((f) => ({ ...f, [`option_${key}`]: e.target.value }))}
               />
             </div>
+          ))}
+          <div className="flex gap-3">
             <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value as ReviewStatus | 'all')
-                setCurrentPage(1)
-              }}
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={form.correct_option}
+              onChange={(e) => setForm((f) => ({ ...f, correct_option: e.target.value as 'A' | 'B' | 'C' | 'D' }))}
             >
-              {STATUS_FILTERS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
+              {['A', 'B', 'C', 'D'].map((k) => (
+                <option key={k} value={k}>Correct: {k}</option>
               ))}
             </select>
-            {editingId === null && (
-              <button
-                onClick={startNew}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 transition-colors shadow-md shadow-indigo-600/20"
-              >
-                <Plus className="w-4 h-4" />
-                New Question
-              </button>
+            <select
+              className="flex-1 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={form.difficulty}
+              onChange={(e) => setForm((f) => ({ ...f, difficulty: e.target.value as ExamDifficulty }))}
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <textarea
+            className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Explanation"
+            required
+            value={form.explanation}
+            onChange={(e) => setForm((f) => ({ ...f, explanation: e.target.value }))}
+          />
+          <div className="flex gap-2">
+            <button type="submit" disabled={isSaving} className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 disabled:opacity-50">
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+            <button type="button" onClick={cancelEdit} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700">
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Question List */}
+      {filteredQuestions.length === 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+          <ClipboardCheck className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">No questions found</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+        {paginatedQuestions.map((q) => (
+  <div
+    key={q.id}
+    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow"
+  >
+    {/* Header row: badges + delete button */}
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <span
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${REVIEW_BADGE[q.review_status as ReviewStatus]}`}
+          >
+            {q.review_status === 'approved' && (
+              <CheckCircle2 className="w-3 h-3" />
+            )}
+            {q.review_status === 'under_review' && (
+              <Clock className="w-3 h-3" />
+            )}
+            {q.review_status === 'rejected' && (
+              <XCircle className="w-3 h-3" />
+            )}
+            {(q.review_status || 'generated').replace('_', ' ')}
+          </span>
+          <span className="text-xs text-slate-400 flex items-center gap-1">
+            {q.difficulty}
+            {q.is_ai_generated && (
+              <>
+                <span>•</span>
+                <Sparkles className="w-3 h-3" />
+                <span>AI</span>
+              </>
+            )}
+          </span>
+        </div>
+        <p className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+          {q.question_text}
+        </p>
+      </div>
+
+      {/* Delete icon button — always visible when allowed */}
+      {canDelete(q.review_status) && (
+        <button
+          type="button"
+          onClick={() => handleDelete(q.id)}
+          className="shrink-0 p-2 rounded-lg text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+          title="Delete question"
+          aria-label="Delete question"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+
+    {/* MCQ options grid */}
+    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {(['A', 'B', 'C', 'D'] as const).map((key) => {
+        const optionText = q[`option_${key.toLowerCase()}` as 'option_a']
+        const isCorrect = q.correct_option === key
+        return (
+          <div
+            key={key}
+            className={`flex items-start gap-2.5 px-3 py-2 rounded-xl border text-sm ${
+              isCorrect
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
+                : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+            }`}
+          >
+            <span
+              className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${
+                isCorrect
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              {key}
+            </span>
+            <span className="leading-snug flex-1">{optionText}</span>
+            {isCorrect && (
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             )}
           </div>
+        )
+      })}
+    </div>
 
-          {/* Duplicate warning */}
-          {duplicateGroups.length > 0 && (
+    {/* Explanation */}
+    {q.explanation && (
+      <div className="mt-3 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20">
+        <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
+          <span className="font-bold">Explanation: </span>
+          {q.explanation}
+        </p>
+      </div>
+    )}
+
+    {/* Reject input OR action links */}
+    {rejectingId === q.id ? (
+      <div className="mt-3 flex gap-2">
+        <input
+          className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
+          placeholder="Reason for rejection"
+          value={rejectionReason}
+          onChange={(e) => setRejectionReason(e.target.value)}
+          autoFocus
+        />
+        <button
+          onClick={() => confirmReject(q.id)}
+          disabled={!rejectionReason.trim()}
+          className="px-3 py-2 bg-rose-600 text-white text-sm font-semibold rounded-xl disabled:opacity-50"
+        >
+          Confirm
+        </button>
+        <button
+          onClick={() => {
+            setRejectingId(null)
+            setRejectionReason('')
+          }}
+          className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm rounded-xl"
+        >
+          Cancel
+        </button>
+      </div>
+    ) : (
+      <div className="flex gap-3 text-xs font-medium mt-3 flex-wrap items-center">
+        {(q.review_status === 'generated' ||
+          q.review_status === 'under_review') && (
+          <>
             <button
-              onClick={() => setViewDuplicatesOnly(true)}
-              className="w-full flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl text-left hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+              onClick={() => handleApprove(q.id)}
+              className="text-emerald-600 dark:text-emerald-400 hover:underline"
             >
-              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
-              <div>
-                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
-                  {duplicateGroups.length} duplicate group
-                  {duplicateGroups.length === 1 ? '' : 's'} found (
-                  {totalRepeatedCount} repeated question
-                  {totalRepeatedCount === 1 ? '' : 's'})
-                </p>
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Click to review and clean up duplicates
-                </p>
-              </div>
+              Approve
             </button>
-          )}
-
-          {/* Editing form */}
-          {editingId && (
-            <form
-              onSubmit={handleSubmit}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3"
+            <button
+              onClick={() => setRejectingId(q.id)}
+              className="text-rose-600 dark:text-rose-400 hover:underline"
             >
-              {error && (
-                <div className="text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 rounded-lg px-3 py-2">
-                  {error}
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <h2 className="font-bold text-sm text-slate-900 dark:text-white">
-                  {editingId === 'new' ? 'New Question' : 'Edit Question'}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowAIModal(true)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  AI MCQ Generator
-                </button>
-              </div>
-              <textarea
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Question text"
-                required
-                value={form.question_text}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, question_text: e.target.value }))
-                }
-              />
-              {(['a', 'b', 'c', 'd'] as const).map((key) => (
-                <div key={key} className="flex items-center gap-2">
-                  <span className="text-sm font-bold w-5 text-slate-700 dark:text-slate-300">
-                    {key.toUpperCase()}
-                  </span>
-                  <input
-                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder={`Option ${key.toUpperCase()}`}
-                    required
-                    value={form[`option_${key}` as 'option_a']}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        [`option_${key}`]: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              ))}
-              <div className="flex gap-3">
-                <select
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={form.correct_option}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      correct_option: e.target.value as 'A' | 'B' | 'C' | 'D',
-                    }))
-                  }
-                >
-                  {['A', 'B', 'C', 'D'].map((k) => (
-                    <option key={k} value={k}>
-                      Correct: {k}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={form.difficulty}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      difficulty: e.target.value as ExamDifficulty,
-                    }))
-                  }
-                >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-              </div>
-              <textarea
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Explanation"
-                required
-                value={form.explanation}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, explanation: e.target.value }))
-                }
-              />
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-500 disabled:opacity-50 inline-flex items-center gap-2"
-                >
-                  {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  {isSaving ? 'Saving...' : 'Save'}
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
+              Reject
+            </button>
+          </>
+        )}
+        {canEdit(q.review_status) && (
+          <button
+            onClick={() => startEdit(q)}
+            className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+          >
+            Edit
+          </button>
+        )}
+        {canArchive(q.review_status) && (
+          <button
+            onClick={() => handleArchive(q.id)}
+            className="text-slate-600 dark:text-slate-400 hover:underline"
+          >
+            Archive
+          </button>
+        )}
+      </div>
+    )}
+  </div>
+))}
+        </div>
+      )}
 
-          {/* Question list */}
-          {isLoading ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500 dark:text-slate-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Loading questions…
-            </div>
-          ) : filteredQuestions.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center">
-              <ClipboardCheck className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                No questions found
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {paginatedQuestions.map((q) => (
-                <div
-                  key={q.id}
-                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${REVIEW_BADGE[q.review_status as ReviewStatus]}`}
-                        >
-                          {q.review_status === 'approved' && (
-                            <CheckCircle2 className="w-3 h-3" />
-                          )}
-                          {q.review_status === 'under_review' && (
-                            <Clock className="w-3 h-3" />
-                          )}
-                          {q.review_status === 'rejected' && (
-                            <XCircle className="w-3 h-3" />
-                          )}
-                          {(q.review_status || 'generated').replace('_', ' ')}
-                        </span>
-                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                          {q.difficulty}
-                          {q.is_ai_generated && (
-                            <>
-                              <span>•</span>
-                              <Sparkles className="w-3 h-3" />
-                              <span>AI</span>
-                            </>
-                          )}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
-                        {q.question_text}
-                      </p>
-                    </div>
-                  </div>
-
-                  {rejectingId === q.id ? (
-                    <div className="mt-3 flex gap-2">
-                      <input
-                        className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                        placeholder="Reason for rejection"
-                        value={rejectionReason}
-                        onChange={(e) => setRejectionReason(e.target.value)}
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => confirmReject(q.id)}
-                        disabled={!rejectionReason.trim()}
-                        className="px-3 py-2 bg-rose-600 text-white text-sm font-semibold rounded-xl disabled:opacity-50"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        onClick={() => {
-                          setRejectingId(null)
-                          setRejectionReason('')
-                        }}
-                        className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm rounded-xl"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-3 text-xs font-medium mt-3 flex-wrap">
-                      {(q.review_status === 'generated' ||
-                        q.review_status === 'under_review') && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(q.id)}
-                            className="text-emerald-600 dark:text-emerald-400 hover:underline"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => setRejectingId(q.id)}
-                            className="text-rose-600 dark:text-rose-400 hover:underline"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      {canEdit(q.review_status) && (
-                        <button
-                          onClick={() => startEdit(q)}
-                          className="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {canArchive(q.review_status) && (
-                        <button
-                          onClick={() => handleArchive(q.id)}
-                          className="text-slate-600 dark:text-slate-400 hover:underline"
-                        >
-                          Archive
-                        </button>
-                      )}
-                      {canDelete(q.review_status) && (
-                        <button
-                          onClick={() => handleDelete(q.id)}
-                          className="text-rose-600 dark:text-rose-400 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+                       {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-3 pt-2">
               <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
                 className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
@@ -1281,9 +934,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
                 Page {currentPage} of {totalPages}
               </span>
               <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
                 className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
@@ -1294,20 +945,7 @@ function PracticeQuestionsTab({ courseId }: { courseId: string }) {
         </>
       )}
 
-      {showAIModal && (
-        <AIDraftModal
-          courseId={courseId}
-          type="question"
-          onClose={() => setShowAIModal(false)}
-          onApply={handleAIApply}
-        />
-      )}
-
-      <ConfirmDialog
-        state={confirmState}
-        isProcessing={isSaving}
-        onClose={() => setConfirmState(null)}
-      />
+      {showAIModal && <AIDraftModal courseId={courseId} type="question" onClose={() => setShowAIModal(false)} onApply={handleAIApply} />}
     </div>
   )
 }
