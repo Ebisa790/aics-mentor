@@ -57,11 +57,11 @@ const bankPatterns: Record<ManualBank, RegExp> = {
 }
 
 const bankFormatHint: Record<ManualBank, string> = {
-  cbe: 'From your CBE SMS: tap the receipt link, then find the FT reference (e.g. FT26265HR71H). Or paste the SMS link code directly.',
+  cbe: 'From your CBE SMS: tap the receipt link, then find the FT reference (starts with FT, e.g. FT0000000000). Or paste the SMS link code directly.',
   telebirr:
-    'The Transaction Number from your Telebirr SMS or app (10 characters, e.g. DIM41VUFVQ)',
+    'The Transaction Number from your Telebirr SMS or app (10 characters, e.g. ABC1234567)',
   awash:
-    'The Transaction ID from your Awash SMS or receipt (14-16 digits, e.g. 260922130393530)',
+    'The Transaction ID from your Awash SMS or receipt (14-16 digits, e.g. 100000000000000)',
 }
 
 const bankUssd: Record<ManualBank, string> = {
@@ -928,10 +928,10 @@ export function ManualPaymentModal({
                     }}
                     placeholder={
                       selectedBank === 'cbe'
-                        ? 'e.g. FT26265HR71H'
+                        ? 'e.g. FT0000000000'
                         : selectedBank === 'telebirr'
-                          ? 'e.g. DIM41VUFVQ'
-                          : 'e.g. 260922130393530'
+                          ? 'e.g. ABC1234567'
+                          : 'e.g. 100000000000000'
                     }
                     disabled={submitting}
                     autoComplete="off"
