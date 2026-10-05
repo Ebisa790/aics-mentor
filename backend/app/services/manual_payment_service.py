@@ -15,6 +15,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -466,32 +467,6 @@ class ManualPaymentService:
                     "If you believe this is a mistake, please contact support."
                 )
 
-            if same_user:
-                if dup_payment.status == PaymentStatus.PENDING:
-                    raise ManualPaymentError(
-                        "You already submitted this reference. "
-                        "Please wait for admin verification — check "
-                        "'My Bank Payments' for the status."
-                    )
-                elif dup_payment.status == PaymentStatus.SUCCESS:
-                    raise ManualPaymentError(
-                        "This reference was already approved. "
-                        "If you made a second payment with the same "
-                        "reference, please contact support."
-                    )
-                else:
-                    raise ManualPaymentError(
-                        "This reference was already submitted and "
-                        "could not be verified. If you have a new "
-                        "receipt, please double-check the reference."
-                    )
-            else:
-                # Another user submitted this reference.
-                # Don't leak the other user's identity — just say it's in use.
-                raise ManualPaymentError(
-                    "This reference is already in use. "
-                    "If you believe this is a mistake, please contact support."
-                )
 
         detail = ManualPaymentDetail(
             payment_id=payment.id,
@@ -516,7 +491,17 @@ class ManualPaymentService:
             sender_name=sender_name,
         )
         self.db.add(detail)
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            # Two students submitted the same reference at the same time.
+            # The DB unique constraint on bank_reference correctly blocked
+            # the second insert. Convert the raw 500 into a friendly message.
+            self.db.rollback()
+            raise ManualPaymentError(
+                "This reference was just submitted. "
+                "If you believe this is a mistake, please contact support."
+            )
         self.db.refresh(payment)
 
         logger.info(
@@ -578,6 +563,7 @@ class ManualPaymentService:
         out = []
         for payment, detail in rows:
             bank_value = (payment.payment_method or "manual_cbe").replace("manual_", "")
+           
             out.append({
                 "payment_id": payment.id,
                 "tx_ref": payment.tx_ref,
@@ -589,7 +575,13 @@ class ManualPaymentService:
                 "sender_name": detail.sender_name if detail else None,
                 "created_at": payment.created_at,
                 "verified_at": payment.verified_at,
-                "admin_note": detail.admin_note if detail else None,
+                # Only expose the note to the student when the payment
+                # was rejected — approval notes are internal.
+                "admin_note": (
+                    detail.admin_note
+                    if detail and payment.status == PaymentStatus.FAILED
+                    else None
+                ),
             })
         return out
 
