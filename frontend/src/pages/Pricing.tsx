@@ -16,6 +16,7 @@ import {
   manualPaymentApi,
   type PricingPlan,
   type ManualPaymentOptions,
+  type ManualPaymentStatusItem,
 } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { ManualPaymentModal } from '../components/ManualPaymentModal'
@@ -66,15 +67,29 @@ export function PricingPage() {
   const [error, setError] = useState<string | null>(null)
   const [showManualModal, setShowManualModal] = useState(false)
   const [manualOptions, setManualOptions] = useState<ManualPaymentOptions | null>(null)
+  const [existingPending, setExistingPending] = useState<ManualPaymentStatusItem | null>(null)
 
   const reason = searchParams.get('reason')
 
-  useEffect(() => {
+   useEffect(() => {
     fetchPricing()
     manualPaymentApi
       .getOptions()
       .then(setManualOptions)
       .catch((err) => console.warn('Failed to load manual options:', err))
+
+    // Check if the student already has a pending manual payment.
+    // If yes, we redirect them to the status page instead of letting
+    // them open the modal and hit the "already pending" wall.
+    manualPaymentApi
+      .myPayments()
+      .then((items) => {
+        const pending = items.find((i) => i.status === 'pending')
+        setExistingPending(pending ?? null)
+      })
+      .catch(() => {
+        /* silent — not critical for the page to function */
+      })
   }, [])
 
   const fetchPricing = async () => {
@@ -134,6 +149,14 @@ export function PricingPage() {
         setError('An unexpected error occurred.')
       }
     }
+  }
+
+   const handleManualPayClick = () => {
+    if (existingPending) {
+      navigate('/manual-payment/status')
+      return
+    }
+    setShowManualModal(true)
   }
 
   const featuresToDisplay: string[] =
@@ -256,6 +279,28 @@ export function PricingPage() {
                   One-time payment · Full lifetime access
                 </p>
               </div>
+                            {existingPending && (
+                <div className="mx-6 sm:mx-8 mt-6 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 px-4 py-3">
+                  <Clock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <div className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+                    <p className="font-bold">You have a pending bank payment</p>
+                    <p className="mt-0.5">
+                      We received your reference{' '}
+                      <span className="font-mono font-semibold">
+                        {existingPending.bank_reference}
+                      </span>{' '}
+                      and are reviewing it.{' '}
+                      <button
+                        type="button"
+                        onClick={() => navigate('/manual-payment/status')}
+                        className="font-bold underline hover:no-underline"
+                      >
+                        View status
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="p-6 sm:p-8">
                 {/* Features */}
@@ -306,13 +351,15 @@ export function PricingPage() {
                       </button>
 
                       {/* Manual bank transfer secondary */}
-                      <button
-                        onClick={() => setShowManualModal(true)}
+                                       <button
+                        onClick={handleManualPayClick}
                         disabled={!pricing}
-                        className="w-full bg-white dark:bg-slate-900 border-2 border-emerald-500 dark:border-emerald-500 text-emerald-700 dark:text-emerald-400 font-bold py-3.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-2 disabled:opacity-60"
                       >
                         <ShieldCheck className="w-5 h-5" />
-                        <span>Or pay via bank transfer</span>
+                        <span>
+                          Pay {pricing?.amount} {pricing?.currency} via bank transfer
+                        </span>
                       </button>
                     </>
                   ) : (
@@ -391,11 +438,18 @@ export function PricingPage() {
         )}
       </div>
 
-      <ManualPaymentModal
+          <ManualPaymentModal
         isOpen={showManualModal}
         onClose={() => setShowManualModal(false)}
         onSuccess={() => {
           refreshUser?.()
+          manualPaymentApi
+            .myPayments()
+            .then((items) => {
+              const pending = items.find((i) => i.status === 'pending')
+              setExistingPending(pending ?? null)
+            })
+            .catch(() => {})
         }}
       />
     </div>
