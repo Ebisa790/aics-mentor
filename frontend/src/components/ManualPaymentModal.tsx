@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-
+import { Link } from 'react-router-dom'
 import axios from 'axios'
 import {
   AlertCircle,
@@ -334,7 +334,19 @@ export function ManualPaymentModal({
     !isNaN(typedAmountNum) &&
     Math.abs(typedAmountNum - Number(options.amount)) < 0.01
 
+    // Client-side phone validation — mirrors the backend rule.
+  // Phone is optional, but if typed, it must start with 0 or +251.
+  const phoneIsValid = (() => {
+    const cleaned = senderPhone.replace(/[\s-]/g, '').trim()
+    if (!cleaned) return true
+    if (!cleaned.startsWith('0') && !cleaned.startsWith('+251')) return false
+    if (cleaned.length < 9 || cleaned.length > 15) return false
+    return true
+  })()
+
   const gatesPassed = confirmSent && confirmUnderstood && amountMatches
+
+
 
   const handleCopy = async (text: string, field: string) => {
     try {
@@ -458,6 +470,8 @@ export function ManualPaymentModal({
       return 'Type the exact amount you sent to enable submit.'
     if (!confirmUnderstood)
       return 'Accept the reference verification note to enable submit.'
+    if (!phoneIsValid)
+      return 'Phone must start with 0 or +251 (e.g. 0912 345 678).'
     return null
   })()
 
@@ -1083,14 +1097,24 @@ export function ManualPaymentModal({
                       <Phone className="h-3 w-3" />
                       Phone (optional)
                     </label>
-                    <input
+                                     <input
                       type="tel"
                       value={senderPhone}
                       onChange={(e) => setSenderPhone(e.target.value)}
                       placeholder="0912 345 678"
                       disabled={submitting}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                      className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 disabled:opacity-50 dark:bg-slate-950 dark:text-white ${
+                        senderPhone.length === 0 || phoneIsValid
+                          ? 'border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 dark:border-slate-700'
+                          : 'border-amber-400 focus:border-amber-500 focus:ring-amber-500 dark:border-amber-500/60'
+                      }`}
                     />
+                    {senderPhone.length > 0 && !phoneIsValid && (
+                      <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                        <AlertCircle className="h-3 w-3" />
+                        Start with 0 or +251 (e.g. 0912 345 678).
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1109,13 +1133,23 @@ export function ManualPaymentModal({
                 </div>
               </div>
 
-              {/* Error */}
+                        {/* Error */}
               {error && (
                 <div
                   role="alert"
-                  className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-relaxed text-red-600 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400"
+                  className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-relaxed text-red-600 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400 space-y-2"
                 >
-                  {error}
+                  <div>{error}</div>
+                  {(error.toLowerCase().includes('already have a pending') ||
+                    error.toLowerCase().includes('pending manual payment')) && (
+                    <Link
+                      to="/manual-payment/status"
+                      onClick={onClose}
+                      className="inline-flex items-center gap-1 font-bold underline hover:no-underline"
+                    >
+                      View my pending payments →
+                    </Link>
+                  )}
                 </div>
               )}
 
@@ -1154,10 +1188,10 @@ export function ManualPaymentModal({
                   Cancel
                 </button>
 
-                <button
+                            <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={submitting || !referenceIsValid || !gatesPassed}
+                  disabled={submitting || !referenceIsValid || !gatesPassed || !phoneIsValid}
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting ? (
