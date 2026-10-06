@@ -1228,33 +1228,68 @@ def generate_ai_content(request: Request, payload: AIGenerateRequest, db: Sessio
 # ============================== Bulk question-bank import ==============================
 
 
-def _validate_and_build_questions(course: Course, rows: list[BulkQuestionRow]) -> tuple[list[Question], list[str]]:
+_DIFFICULTY_REVERSE = {
+    DifficultyLevel.BEGINNER:     ExamDifficulty.EASY,
+    DifficultyLevel.INTERMEDIATE: ExamDifficulty.MEDIUM,
+    DifficultyLevel.ADVANCED:     ExamDifficulty.HARD,
+}
+
+
+def _validate_and_build_questions(
+    course: Course, rows: list[BulkQuestionRow]
+) -> tuple[list[ExamQuestion], list[str]]:
+    """Build ExamQuestion rows for bulk import.
+
+    Writes to exam_questions so the promotion pipeline (review + sync
+    with the student-facing questions table) runs correctly. Callers
+    must call _promote_to_question() for each row after flush.
+    """
     errors: list[str] = []
-    to_add: list[Question] = []
+    to_add: list[ExamQuestion] = []
 
     for idx, row in enumerate(rows, start=1):
-        correct_answer = row.correct_answer.strip()
+        # Normalize choices to uppercase A/B/C/D keys
+        choices = row.choices or {}
+        opts = {
+            "A": choices.get("A") or choices.get("a") or "",
+            "B": choices.get("B") or choices.get("b") or "",
+            "C": choices.get("C") or choices.get("c") or "",
+            "D": choices.get("D") or choices.get("d") or "",
+        }
+
+        correct_answer = (row.correct_answer or "").strip().upper()
+
         if row.question_type == QuestionType.MULTIPLE_CHOICE:
-            if not row.choices:
-                errors.append(f"Row {idx}: multiple_choice questions need either 'choices' or all four option_a-d")
-                continue
-            correct_answer = correct_answer.upper()
-            if correct_answer not in row.choices:
+            if not all(opts.values()):
                 errors.append(
-                    f"Row {idx}: correct_answer '{row.correct_answer}' is not one of the choice keys {sorted(row.choices)}"
+                    f"Row {idx}: multiple_choice needs all four options A-D"
                 )
                 continue
+            if correct_answer not in opts:
+                errors.append(
+                    f"Row {idx}: correct_answer '{row.correct_answer}' is not A/B/C/D"
+                )
+                continue
+        else:
+            # ExamQuestion only supports multiple choice
+            errors.append(f"Row {idx}: only multiple_choice is supported")
+            continue
 
         to_add.append(
-            Question(
+            ExamQuestion(
                 course_id=course.id,
-                topic_id=row.topic_id,
-                question_type=row.question_type,
-                difficulty=row.difficulty,
-                prompt=row.prompt,
-                choices=row.choices,
-                correct_answer=correct_answer,
-                explanation=row.explanation,
+                question_text=row.prompt,
+                option_a=opts["A"],
+                option_b=opts["B"],
+                option_c=opts["C"],
+                option_d=opts["D"],
+                correct_option=correct_answer,
+                explanation=row.explanation or "",
+                difficulty=_DIFFICULTY_REVERSE.get(
+                    row.difficulty, ExamDifficulty.MEDIUM
+                ),
+                is_ai_generated=False,
+                review_status=ReviewStatus.APPROVED,
             )
         )
 
@@ -1266,12 +1301,14 @@ def bulk_import_questions_json(course_id: uuid.UUID, payload: list[BulkQuestionR
     course = _get_course_or_404(db, course_id)
     if not payload:
         raise HTTPException(status_code=400, detail="The provided question list was empty")
-
     to_add, errors = _validate_and_build_questions(course, payload)
     if errors:
         raise HTTPException(status_code=422, detail={"message": "Question validation failed", "errors": errors})
 
     db.add_all(to_add)
+    db.flush()
+    for eq in to_add:
+        _promote_to_question(db, eq)
     db.commit()
     return BulkImportResult(created=len(to_add), errors=[])
 
@@ -1283,19 +1320,26 @@ def bulk_approve_questions(request: BulkApproveRequest, db: Session = Depends(ge
 
     try:
         uuids = [uuid.UUID(qid) for qid in request.question_ids]
-        db.query(ExamQuestion).filter(
-            ExamQuestion.id.in_(uuids)
-        ).update(
-            {"review_status": ReviewStatus.APPROVED}, 
-            synchronize_session=False
-        )
-        
-        db.commit()
-        return {"status": "success", "message": f"Successfully approved {len(request.question_ids)} questions."}
-        
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid question ID format.")
+
+    updated_count = 0
+    for q_uuid in uuids:
+        question = db.get(ExamQuestion, q_uuid)
+        if not question:
+            continue
+        if question.review_status not in (ReviewStatus.GENERATED, ReviewStatus.UNDER_REVIEW):
+            continue
+        question.review_status = ReviewStatus.APPROVED
+        question.reviewed_at = datetime.now(timezone.utc)
+        _promote_to_question(db, question)
+        updated_count += 1
+
+    db.commit()
+    return {
+        "status": "success",
+        "message": f"Successfully approved {updated_count} questions.",
+    }
 
 
 @router.post("/questions/bulk-master-csv", response_model=BulkImportResult)
@@ -1316,7 +1360,7 @@ async def bulk_import_master_csv(file: UploadFile = File(...), db: Session = Dep
         raise HTTPException(status_code=400, detail=f"CSV is missing required columns: {', '.join(sorted(missing))}")
 
     course_cache: dict[str, Course] = {}
-    to_add: list[Question] = []
+    to_add: list[ExamQuestion] = []
     parse_errors: list[str] = []
 
     for i, raw in enumerate(reader, start=2):
@@ -1351,21 +1395,39 @@ async def bulk_import_master_csv(file: UploadFile = File(...), db: Session = Dep
             continue
 
         correct_answer = row_data.correct_answer.upper()
-        if row_data.question_type == QuestionType.MULTIPLE_CHOICE:
-            if not row_data.choices or correct_answer not in row_data.choices:
-                parse_errors.append(f"Row {i}: Invalid correct answer '{correct_answer}' for choices.")
-                continue
+
+        # Normalize choices to uppercase A/B/C/D
+        choices = row_data.choices or {}
+        opts = {
+            "A": choices.get("A") or choices.get("a") or row_data.option_a or "",
+            "B": choices.get("B") or choices.get("b") or row_data.option_b or "",
+            "C": choices.get("C") or choices.get("c") or row_data.option_c or "",
+            "D": choices.get("D") or choices.get("d") or row_data.option_d or "",
+        }
+
+        if not all(opts.values()):
+            parse_errors.append(f"Row {i}: needs all four options A-D")
+            continue
+
+        if correct_answer not in opts:
+            parse_errors.append(f"Row {i}: Invalid correct answer '{correct_answer}'")
+            continue
 
         to_add.append(
-            Question(
+            ExamQuestion(
                 course_id=target_course.id,
-                topic_id=row_data.topic_id,
-                question_type=row_data.question_type,
-                difficulty=row_data.difficulty,
-                prompt=row_data.prompt,
-                choices=row_data.choices,
-                correct_answer=correct_answer,
-                explanation=row_data.explanation,
+                question_text=row_data.prompt,
+                option_a=opts["A"],
+                option_b=opts["B"],
+                option_c=opts["C"],
+                option_d=opts["D"],
+                correct_option=correct_answer,
+                explanation=row_data.explanation or "",
+                difficulty=_DIFFICULTY_REVERSE.get(
+                    row_data.difficulty, ExamDifficulty.MEDIUM
+                ),
+                is_ai_generated=False,
+                review_status=ReviewStatus.APPROVED,
             )
         )
 
@@ -1375,6 +1437,9 @@ async def bulk_import_master_csv(file: UploadFile = File(...), db: Session = Dep
         raise HTTPException(status_code=400, detail="The uploaded CSV contained no valid question rows")
 
     db.add_all(to_add)
+    db.flush()
+    for eq in to_add:
+        _promote_to_question(db, eq)
     db.commit()
     return BulkImportResult(created=len(to_add), errors=[])
 
@@ -1429,7 +1494,9 @@ async def bulk_import_questions_csv(course_id: uuid.UUID, file: UploadFile = Fil
 
     if not to_add:
         raise HTTPException(status_code=400, detail="The uploaded CSV contained no valid question rows.")
-
     db.add_all(to_add)
+    db.flush()
+    for eq in to_add:
+        _promote_to_question(db, eq)
     db.commit()
     return BulkImportResult(created=len(to_add), errors=[])
