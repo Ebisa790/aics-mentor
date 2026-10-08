@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Mail, CheckCircle2 } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 export function ResendVerificationPage() {
-  const [email, setEmail] = useState('');
+  // If the student arrived from the Register success screen, the URL
+  // carries ?email=… — prefill it so they don't retype it.
+  const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
