@@ -184,7 +184,7 @@ def register(request: Request, payload: UserRegister, db: Session = Depends(get_
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account with this email already exists",
+            detail="An account with this email already exists. Try logging in, or use \"Forgot password\" if you don't remember it.",
         )
 
     user = User(
@@ -347,8 +347,8 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
 
     # Generic credential error to avoid email enumeration
     invalid_credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, 
-        detail="Incorrect email or password"
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail='That email and password don\'t match. Try again, or use "Forgot password".'
     )
 
     if not user:
@@ -370,7 +370,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
         if now_utc < locked_until:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Too many failed login attempts. Please wait a few minutes and try again."
+                detail=f"Too many failed login attempts. Please wait {LOCKOUT_DURATION_MINUTES} minutes and try again."
             )
 
     if not user.is_active:
