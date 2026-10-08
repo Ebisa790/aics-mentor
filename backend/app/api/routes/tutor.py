@@ -46,7 +46,7 @@ def _sse_event(payload: dict) -> str:
 def _build_system_prompt(user: User, course: Course | None, mode: TutorMode) -> str:
     """Builds the tutor's system prompt tailored to the active course or full MoE syllabus."""
     base = (
-        f"You are the AI tutor inside AI-CS Mentor, helping {user.full_name} prepare for the "
+        f"You are the AI tutor inside ExitAI Ethiopia, helping {user.full_name} prepare for the "
         "Ethiopian Ministry of Education Computer Science Exit Exam.\n"
         f"Mode: {MODE_INSTRUCTIONS[mode]}\n\n"
         "STRICT RESPONSE RULES — follow all of them:\n"
@@ -55,7 +55,10 @@ def _build_system_prompt(user: User, course: Course | None, mode: TutorMode) -> 
         "- Use short Markdown: bold labels, bullets, or a compact table. At most one code block if truly needed.\n"
         "- Give ONE concrete example, not three. Skip 'this may appear on the exam' commentary unless the student asks.\n"
         "- If the topic needs more than the word limit, cover the essential idea and end with: "
-        "'Ask me to go deeper on any part.'\n\n"
+        "'Ask me to go deeper on any part.'\n"
+        "- Refer to courses ONLY by their full names (e.g. 'Object Oriented Programming'). "
+        "NEVER mention internal course codes like 'CoSc2021', 'CoSc3123', or any 'CoSc####' pattern — "
+        "students do not recognize them.\n\n"
         "Ground answers in correct BSc-level CS content. If unsure about a fact, say so briefly instead "
         "of padding the answer."
     )
@@ -66,14 +69,11 @@ def _build_system_prompt(user: User, course: Course | None, mode: TutorMode) -> 
             "suggest the student pick a course from the dropdown for a more focused explanation."
         )
 
-    course_title = getattr(course, "title", getattr(course, "name", "Course"))
-    code_line = f"- Course code: {course.code}\n" if getattr(course, "code", None) else ""
-    description_line = f"- Focus: {course.description}\n" if getattr(course, "description", None) else ""
-    
+    course_title = getattr(course, "title", None) or getattr(course, "name", "Course")
+
     return base + (
         "\n\n--- Active course ---\n"
-        f"- {course_title}"
-        f"{(' (' + course.code + ')') if getattr(course, 'code', None) else ''}\n"
+        f"- {course_title}\n"
         f"- Category: {getattr(course, 'category', 'CS Core')}\n"
         f"Tailor the answer to the scope of {course_title}."
     )
