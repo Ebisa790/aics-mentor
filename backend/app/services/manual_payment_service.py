@@ -803,10 +803,17 @@ class ManualPaymentService:
 
         try:
             if user:
+                # Strip the "[code] " prefix so the email reads naturally.
+                display_reason = note
+                if display_reason.startswith("["):
+                    close = display_reason.find("]")
+                    if close != -1:
+                        display_reason = display_reason[close + 1 :].strip()
+
                 send_manual_payment_rejected_email(
                     to_email=user.email,
                     full_name=user.full_name or "Student",
-                    reason=reason,
+                    reason=display_reason,
                 )
         except Exception as e:
             logger.warning(f"Rejection email failed: {e}")
