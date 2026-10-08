@@ -164,8 +164,8 @@ export function RegisterPage() {
             Don't see it? Check your spam folder. The link expires in 24 hours.
           </p>
           <div className="mt-6 space-y-2">
-            <Link
-              to="/resend-verification"
+                   <Link
+              to={`/resend-verification?email=${encodeURIComponent(registeredEmail)}`}
               className="inline-flex items-center justify-center w-full px-4 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
               Resend verification email
@@ -275,14 +275,34 @@ export function RegisterPage() {
 
           {/* Main card */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-sm">
-            {/* Error */}
+                  {/* Error */}
             {error && (
               <div
                 role="alert"
                 className="mb-5 flex items-start gap-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl px-3.5 py-3"
               >
                 <X className="w-4 h-4 mt-0.5 shrink-0" />
-                <span>{error}</span>
+                <div className="flex-1 leading-relaxed">
+                  <span>{error}</span>
+
+                  {/* Offer recovery paths when the email already exists */}
+                  {error.toLowerCase().includes('already exists') && (
+                    <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <Link
+                        to="/login"
+                        className="font-bold text-red-700 dark:text-red-300 underline hover:text-red-900 dark:hover:text-red-100"
+                      >
+                        Sign in instead →
+                      </Link>
+                      <Link
+                        to="/forgot-password"
+                        className="font-semibold text-red-600/80 dark:text-red-400/80 underline hover:text-red-800 dark:hover:text-red-200"
+                      >
+                        Forgot password?
+                      </Link>
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 
