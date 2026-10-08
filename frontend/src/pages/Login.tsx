@@ -408,7 +408,7 @@ export function LoginPage() {
                     {showResend && (
                       <span className="block mt-1.5">
                         <Link
-                          to="/resend-verification"
+                          to={`/resend-verification?email=${encodeURIComponent(email)}`}
                           className="font-semibold text-red-700 dark:text-red-300 underline hover:text-red-900 dark:hover:text-red-100"
                         >
                           Resend verification email →
