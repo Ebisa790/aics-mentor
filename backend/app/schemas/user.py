@@ -19,7 +19,7 @@ def _validate_password_strength(password: str) -> str:
 
 class UserRegister(BaseModel):
     email: EmailStr = Field(..., description="Unique email address for authentication")
-    password: str = Field(min_length=8, description="User password meeting complexity requirements")
+    password: str = Field(min_length=8, max_length=72, description="User password (max 72 bytes for bcrypt)")
     full_name: str = Field(min_length=2, max_length=255, description="User full name")
     university: str | None = Field(None, description="Enrolled university or institution name")
     year_of_study: int | None = Field(None, ge=1, le=7, description="Current academic year level")
@@ -52,7 +52,7 @@ class ForgotPasswordResponse(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str = Field(..., description="Password reset token")
-    new_password: str = Field(min_length=8, description="New account password")
+    new_password: str = Field(min_length=8, max_length=72, description="New password (max 72 bytes for bcrypt)")
 
     @field_validator("new_password")
     @classmethod
