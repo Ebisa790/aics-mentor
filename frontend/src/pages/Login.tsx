@@ -195,7 +195,7 @@ export function LoginPage() {
       const rawDetail = err?.response?.data?.detail
       const status = err?.response?.status
 
-      // Email verification error — handle FIRST, before the generic 403 branch
+      // ── 1. Email-verification error (structured response from backend) ──
       if (
         status === 403 &&
         rawDetail &&
@@ -210,22 +210,27 @@ export function LoginPage() {
         return
       }
 
-      const detail = err?.friendlyMessage || rawDetail
+      // ── 2. Any other string message from the backend — trust it ──
+      // The backend already returns human-readable sentences for
+      // wrong-password, lockout, deactivated, and unverified cases.
+      if (typeof rawDetail === 'string' && rawDetail.trim()) {
+        setError(rawDetail)
+        return
+      }
 
+      // ── 3. Fall back to friendly messages based on HTTP status ──
       if (status === 401) {
-        setError('Incorrect email or password. Please try again.')
+        setError(
+          'That email and password don\'t match. Try again, or use "Forgot password".'
+        )
       } else if (status === 403) {
-        if (detail && typeof detail === 'string' && detail.toLowerCase().includes('locked')) {
-          setError('Too many failed login attempts. Please wait a few minutes and try again.')
-        } else {
-          setError('Your account has been deactivated. Please contact support to reactivate your account.')
-        }
-      } else if (typeof detail === 'string') {
-        setError(detail)
+        setError(
+          'Sign-in was blocked. Please try again in a few minutes, or contact support if this continues.'
+        )
+      } else if (status && status >= 500) {
+        setError('The server is having trouble. Please try again in a moment.')
       } else if (err?.message && err.message.includes('Network')) {
         setError('Connection issue. Check your internet and try again.')
-      } else if (err?.message && err.message.includes('401')) {
-        setError('Incorrect email or password. Please try again.')
       } else {
         setError('Could not sign in. Please try again.')
       }
@@ -414,6 +419,7 @@ export function LoginPage() {
                 </div>
               </div>
             )}
+            
 
             <div className="px-6 pb-6 sm:px-8 sm:pb-8">
               {requires2FA ? (
