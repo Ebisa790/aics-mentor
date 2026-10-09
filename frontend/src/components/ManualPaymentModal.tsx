@@ -1143,7 +1143,7 @@ export function ManualPaymentModal({
                   {(error.toLowerCase().includes('already have a pending') ||
                     error.toLowerCase().includes('pending manual payment')) && (
                     <Link
-                      to="/manual-payment/status"
+                      to="/payment/manual/status"
                       onClick={onClose}
                       className="inline-flex items-center gap-1 font-bold underline hover:no-underline"
                     >

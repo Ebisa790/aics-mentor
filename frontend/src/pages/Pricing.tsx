@@ -153,7 +153,7 @@ export function PricingPage() {
 
    const handleManualPayClick = () => {
     if (existingPending) {
-      navigate('/manual-payment/status')
+      navigate('/payment/manual/status')
       return
     }
     setShowManualModal(true)
@@ -292,7 +292,7 @@ export function PricingPage() {
                       and are reviewing it.{' '}
                       <button
                         type="button"
-                        onClick={() => navigate('/manual-payment/status')}
+                        onClick={() => navigate('/payment/manual/status')}
                         className="font-bold underline hover:no-underline"
                       >
                         View status
