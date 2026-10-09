@@ -492,9 +492,9 @@ export function LandingPage() {
                   </div>
                 </div>
 
-                                <div className="border-r border-slate-200 px-4">
+                <div className="border-r border-slate-200 px-4">
                   <div className="text-2xl font-black tracking-tight text-slate-950">
-                    2,700+
+                    3,000+
                   </div>
                   <div className="mt-1 text-[11px] font-medium text-slate-500">
                     Practice Questions
