@@ -33,6 +33,7 @@ export function MockExamPage() {
   const isSubmittingRef = useRef(false);
   const lastViolationTimeRef = useRef(0);
   const examStartedAtRef = useRef<number>(0);
+  const isExitingRef = useRef(false);
 
   const { user, isPremium, isLoading: isAuthLoading } = useAuth();
 
@@ -142,6 +143,7 @@ export function MockExamPage() {
     setEnableProctoring(saved.enableProctoring);
     setTimeLimitMinutes(saved.timeLimitMinutes);
     setTimeLeft(remaining);
+    isExitingRef.current = false;
     setStep('taking');
 
     // Best-effort fullscreen request (may be blocked without a user gesture)
@@ -391,8 +393,8 @@ export function MockExamPage() {
       }
     };
 
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
+      const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && !isExitingRef.current) {
         triggerSecurityViolation('Exited fullscreen mode');
       }
     };
@@ -415,6 +417,15 @@ export function MockExamPage() {
   // ============================================================
   // START MOCK EXAM
   // ============================================================
+
+  const handleExitExam = useCallback(() => {
+    isExitingRef.current = true;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    clearSavedSession();       // deliberate exit — don't restore on next visit
+    navigate('/dashboard');
+  }, [navigate]);
 
   const handleStartExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -466,6 +477,7 @@ export function MockExamPage() {
       setCurrentIndex(0);
       setResultSummary(null);
       setShowSubmitModal(false);
+      isExitingRef.current = false;
       setStep('taking');
 
       if (enableProctoring) {
@@ -598,6 +610,7 @@ export function MockExamPage() {
       setCurrentIndex(0);
       setResultSummary(null);
       setShowSubmitModal(false);
+      isExitingRef.current = false;
       setStep('taking');
 
       if (enableProctoring) {
@@ -718,7 +731,8 @@ export function MockExamPage() {
         onShowSubmit={() => setShowSubmitModal(true)}
         onCloseSubmit={() => setShowSubmitModal(false)}
         onSubmit={handleSubmitExam}
-        onDismissWarning={() => setSecurityWarning(null)}
+            onDismissWarning={() => setSecurityWarning(null)}
+        onExit={handleExitExam}
         examContainerRef={examContainerRef}
         startedAt={examStartedAtRef.current}
         timeLimitMinutes={timeLimitMinutes}

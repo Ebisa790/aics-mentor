@@ -11,12 +11,16 @@ import {
   Flag,
   ArrowLeft,
   ArrowRight,
+  DoorOpen,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { FormattedQuestionText } from '../components/FormattedQuestionText';
 import { Question, cleanOptionText } from './MockExamTypes';
 
 interface MockExamTakingProps {
   questions: Question[];
+  onExit?: () => void;      
   currentIndex: number;
   userAnswers: Record<string, string>;
   flaggedQuestions: Record<string, boolean>;
@@ -75,6 +79,7 @@ function initials(name: string | null): string {
 
 export function MockExamTaking({
   questions,
+  onExit,
   currentIndex,
   userAnswers,
   flaggedQuestions,
@@ -98,6 +103,24 @@ export function MockExamTaking({
   timeLimitMinutes,
 }: MockExamTakingProps) {
   const [showRemaining, setShowRemaining] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
+
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.classList.contains('dark');
+  });
+
+  const toggleTheme = () => {
+    const root = document.documentElement;
+    const next = !root.classList.contains('dark');
+    root.classList.toggle('dark', next);
+    try {
+      localStorage.setItem('theme', next ? 'dark' : 'light');
+    } catch {
+      /* ignore */
+    }
+    setIsDark(next);
+  };
 
   const currentQ = questions[currentIndex];
 
@@ -162,8 +185,20 @@ export function MockExamTaking({
             </div>
           </div>
 
-          {/* Right: user */}
-          <div className="flex shrink-0 items-center gap-3">
+                   {/* Right: actions + user */}
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {onExit && (
+              <button
+                type="button"
+                onClick={() => setShowExitModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 py-2 text-[11px] font-semibold text-white/90 transition hover:bg-white/10 active:scale-95"
+                title="Leave the exam and return to dashboard"
+              >
+                <DoorOpen className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Exit</span>
+              </button>
+            )}
+
             <div className="hidden flex-col items-end sm:flex">
               <span className="max-w-[140px] truncate text-xs font-semibold">
                 {userFullName || 'Student'}
@@ -499,6 +534,26 @@ export function MockExamTaking({
               </div>
             </div>
 
+                      {/* Appearance (theme toggle) */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Appearance
+              </h3>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {isDark ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+                  {isDark ? 'Dark mode' : 'Light mode'}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                  Switch
+                </span>
+              </button>
+            </div>
+
             {/* Exam details */}
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -572,7 +627,7 @@ export function MockExamTaking({
                 </span>
               </p>
             )}
-            <div className="flex items-center justify-end gap-3 pt-2">
+                        <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={onCloseSubmit}
@@ -587,6 +642,47 @@ export function MockExamTaking({
                 className="rounded-xl bg-red-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 disabled:opacity-50"
               >
                 {loading ? 'Submitting...' : 'Yes, Submit Now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────── EXIT CONFIRMATION MODAL ─────────── */}
+      {showExitModal && onExit && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm dark:bg-slate-950/80">
+          <div className="w-full max-w-md space-y-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400">
+                <DoorOpen className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Leave the exam?
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                  Your current answers will be discarded and the timer will stop. You can start a fresh exam any time.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowExitModal(false)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Stay in Exam
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExitModal(false);
+                  onExit();
+                }}
+                className="rounded-xl bg-rose-600 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 active:scale-95"
+              >
+                Yes, Leave
               </button>
             </div>
           </div>
