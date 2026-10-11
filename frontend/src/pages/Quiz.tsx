@@ -11,6 +11,7 @@ import {
   Sparkles,
   RotateCcw,
   ArrowLeft,
+  X,
 } from 'lucide-react'
 
 import { quizApi } from '../api'
@@ -112,6 +113,17 @@ export function Quiz() {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [flagged, setFlagged] = useState<Record<string, boolean>>({})
+    const [struckOptions, setStruckOptions] = useState<Record<string, string[]>>({})
+
+  const toggleStrike = (questionId: string, opt: string) => {
+    setStruckOptions((prev) => {
+      const current = prev[questionId] || []
+      const next = current.includes(opt)
+        ? current.filter((o) => o !== opt)
+        : [...current, opt]
+      return { ...prev, [questionId]: next }
+    })
+  }
   const [activeQuestionIdx, setActiveQuestionIdx] = useState<number>(0)
   const [warningsCount, setWarningsCount] = useState<number>(0)
   const [result, setResult] = useState<AttemptResult | null>(null)
@@ -1131,54 +1143,73 @@ export function Quiz() {
                     ).map(([key, val]) => {
                       const isSelected =
                         answers[currentQuestion.id] === key
+                      const isStruck = (struckOptions[currentQuestion.id] || []).includes(key)
 
                       return (
-                        <button
-                          key={key}
-                          onClick={() => {
-                            setAnswers((prev) => {
-                              const updated = {
-                                ...prev,
-                                [currentQuestion.id]: key,
-                              }
+                        <div key={key} className="relative">
+                          <button
+                            onClick={() => {
+                              setAnswers((prev) => {
+                                const updated = {
+                                  ...prev,
+                                  [currentQuestion.id]: key,
+                                }
 
-                              answersRef.current = updated
+                                answersRef.current = updated
 
-                              return updated
-                            })
-                          }}
-                          className={`group flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition-all active:scale-95 md:p-4 ${
-                            isSelected
-                              ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30'
-                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800'
-                          }`}
-                        >
-                          <span
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-mono text-xs font-black transition-all active:scale-95 ${
+                                return updated
+                              })
+                            }}
+                            className={`group flex w-full items-center gap-3 rounded-2xl border p-3.5 pr-12 text-left transition-all active:scale-95 md:p-4 ${
                               isSelected
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-700'
+                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30'
+                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800'
                             }`}
                           >
-                            {key.toUpperCase()}
-                          </span>
-
-                          <span
-                            className={`text-sm leading-relaxed ${
-                              isSelected
-                                ? 'font-semibold text-indigo-950 dark:text-indigo-100'
-                                : 'font-medium text-slate-700 dark:text-slate-300'
-                            }`}
-                          >
-                            {cleanChoiceText(val)}
-                          </span>
-
-                                                  {isSelected && (
-                            <span className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white">
-                              <Check className="h-3 w-3" strokeWidth={3} />
+                            <span
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-mono text-xs font-black transition-all ${
+                                isSelected
+                                  ? 'bg-indigo-600 text-white'
+                                  : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:group-hover:bg-slate-700'
+                              } ${isStruck ? 'opacity-50' : ''}`}
+                            >
+                              {key.toUpperCase()}
                             </span>
-                          )}
-                        </button>
+
+                            <span
+                              className={`text-sm leading-relaxed transition ${
+                                isStruck
+                                  ? 'text-slate-400 line-through dark:text-slate-600'
+                                  : isSelected
+                                    ? 'font-semibold text-indigo-950 dark:text-indigo-100'
+                                    : 'font-medium text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              {cleanChoiceText(val)}
+                            </span>
+
+                            {isSelected && (
+                              <span className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white">
+                                <Check className="h-3 w-3" strokeWidth={3} />
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Strike-out toggle */}
+                          <button
+                            type="button"
+                            onClick={() => toggleStrike(currentQuestion.id, key)}
+                            className={`absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full transition active:scale-90 ${
+                              isStruck
+                                ? 'bg-rose-100 text-rose-600 opacity-100 dark:bg-rose-500/20 dark:text-rose-400'
+                                : 'text-slate-400 opacity-40 hover:bg-slate-100 hover:opacity-100 dark:text-slate-500 dark:hover:bg-slate-800'
+                            }`}
+                            aria-label={isStruck ? 'Un-strike this option' : 'Strike out this option'}
+                            title={isStruck ? 'Un-strike' : 'Strike out (eliminate)'}
+                          >
+                            <X className="h-3.5 w-3.5" strokeWidth={3} />
+                          </button>
+                        </div>
                       )
                     })}
                   </div>
