@@ -255,7 +255,7 @@ export function DashboardPage() {
     <button
       type="button"
       onClick={() => navigate(`/courses/${lastActivity.course_id}`)}
-className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-black/5 transition hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:ring-white/20 active:scale-[0.98]"
+      className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-black/5 transition hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:ring-white/20 active:scale-[0.98]"
     >
       Continue {lastActivity.label}
       <ArrowRight className="h-4 w-4" />
@@ -264,7 +264,7 @@ className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-
     <button
       type="button"
       onClick={() => navigate('/courses')}
-      className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98]"
+      className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-black/5 transition hover:bg-slate-100 dark:bg-white dark:text-slate-900 dark:ring-white/20 active:scale-[0.98]"
     >
       Browse courses
       <ArrowRight className="h-4 w-4" />
