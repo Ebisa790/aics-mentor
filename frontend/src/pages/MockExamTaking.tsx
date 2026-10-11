@@ -14,6 +14,7 @@ import {
   DoorOpen,
   Sun,
   Moon,
+  X,
 } from 'lucide-react';
 import { FormattedQuestionText } from '../components/FormattedQuestionText';
 import { Question, cleanOptionText } from './MockExamTypes';
@@ -104,11 +105,22 @@ export function MockExamTaking({
 }: MockExamTakingProps) {
   const [showRemaining, setShowRemaining] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [struckOptions, setStruckOptions] = useState<Record<string, string[]>>({});
 
   const [isDark, setIsDark] = useState(() => {
     if (typeof document === 'undefined') return false;
     return document.documentElement.classList.contains('dark');
   });
+
+  const toggleStrike = (questionId: string, opt: string) => {
+    setStruckOptions((prev) => {
+      const current = prev[questionId] || [];
+      const next = current.includes(opt)
+        ? current.filter((o) => o !== opt)
+        : [...current, opt];
+      return { ...prev, [questionId]: next };
+    });
+  };
 
   const toggleTheme = () => {
     const root = document.documentElement;
@@ -289,14 +301,51 @@ export function MockExamTaking({
                     cls =
                       'bg-rose-500 text-white border-rose-500 hover:bg-rose-600 font-bold ring-2 ring-rose-300 ring-offset-1 dark:ring-offset-slate-900';
 
-                  return (
+                            return (
                     <button
                       key={q.id}
                       type="button"
                       onClick={() => onNavigate(idx)}
-                      className={`flex h-8 items-center justify-center rounded-md border text-[11px] font-semibold transition active:scale-95 ${cls}`}
+                      className={`group relative flex h-8 items-center justify-center rounded-md border text-[11px] font-semibold transition active:scale-95 ${cls}`}
                     >
                       {idx + 1}
+
+                      {/* Hover preview tooltip */}
+                      <div
+                        className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden w-60 -translate-y-1/2 rounded-xl border border-slate-700 bg-slate-900 p-3 text-left text-white shadow-2xl group-hover:block"
+                        role="tooltip"
+                      >
+                        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] font-bold text-white">
+                            Question {idx + 1}
+                          </span>
+                          {isAnswered && (
+                            <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">
+                              Answered
+                            </span>
+                          )}
+                          {isFlagged && (
+                            <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
+                              Flagged
+                            </span>
+                          )}
+                          {!isAnswered && !isFlagged && (
+                            <span className="rounded-full bg-slate-500/20 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
+                              Not answered
+                            </span>
+                          )}
+                          {isCurrent && (
+                            <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-bold text-rose-300">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <p className="line-clamp-3 text-[11px] leading-snug text-slate-300">
+                          {q.question_text.length > 110
+                            ? q.question_text.slice(0, 110) + '…'
+                            : q.question_text}
+                        </p>
+                      </div>
                     </button>
                   );
                 })}
@@ -365,36 +414,65 @@ export function MockExamTaking({
                     currentQ[`option_${opt.toLowerCase()}` as keyof Question] || '';
                   const optionText = cleanOptionText(rawText);
                   const isSelected = userAnswers[currentQ.id] === opt;
+                  const isStruck = (struckOptions[currentQ.id] || []).includes(opt);
 
                   return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => onSelectOption(currentQ.id, opt)}
-                      className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition active:scale-[0.99] ${
-                        isSelected
-                          ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-500 dark:bg-blue-500/10 dark:ring-blue-500'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <span
-                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                    <div key={opt} className="group/option relative">
+                      <button
+                        type="button"
+                        onClick={() => onSelectOption(currentQ.id, opt)}
+                        className={`flex w-full items-start gap-3 rounded-xl border p-4 pr-12 text-left transition active:scale-[0.99] ${
                           isSelected
-                            ? 'border-blue-600 bg-blue-600'
-                            : 'border-slate-300 dark:border-slate-600'
+                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-500 dark:bg-blue-500/10 dark:ring-blue-500'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800'
                         }`}
                       >
-                        {isSelected && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                        )}
-                      </span>
-                      <span className="shrink-0 pt-0.5 text-sm font-bold text-slate-700 dark:text-slate-300">
-                        {opt}
-                      </span>
-                      <span className="flex-1 text-sm leading-6 text-slate-800 dark:text-slate-200">
-                        {optionText}
-                      </span>
-                    </button>
+                        <span
+                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                            isSelected
+                              ? 'border-blue-600 bg-blue-600'
+                              : 'border-slate-300 dark:border-slate-600'
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                          )}
+                        </span>
+                        <span
+                          className={`shrink-0 pt-0.5 text-sm font-bold transition ${
+                            isStruck
+                              ? 'text-slate-400 line-through dark:text-slate-600'
+                              : 'text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          {opt}
+                        </span>
+                        <span
+                          className={`flex-1 text-sm leading-6 transition ${
+                            isStruck
+                              ? 'text-slate-400 line-through dark:text-slate-600'
+                              : 'text-slate-800 dark:text-slate-200'
+                          }`}
+                        >
+                          {optionText}
+                        </span>
+                      </button>
+
+                      {/* Strike-out toggle */}
+                      <button
+                        type="button"
+                        onClick={() => toggleStrike(currentQ.id, opt)}
+                        className={`absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full transition active:scale-90 ${
+                          isStruck
+                            ? 'bg-rose-100 text-rose-600 opacity-100 dark:bg-rose-500/20 dark:text-rose-400'
+                            : 'text-slate-400 opacity-40 hover:bg-slate-100 hover:opacity-100 dark:text-slate-500 dark:hover:bg-slate-800'
+                        }`}
+                        aria-label={isStruck ? 'Un-strike this option' : 'Strike out this option'}
+                        title={isStruck ? 'Un-strike' : 'Strike out (eliminate)'}
+                      >
+                        <X className="h-3.5 w-3.5" strokeWidth={3} />
+                      </button>
+                    </div>
                   );
                 })}
               </div>
