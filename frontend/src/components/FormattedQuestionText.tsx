@@ -508,7 +508,7 @@ function renderInlineNodes(text: string): ReactNode[] {
       );
     } else if (m[4] !== undefined) {
       nodes.push(
-        <strong key={`b-${key++}`} className="font-semibold text-white">
+        <strong key={`b-${key++}`} className="font-semibold text-slate-900 dark:text-white">
           {m[4]}
         </strong>
       );
@@ -624,8 +624,8 @@ export function FormattedQuestionText({ text }: FormattedQuestionTextProps) {
 
   const segments = parseQuestion(text);
 
-  return (
-    <div className="space-y-3">
+   return (
+    <div className="space-y-3 text-slate-800 dark:text-slate-100">
       {segments.map((seg, idx) => {
         if (seg.type === "code") {
           return (
