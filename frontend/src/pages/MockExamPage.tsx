@@ -57,6 +57,8 @@ export function MockExamPage() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [resultSummary, setResultSummary] = useState<ExamResultSummary | null>(null);
   const [aiExpl, setAiExpl] = useState<Record<string, { loading: boolean; content?: string; error?: string }>>({});
+  const [lastScore, setLastScore] = useState<number | undefined>(undefined);
+  const [attemptCount, setAttemptCount] = useState<number | undefined>(undefined);
 
   // ============================================================
   // SESSION PERSISTENCE
@@ -154,6 +156,34 @@ export function MockExamPage() {
         /* ignore */
       }
     }
+  }, []);
+
+    // Fetch history stats for the config page header
+  useEffect(() => {
+    let cancelled = false;
+    apiClient
+      .get('/api/exams/history?limit=1')
+      .then((res) => {
+        if (cancelled) return;
+        const stats = res.data?.stats;
+        if (stats) {
+          if (typeof stats.total_attempts === 'number') {
+            setAttemptCount(stats.total_attempts);
+          }
+          if (
+            typeof stats.last_score === 'number' &&
+            stats.total_attempts > 0
+          ) {
+            setLastScore(stats.last_score);
+          }
+        }
+      })
+      .catch(() => {
+        /* silent — page works without this */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // ============================================================
@@ -642,7 +672,7 @@ export function MockExamPage() {
 
   if (step === 'config') {
     return (
-      <MockExamConfig
+            <MockExamConfig
         selectedPreset={selectedPreset}
         questionCount={questionCount}
         timeLimitMinutes={timeLimitMinutes}
@@ -651,6 +681,8 @@ export function MockExamPage() {
         loading={loading}
         isPremium={isPremium}
         showUpgradeModal={showUpgradeModal}
+        lastScore={lastScore}
+        attemptCount={attemptCount}
         onPresetSelect={handlePresetSelect}
         onProctoringChange={setEnableProctoring}
         onRulesAcknowledgedChange={setRulesAcknowledged}
@@ -688,6 +720,8 @@ export function MockExamPage() {
         onSubmit={handleSubmitExam}
         onDismissWarning={() => setSecurityWarning(null)}
         examContainerRef={examContainerRef}
+        startedAt={examStartedAtRef.current}
+        timeLimitMinutes={timeLimitMinutes}
       />
     );
   }
