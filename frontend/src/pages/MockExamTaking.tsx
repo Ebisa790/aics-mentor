@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ShieldAlert,
   CheckCircle2,
@@ -126,11 +127,11 @@ export function MockExamTaking({
 
   const paletteItems = showRemaining ? questions : questions.slice(0, 50);
 
-  return (
+  return createPortal(
     <div
       ref={examContainerRef}
       onContextMenu={(e) => e.preventDefault()}
-      className="min-h-screen bg-[#f5f7fa] dark:bg-slate-950 select-none"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-[#f5f7fa] dark:bg-slate-950 select-none"
     >
       {/* ─────────── NAVY TOP BAR ─────────── */}
       <header className="sticky top-0 z-30 bg-[#0b1f3f] text-white shadow-lg">
@@ -591,6 +592,7 @@ export function MockExamTaking({
           </div>
         </div>
       )}
-    </div>
+     </div>,
+    document.body,
   );
 }
