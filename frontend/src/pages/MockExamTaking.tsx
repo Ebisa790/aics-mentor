@@ -318,8 +318,8 @@ export function MockExamTaking({
                 </button>
               </div>
 
-              {/* Question text */}
-              <div className="pt-6">
+                         {/* Question text */}
+              <div className="pt-6 text-slate-800 dark:text-slate-100 [&_*]:text-inherit">
                 <FormattedQuestionText text={currentQ.question_text} />
               </div>
 
