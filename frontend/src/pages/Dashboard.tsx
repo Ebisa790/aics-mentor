@@ -250,38 +250,37 @@ export function DashboardPage() {
               )}
             </div>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-              {lastActivity && lastActivity.course_id ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(`/courses/${lastActivity.course_id}`)
-                  }
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98]"
-                >
-                  Continue {lastActivity.label}
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => navigate('/courses')}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98]"
-                >
-                  Browse courses
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
+<div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+  {lastActivity && lastActivity.course_id ? (
+    <button
+      type="button"
+      onClick={() => navigate(`/courses/${lastActivity.course_id}`)}
+      className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98]"
+    >
+      Continue {lastActivity.label}
+      <ArrowRight className="h-4 w-4" />
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => navigate('/courses')}
+      className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98]"
+    >
+      Browse courses
+      <ArrowRight className="h-4 w-4" />
+    </button>
+  )}
 
-              <button
-                type="button"
-                onClick={handleMockExamClick}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/10 px-5 py-2.5 text-sm font-semibold text-white ring-1 ring-white/10 transition hover:bg-white/15 active:scale-[0.98]"
-              >
-                {!hasPremiumAccess && <Lock className="h-3.5 w-3.5" />}
-                Start a Mock Exam
-              </button>
-            </div>
+  <button
+    type="button"
+    onClick={handleMockExamClick}
+    className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/80 transition hover:text-white"
+  >
+    {!hasPremiumAccess && <Lock className="h-3.5 w-3.5" />}
+    Start a Mock Exam
+    <ArrowRight className="h-4 w-4" />
+  </button>
+</div>
           </div>
 
           <HeroIllustration className="hidden h-32 w-32 shrink-0 opacity-80 lg:block" />
@@ -318,7 +317,7 @@ export function DashboardPage() {
             <Stat
               label="Recent avg"
               value={recentAvg !== null ? `${recentAvg}%` : '—'}
-              sub={!recentAvg && !loadingDashboard ? 'Take a quiz' : undefined}
+             sub={recentAvg === null && !loadingDashboard ? 'Take a quiz' : undefined}
             />
             <Stat
               label="Attempts"
