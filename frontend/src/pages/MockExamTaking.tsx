@@ -678,48 +678,148 @@ export function MockExamTaking({
           <span className="hidden sm:inline">Computer Science Exit Exam</span>
         </div>
       </footer>
-
-      {/* ─────────── SUBMIT MODAL (logic unchanged) ─────────── */}
+      {/* ─────────── REVIEW-BEFORE-SUBMIT MODAL ─────────── */}
       {showSubmitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm dark:bg-slate-950/80">
-          <div className="w-full max-w-md space-y-5 rounded-2xl border border-slate-100 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              Confirm Exam Submission
-            </h3>
-            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              Are you sure you want to finish your exam now? You have{' '}
-              <span className="font-bold text-slate-900 dark:text-slate-100">
-                {answeredCount}
-              </span>{' '}
-              out of{' '}
-              <span className="font-bold text-slate-900 dark:text-slate-100">
-                {questions.length}
-              </span>{' '}
-              questions.
-            </p>
-            {unansweredCount > 0 && (
-              <p className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
-                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                <span>
-                  Warning: You have {unansweredCount} unanswered questions remaining.
-                </span>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm dark:bg-slate-950/80">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            {/* Header */}
+            <div className="border-b border-slate-100 px-6 py-5 dark:border-slate-800">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                Review Before Submitting
+              </h2>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Once you submit, you cannot change your answers.
               </p>
-            )}
-                        <div className="flex items-center justify-end gap-3 pt-2">
+            </div>
+
+            {/* Three stat cards */}
+            <div className="grid grid-cols-3 gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-center dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                  {answeredCount}
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-500">
+                  Answered
+                </div>
+              </div>
+
+              <div
+                className={`rounded-2xl border p-3 text-center ${
+                  unansweredCount > 0
+                    ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20'
+                    : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950'
+                }`}
+              >
+                <div
+                  className={`text-2xl font-black ${
+                    unansweredCount > 0
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {unansweredCount}
+                </div>
+                <div
+                  className={`text-[10px] font-bold uppercase tracking-wider ${
+                    unansweredCount > 0
+                      ? 'text-amber-700 dark:text-amber-500'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  Unanswered
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-center dark:border-amber-900/40 dark:bg-amber-950/20">
+                <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                  {flaggedCount}
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-500">
+                  Flagged
+                </div>
+              </div>
+            </div>
+
+            {/* Jumpable lists (scrollable) */}
+            <div className="max-h-[40vh] space-y-4 overflow-y-auto px-6 py-4">
+              {/* Unanswered */}
+              {unansweredCount > 0 && (
+                <div>
+                  <div className="mb-2 text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                    Unanswered questions — click to jump
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {questions.map((q, idx) => {
+                      if (userAnswers[q.id]) return null;
+                      return (
+                        <button
+                          key={q.id}
+                          type="button"
+                          onClick={() => {
+                            onNavigate(idx);
+                            onCloseSubmit();
+                          }}
+                          className="h-9 w-9 rounded-xl border border-amber-300 bg-amber-50 text-xs font-bold text-amber-700 transition-all hover:bg-amber-100 active:scale-95 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
+                        >
+                          {idx + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Flagged */}
+              {flaggedCount > 0 && (
+                <div>
+                  <div className="mb-2 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                    Flagged questions — click to jump
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {questions.map((q, idx) => {
+                      if (!flaggedQuestions[q.id]) return null;
+                      return (
+                        <button
+                          key={q.id}
+                          type="button"
+                          onClick={() => {
+                            onNavigate(idx);
+                            onCloseSubmit();
+                          }}
+                          className="h-9 w-9 rounded-xl border border-blue-300 bg-blue-50 text-xs font-bold text-blue-700 transition-all hover:bg-blue-100 active:scale-95 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400"
+                        >
+                          {idx + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* All clear */}
+              {unansweredCount === 0 && flaggedCount === 0 && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-xs font-bold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-400">
+                  All questions answered. Ready to submit!
+                </div>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            <div className="flex flex-col gap-2 border-t border-slate-100 px-6 py-4 dark:border-slate-800 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={onCloseSubmit}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
-                Return to Test
+                Back to Exam
               </button>
               <button
                 type="button"
                 onClick={onSubmit}
                 disabled={loading}
-                className="rounded-xl bg-red-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-red-700 active:scale-95 disabled:opacity-50"
+                className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-500 active:scale-95 disabled:opacity-50"
               >
-                {loading ? 'Submitting...' : 'Yes, Submit Now'}
+                {loading ? 'Submitting...' : 'Submit Exam'}
               </button>
             </div>
           </div>
