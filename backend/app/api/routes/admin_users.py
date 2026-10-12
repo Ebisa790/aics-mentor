@@ -419,6 +419,20 @@ def get_user_detail(
             "payments_count": len(paid_payments),
             "payments_total": total_paid,
         },
+        "payments": [
+            {
+                "id": str(p.id),
+                "amount": float(p.amount),
+                "currency": p.currency,
+                "status": p.status.value if hasattr(p.status, "value") else str(p.status),
+                "payment_method": p.payment_method,
+                "tx_ref": p.tx_ref,
+                "chapa_transaction_id": p.chapa_transaction_id,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+                "verified_at": p.verified_at.isoformat() if p.verified_at else None,
+            }
+            for p in payments[:50]
+        ],
         "subscription": (
             {
                 "status": subscription.status.value if hasattr(subscription.status, "value") else None,
