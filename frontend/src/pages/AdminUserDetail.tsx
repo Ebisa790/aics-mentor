@@ -16,11 +16,25 @@ import {
 } from 'lucide-react'
 import { apiClient } from '../api/client'
 
+
+
 interface TimelineEvent {
   type: string
   label: string
   at: string
   meta: Record<string, unknown> | null
+}
+
+interface PaymentRecord {
+  id: string
+  amount: number
+  currency: string
+  status: string
+  payment_method: string | null
+  tx_ref: string
+  chapa_transaction_id: string | null
+  created_at: string | null
+  verified_at: string | null
 }
 
 interface UserDetail {
@@ -44,6 +58,8 @@ interface UserDetail {
     days_since_signup: number | null
     days_since_active: number | null
   }
+
+
   stats: {
     quiz_attempts: number
     quiz_avg_score: number | null
@@ -62,6 +78,7 @@ interface UserDetail {
     expires_at: string | null
     plan_name: string | null
   } | null
+  payments: PaymentRecord[] 
   timeline: TimelineEvent[]
 }
 
@@ -87,6 +104,29 @@ function relativeDays(days: number | null): string {
   if (days < 7) return `${days} days ago`
   if (days < 30) return `${Math.floor(days / 7)} weeks ago`
   return `${Math.floor(days / 30)} months ago`
+}
+
+function formatPaymentMethod(m: string | null): string {
+  if (!m || m === 'chapa') return 'Chapa'
+  if (m === 'manual_cbe') return 'CBE (manual)'
+  if (m === 'manual_telebirr') return 'Telebirr (manual)'
+  if (m === 'manual_awash') return 'Awash (manual)'
+  return m
+}
+
+function statusBadgeClass(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'success':
+      return 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 ring-emerald-500/20'
+    case 'pending':
+      return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 ring-amber-500/20'
+    case 'failed':
+      return 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 ring-rose-500/20'
+    case 'cancelled':
+    case 'expired':
+    default:
+      return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 ring-slate-500/20'
+  }
 }
 
 const EVENT_ICON: Record<string, typeof Clock> = {
@@ -351,6 +391,79 @@ export function AdminUserDetailPage() {
                 ? ` · Expires ${formatDateTime(subscription.expires_at)}`
                 : ' · Lifetime'}
             </div>
+          </div>
+        </section>
+      )}
+            {/* Payments */}
+      {data.payments.length > 0 && (
+        <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+              Payment history
+            </h2>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800 text-left">
+                  <th className="px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Date
+                  </th>
+                  <th className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Amount
+                  </th>
+                  <th className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Method
+                  </th>
+                  <th className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Status
+                  </th>
+                  <th className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Reference
+                  </th>
+                  <th className="px-5 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Verified
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.payments.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="border-b border-slate-50 dark:border-slate-800/60 last:border-0"
+                  >
+                    <td className="px-5 py-3 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      {formatDateTime(p.created_at)}
+                    </td>
+                    <td className="px-3 py-3 text-xs font-bold tabular-nums text-slate-900 dark:text-white whitespace-nowrap">
+                      {p.amount.toFixed(0)} {p.currency}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      {formatPaymentMethod(p.payment_method)}
+                    </td>
+                    <td className="px-3 py-3">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${statusBadgeClass(
+                          p.status
+                        )}`}
+                      >
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-[11px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {p.chapa_transaction_id ||
+                        (p.tx_ref.length > 24
+                          ? p.tx_ref.slice(0, 24) + '…'
+                          : p.tx_ref)}
+                    </td>
+                    <td className="px-5 py-3 text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      {p.verified_at ? formatDateTime(p.verified_at) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       )}
