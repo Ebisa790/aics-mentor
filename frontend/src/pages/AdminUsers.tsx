@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Trash2, AlertTriangle, X, Loader2 } from 'lucide-react'
+import { CheckCircle2, Trash2, AlertTriangle, X, Loader2, ArrowRight } from 'lucide-react'
 import { adminUserApi } from '../api'
 import type { AdminUser } from '../api/types'
 import { useAuth } from '../context/AuthContext'
@@ -196,8 +196,14 @@ export function AdminUsersPage() {
             >
               {/* User info */}
               <div className="min-w-0">
-                <div className="font-medium text-sm truncate flex items-center gap-2 flex-wrap text-slate-900 dark:text-slate-100">
-                  <span>{u.full_name}</span>
+                               <div className="font-medium text-sm truncate flex items-center gap-2 flex-wrap text-slate-900 dark:text-slate-100">
+                  <Link
+                    to={`/admin/users/${u.id}`}
+                    className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline underline-offset-2 transition-colors"
+                    title="View full activity for this user"
+                  >
+                    {u.full_name}
+                  </Link>
                   {u.id === me?.id && (
                     <span className="text-xs text-slate-400 dark:text-slate-500">
                       (you)
@@ -225,8 +231,17 @@ export function AdminUsersPage() {
                 )}
               </div>
 
-              {/* Actions */}
+                           {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  to={`/admin/users/${u.id}`}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition"
+                  title="View user detail"
+                  aria-label="View user detail"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+
                 <select
                   className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-0 text-xs text-slate-700 dark:text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
                   value={u.role}
