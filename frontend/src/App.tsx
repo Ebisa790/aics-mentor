@@ -6,6 +6,7 @@ import { AdminLayout } from './components/AdminLayout'
 import { AppLayout } from './components/AppLayout'
 import { PaymentCallbackPage } from './pages/PaymentCallback'
 import { AdminUserDetailPage } from './pages/AdminUserDetail'
+import { AdminSessionsPage } from './pages/AdminSessions'
 import { LandingPage } from './pages/Landing'
 import { SupportPage } from './pages/Support'
 import { MockExamHistory } from './pages/MockExamHistory';
@@ -104,6 +105,7 @@ export default function App() {
                 <Route path="/admin/manual-payments/help" element={<AdminManualPaymentsHelpPage />} />
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
+                <Route path="/admin/sessions" element={<AdminSessionsPage />} />
                 <Route path="/admin/pricing" element={<AdminPricingPage />} />
                 <Route path="/admin/courses" element={<AdminCoursesPage />} />
                 <Route path="/admin/courses/:id" element={<CourseContentManagerPage />} />

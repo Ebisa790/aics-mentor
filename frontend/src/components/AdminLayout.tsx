@@ -18,6 +18,7 @@ import {
   Activity,
   LifeBuoy,
   Wallet,
+  ShieldCheck ,
   ArrowLeft,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -28,6 +29,7 @@ const ADMIN_NAV = [
   { to: '/admin/drills', label: 'Code Trace Drills', icon: FileText },
   { to: '/admin/question-coverage', label: 'Question Coverage', icon: TrendingUp },
   { to: '/admin/users', label: 'User Management', icon: Users },
+  { to: '/admin/sessions', label: 'Active Sessions', icon: ShieldCheck },
   { to: '/admin/pricing', label: 'Pricing Control', icon: DollarSign },
   { to: '/admin/courses', label: 'Content Management', icon: BookOpen },
   { to: '/admin/announcements', label: 'Announcements', icon: MessageSquare },
