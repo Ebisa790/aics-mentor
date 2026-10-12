@@ -29,6 +29,7 @@ from app.core.rate_limit import limiter
 from app.core.error_handlers import register_error_handlers
 from app.core.logging_middleware import RequestLoggingMiddleware
 from app.core.security_headers import SecurityHeadersMiddleware
+from app.api.routes.admin_sessions import router as admin_sessions_router
 from app.api.routes import (
     support,
     dashboard,
@@ -202,3 +203,4 @@ app.include_router(admin_users.router)
 app.include_router(announcements.router)
 app.include_router(drills.router, prefix="/api")
 app.include_router(devices.router)
+app.include_router(admin_sessions_router)
