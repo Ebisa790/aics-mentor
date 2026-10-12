@@ -13,7 +13,8 @@ export function AdminUsersPage() {
   const [search, setSearch] = useState('')
   const [filterVerified, setFilterVerified] = useState<VerifiedFilter>('all')
   const [isLoading, setIsLoading] = useState(true)
-  const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null)
+  const [confirmRole, setConfirmRole] = useState<{ user: AdminUser; newRole: 'student' | 'admin' } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null)   // ← ADD THIS
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -242,17 +243,21 @@ export function AdminUsersPage() {
                   <ArrowRight className="w-4 h-4" />
                 </Link>
 
-                <select
-                  className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-0 text-xs text-slate-700 dark:text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-                  value={u.role}
-                  onChange={(e) =>
-                    patch(u.id, { role: e.target.value as AdminUser['role'] })
-                  }
-                  disabled={u.id === me?.id}
-                >
-                  <option value="student">Student</option>
-                  <option value="admin">Admin</option>
-                </select>
+               <select
+  className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-0 text-xs text-slate-700 dark:text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+  value={u.role}
+  onChange={(e) => {
+    const newRole = e.target.value as 'student' | 'admin'
+    if (newRole === u.role) return
+    setConfirmRole({ user: u, newRole })
+    // Reset the dropdown to the actual current value immediately
+    e.target.value = u.role
+  }}
+  disabled={u.id === me?.id}
+>
+  <option value="student">Student</option>
+  <option value="admin">Admin</option>
+</select>
 
                 <select
                   className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2 py-0 text-xs text-slate-700 dark:text-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -298,6 +303,84 @@ export function AdminUsersPage() {
           ))}
         </div>
       )}
+
+      {confirmRole && (
+  <div
+    className="fixed inset-0 z-50 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+    onClick={() => setConfirmRole(null)}
+  >
+    <div
+      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            confirmRole.newRole === 'admin'
+              ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+          }`}
+        >
+          <AlertTriangle className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+            {confirmRole.newRole === 'admin'
+              ? 'Grant admin access?'
+              : 'Remove admin access?'}
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+            {confirmRole.newRole === 'admin' ? (
+              <>
+                <strong className="text-slate-800 dark:text-slate-200">
+                  {confirmRole.user.full_name}
+                </strong>{' '}
+                will get full access to the admin panel — all users,
+                payments, content, and settings. Only grant this to someone
+                you fully trust.
+              </>
+            ) : (
+              <>
+                <strong className="text-slate-800 dark:text-slate-200">
+                  {confirmRole.user.full_name}
+                </strong>{' '}
+                will lose access to the admin panel and become a regular
+                student.
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <button
+          type="button"
+          onClick={() => setConfirmRole(null)}
+          className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            const { user, newRole } = confirmRole
+            setConfirmRole(null)
+            await patch(user.id, { role: newRole })
+          }}
+          className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-colors active:scale-95 ${
+            confirmRole.newRole === 'admin'
+              ? 'bg-blue-600 hover:bg-blue-700'
+              : 'bg-slate-700 hover:bg-slate-800'
+          }`}
+        >
+          {confirmRole.newRole === 'admin'
+            ? 'Yes, grant admin'
+            : 'Yes, remove admin'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Delete confirmation modal */}
       {confirmDelete && (
