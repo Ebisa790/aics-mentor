@@ -53,6 +53,40 @@ export function MockExamResults({
           'all' | 'incorrect' | 'correct'
         >('all');
 
+    const [showCelebration, setShowCelebration] = React.useState<boolean>(false);
+
+  // Fire the celebration 500ms after a fresh 90%+ result lands.
+  // Skips when readOnly (viewing a past attempt, not a fresh completion).
+  React.useEffect(() => {
+    if (readOnly) {
+      setShowCelebration(false);
+      return;
+    }
+    if (!resultSummary) return;
+    if (resultSummary.percentage >= 90) {
+      const t = window.setTimeout(() => setShowCelebration(true), 500);
+      return () => window.clearTimeout(t);
+    }
+  }, [resultSummary, readOnly]);
+
+  const scrollToFirstMissed = () => {
+    setShowCelebration(false);
+    setReviewFilter('all');
+    setSelectedCourse(null);
+    window.setTimeout(() => {
+      const el = document.querySelector(
+        '[data-incorrect="true"]',
+      ) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add('ring-2', 'ring-rose-400', 'ring-offset-2');
+        window.setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-rose-400', 'ring-offset-2');
+        }, 2500);
+      }
+    }, 150);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
       {/* Score Header Card */}
@@ -547,6 +581,7 @@ export function MockExamResults({
                 return (
                   <div
                     key={item.id ?? originalIdx}
+                    data-incorrect={item.is_correct ? 'false' : 'true'}
                     className={`bg-white dark:bg-slate-900 rounded-2xl border p-6 space-y-4 transition-all shadow-sm ${
                       item.is_correct
                         ? 'border-slate-200 dark:border-slate-700'
@@ -684,6 +719,70 @@ export function MockExamResults({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ─────────── CELEBRATION POPUP (90%+, fresh attempts only) ─────────── */}
+      {showCelebration && !readOnly && resultSummary.percentage >= 90 && (() => {
+        const total = resultSummary.total;
+        const correctCount = resultSummary.score;
+        const isPerfect = resultSummary.percentage >= 100;
+        return (
+          <div
+            className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+            onClick={() => setShowCelebration(false)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-8 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20">
+                  <CheckCircle2
+                    className="h-9 w-9 text-emerald-600 dark:text-emerald-400"
+                    strokeWidth={2.5}
+                  />
+                </div>
+
+                <h2 className="mt-5 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                  {isPerfect ? 'Perfect simulation.' : 'Exam-ready performance.'}
+                </h2>
+
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {isPerfect
+                    ? `You answered all ${total} questions correctly under exam conditions.`
+                    : `${correctCount} of ${total} correct under exam conditions.`}
+                </p>
+
+                <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  {isPerfect
+                    ? 'This is the standard to hold. Keep the discipline.'
+                    : 'One area to review. Let\u2019s look at it.'}
+                </p>
+              </div>
+
+              <div className="space-y-2 border-t border-slate-100 p-5 dark:border-slate-800">
+                {!isPerfect && (
+                  <button
+                    type="button"
+                    onClick={scrollToFirstMissed}
+                    className="w-full rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:bg-slate-200 active:scale-[0.98] dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  >
+                    View the missed question
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowCelebration(false)}
+                  className="w-full rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 active:scale-[0.98]"
+                >
+                  Continue
+                </button>
+              </div>
             </div>
           </div>
         );
