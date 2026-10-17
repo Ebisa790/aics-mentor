@@ -5,6 +5,7 @@ import {
   Hourglass,
   Clock,
   Check,
+  CheckCircle2,
   Flag,
   FileQuestion,
   AlertTriangle,
@@ -133,6 +134,7 @@ export function Quiz() {
   const [isGeneratingNew, setIsGeneratingNew] = useState(false)
   const [autoSubmitted, setAutoSubmitted] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
   const [cooldownError, setCooldownError] = useState<string | null>(null)
 
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(
@@ -379,6 +381,20 @@ export function Quiz() {
     isLoading,
   ])
 
+    // Celebration popup — fires 500ms after a 90%+ result lands,
+  // so the student first sees their score before the modal appears.
+  useEffect(() => {
+    if (!result) {
+      setShowCelebration(false)
+      return
+    }
+    if (result.score_percent >= 90) {
+      const t = window.setTimeout(() => setShowCelebration(true), 500)
+      return () => window.clearTimeout(t)
+    }
+  }, [result])
+
+
   useEffect(() => {
     if (cooldownSeconds === null || cooldownSeconds <= 0) return
 
@@ -571,10 +587,25 @@ export function Quiz() {
     setShowReviewModal(false)
     doSubmit(false)
   }
-
   const jumpToQuestion = (idx: number) => {
     setActiveQuestionIdx(idx)
     setShowReviewModal(false)
+  }
+
+  const scrollToFirstMissed = () => {
+    setShowCelebration(false)
+    window.setTimeout(() => {
+      const el = document.querySelector(
+        '[data-incorrect="true"]',
+      ) as HTMLElement | null
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        el.classList.add('ring-2', 'ring-rose-400', 'ring-offset-2')
+        window.setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-rose-400', 'ring-offset-2')
+        }, 2500)
+      }
+    }, 100)
   }
 
   if (isLoading || isRestarting || isGeneratingNew) {
@@ -876,7 +907,8 @@ export function Quiz() {
                   key={
                     ga.question?.id || `graded-ans-${idx}`
                   }
-                  className={`rounded-2xl border p-5 md:p-6 ${
+                  data-incorrect={isCorrect ? 'false' : 'true'}
+                  className={`rounded-2xl border p-5 md:p-6 transition-all ${
                     isCorrect
                       ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/10'
                       : 'border-rose-200 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/10'
@@ -995,6 +1027,68 @@ export function Quiz() {
             })}
           </div>
         </section>
+
+        {/* ─────────── CELEBRATION POPUP (90%+) ─────────── */}
+        {showCelebration && result.score_percent >= 90 && (() => {
+          const correctCount = gradedAnswers.filter((a) => a.is_correct).length
+          const total = gradedAnswers.length
+          const isPerfect = result.score_percent === 100
+          return (
+            <div
+              className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+              onClick={() => setShowCelebration(false)}
+              role="dialog"
+              aria-modal="true"
+            >
+              <div
+                className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-8 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20">
+                    <CheckCircle2
+                      className="h-9 w-9 text-emerald-600 dark:text-emerald-400"
+                      strokeWidth={2.5}
+                    />
+                  </div>
+
+                  <h2 className="mt-5 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                    {isPerfect ? 'Perfect score.' : 'Strong performance.'}
+                  </h2>
+
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                    {correctCount} of {total} correct.
+                  </p>
+
+                  <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                    {isPerfect
+                      ? "You're on track. Keep going."
+                      : 'One to review. Let’s look at it.'}
+                  </p>
+                </div>
+
+                <div className="space-y-2 border-t border-slate-100 p-5 dark:border-slate-800">
+                  {!isPerfect && (
+                    <button
+                      type="button"
+                      onClick={scrollToFirstMissed}
+                      className="w-full rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-bold text-slate-800 transition hover:bg-slate-200 active:scale-[0.98] dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                      View the missed question
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowCelebration(false)}
+                    className="w-full rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 active:scale-[0.98]"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
       </div>
     )
   }
