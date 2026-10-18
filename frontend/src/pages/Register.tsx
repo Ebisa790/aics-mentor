@@ -95,17 +95,32 @@ export function RegisterPage() {
       // Do NOT auto-login — the account needs email verification first.
       setRegisteredEmail(trimmedEmail)
     } catch (err: any) {
-      const detail = err?.friendlyMessage || err?.response?.data?.detail
-      if (typeof detail === 'string') {
+      // Field order matters: prefer the fields your backend actually sends.
+      const detail =
+        err?.response?.data?.error ||
+        err?.response?.data?.detail
+
+      if (typeof detail === 'string' && detail.trim()) {
         setError(detail)
       } else if (Array.isArray(detail)) {
         const messages = detail
           .map((item: any) => item?.msg || item)
           .filter(Boolean)
           .join(', ')
-        setError(messages)
+        setError(messages || 'Please check your details and try again.')
       } else if (err instanceof Error && err.message) {
-        setError(err.message)
+        // Filter out technical axios messages that users shouldn't see
+        const msg = err.message
+        if (
+          msg === 'Network Error' ||
+          msg === 'Failed to fetch' ||
+          msg.startsWith('Request failed with status code') ||
+          msg.startsWith('timeout of')
+        ) {
+          setError('Could not reach the server. Please check your connection and try again.')
+        } else {
+          setError(msg)
+        }
       } else {
         setError('Registration failed. Please check your details and try again.')
       }
