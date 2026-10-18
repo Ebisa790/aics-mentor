@@ -366,11 +366,13 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
     if locked_until:
         if locked_until.tzinfo is None:
             locked_until = locked_until.replace(tzinfo=timezone.utc)
-            
+
         if now_utc < locked_until:
+            remaining_seconds = max(0, int((locked_until - now_utc).total_seconds()))
+            minutes = max(1, (remaining_seconds + 59) // 60)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Too many failed login attempts. Please wait {LOCKOUT_DURATION_MINUTES} minutes and try again."
+                detail=f"Too many failed login attempts. Please wait {minutes} minute{'s' if minutes != 1 else ''} and try again."
             )
 
     # 2. Verify password & track brute-force lockouts
