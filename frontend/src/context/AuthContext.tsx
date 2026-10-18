@@ -87,65 +87,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user])
 
   const login = async (email: string, password: string) => {
-    try {
-      const authResponse = await authApi.login(email, password)
-      console.log('AuthContext login - response:', authResponse)
-      
-      // Check if 2FA is required
-      if (authResponse && (authResponse as any).requires_2fa === true) {
-        return authResponse
-      }
-      
-      // Normal login - set tokens
-      if (authResponse && authResponse.access_token) {
-        setTokens(authResponse.access_token, authResponse.refresh_token)
-        await refreshUser()
-      }
-      
+    const authResponse = await authApi.login(email, password)
+    console.log('AuthContext login - response:', authResponse)
+
+    // Check if 2FA is required
+    if (authResponse && (authResponse as any).requires_2fa === true) {
       return authResponse
-       } catch (err: any) {
-      const status = err?.response?.status
-      const detail = err?.response?.data?.detail
-
-      if (status === 401) {
-        throw new Error('Incorrect email or password. Please try again.')
-      }
-
-      if (status === 403) {
-        // Case 1: Email not verified yet — detail is an object
-        if (
-          detail &&
-          typeof detail === 'object' &&
-          detail.error === 'email_not_verified'
-        ) {
-          throw new Error(
-            detail.message ||
-              'Please verify your email before logging in. Check your inbox for the verification link.'
-          )
-        }
-
-        // Case 2: Locked out from failed attempts — detail is a string
-        if (
-          typeof detail === 'string' &&
-          detail.toLowerCase().includes('locked')
-        ) {
-          throw new Error(
-            'Too many failed login attempts. Please wait a few minutes and try again.'
-          )
-        }
-
-        // Case 3: Genuinely deactivated account
-        throw new Error(
-          'Your account has been deactivated. Please contact support to reactivate your account.'
-        )
-      }
-
-      if (err?.message && err.message.includes('Network')) {
-        throw new Error('Connection issue. Check your internet and try again.')
-      }
-
-      throw err
     }
+
+    // Normal login - set tokens
+    if (authResponse && authResponse.access_token) {
+      setTokens(authResponse.access_token, authResponse.refresh_token)
+      await refreshUser()
+    }
+
+    return authResponse
   }
 
   const loginWithGoogle = async (idToken: string) => {
