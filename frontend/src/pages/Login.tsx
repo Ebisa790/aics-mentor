@@ -173,6 +173,7 @@ export function LoginPage() {
     setRequires2FA(false)
     setTwoFACode('')
     setError(null)
+    setShowResend(false)   // ← ADD THIS
     setEmailCodeSent(false)
     setTwoFAMethod('app')
   }
@@ -180,6 +181,7 @@ export function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
+    setShowResend(false)   // ← ADD THIS
     setIsSubmitting(true)
 
     try {
@@ -192,7 +194,10 @@ export function LoginPage() {
         navigate('/dashboard')
       }
     } catch (err: any) {
-      const rawDetail = err?.response?.data?.detail
+            const rawDetail =
+        err?.response?.data?.detail ||
+        err?.response?.data?.error ||
+        err?.response?.data?.message
       const status = err?.response?.status
 
       // ── 1. Email-verification error (structured response from backend) ──
