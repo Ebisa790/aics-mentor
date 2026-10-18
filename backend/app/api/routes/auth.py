@@ -373,12 +373,6 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db
                 detail=f"Too many failed login attempts. Please wait {LOCKOUT_DURATION_MINUTES} minutes and try again."
             )
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Account is disabled"
-        )
-
     # 2. Verify password & track brute-force lockouts
     if not verify_password(form_data.password, user.hashed_password):
         if hasattr(user, "failed_login_attempts"):
@@ -570,18 +564,20 @@ def refresh(refresh_token: str, db: Session = Depends(get_db)):
     jti = str(payload.get("jti")).strip() if payload.get("jti") else generate_jti()
 
     if payload.get("jti"):
-        try:
-            active = db.execute(
-                text("SELECT 1 FROM device_sessions WHERE user_id = :u AND session_jti = :jti"),
-                {"u": str(user.id), "jti": jti}
-            ).first()
-            if not active:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Session has been revoked. Please log in again."
-                )
-        except Exception:
-            pass
+        active = (
+            db.query(UserDevice)
+            .filter(
+                UserDevice.user_id == user.id,
+                UserDevice.session_jti == jti,
+                UserDevice.is_revoked.is_(False),
+            )
+            .first()
+        )
+        if not active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session has been revoked. Please log in again."
+            )
 
     return Token(
         access_token=create_access_token(subject=str(user.id), jti=jti),
@@ -679,6 +675,7 @@ def disable_2fa(
 
 
 @router.post("/2fa/email/send")
+@limiter.limit("3/minute;10/hour")
 def send_email_2fa(
     request: Request,
     payload: dict,
@@ -693,12 +690,11 @@ def send_email_2fa(
 
     user = db.query(User).filter(User.email == email).first()
 
+    # Match the same message for both cases — anti-enumeration
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid email.")
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
     
-    
-    # If password provided, verify it (for login flow)
-    if password and not verify_password(password, user.hashed_password):
+    if not password or not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
     
     code = str(random.randint(100000, 999999))
@@ -745,6 +741,7 @@ def disable_2fa_email(
 
 
 @router.post("/2fa/email/verify")
+@limiter.limit("5/minute;20/hour") 
 def verify_email_2fa(
     request: Request,
     payload: dict,
@@ -759,7 +756,8 @@ def verify_email_2fa(
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid email.")
+        # Don't reveal whether the email exists — same message as wrong password
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
 
     stored_code = getattr(user, 'email_2fa_code', None)
     expires_at = getattr(user, 'email_2fa_expires', None)
@@ -772,7 +770,7 @@ def verify_email_2fa(
 
     user.email_2fa_code = None
     user.email_2fa_expires = None
-    user.is_2fa_enabled = True
+    
     db.commit()
 
     session_jti = generate_jti()
@@ -819,6 +817,7 @@ def verify_email_2fa(
 
 
 @router.post("/2fa/login-verify")
+@limiter.limit("5/minute;20/hour") 
 def verify_2fa_login(
     request: Request,
     payload: dict,
@@ -915,9 +914,10 @@ def forgot_password(request: Request, payload: ForgotPasswordRequest, db: Sessio
     reset_link = f"{settings.FRONTEND_ORIGIN}/reset-password?token={raw_token}"
     email_sent = send_password_reset_email(user.email, reset_link)
 
-    # Only return dev token if email failed
+    # Never expose the reset token in production — only in dev mode
+    # where SMTP may not be configured.
     dev_token = None
-    if not email_sent:
+    if not email_sent and settings.ENVIRONMENT.lower() == "development":
         dev_token = raw_token
 
     return ForgotPasswordResponse(message=generic_message, dev_reset_token=dev_token)
