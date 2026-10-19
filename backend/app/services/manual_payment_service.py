@@ -533,6 +533,7 @@ class ManualPaymentService:
                 currency=payment.currency,
                 bank=bank.value,
                 reference=bank_reference,
+                payment_id=str(payment.id),
                 sender_name=sender_name,
                 sender_phone=sender_phone,
                 note=student_note,

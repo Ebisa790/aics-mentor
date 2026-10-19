@@ -39,6 +39,7 @@ from app.api.routes import (
     admin_users,
     payments,
     manual_payments,
+    telegram,                      # ← ADD THIS LINE
     drills,
     ai,
     devices,
@@ -191,6 +192,7 @@ app.include_router(quizzes.questions_router)
 app.include_router(attempts.router)
 app.include_router(payments.router)
 app.include_router(manual_payments.router)
+app.include_router(telegram.router)
 app.include_router(tutor.router)
 app.include_router(ai.router)
 app.include_router(admin.router)

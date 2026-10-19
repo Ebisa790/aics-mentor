@@ -83,6 +83,7 @@ class Settings(BaseSettings):
     # Your personal chat ID (message the bot, then open
     # https://api.telegram.org/bot<TOKEN>/getUpdates in a browser)
     TELEGRAM_ADMIN_CHAT_ID: str = ""
+    TELEGRAM_WEBHOOK_SECRET: str = ""
     
     # Sentry error monitoring
     SENTRY_DSN: str = ""

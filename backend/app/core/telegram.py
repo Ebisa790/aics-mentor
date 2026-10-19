@@ -5,6 +5,7 @@ Sends messages to an admin chat via the Bot API.
 Fails silently — notifications are best-effort and must never
 break the business flow.
 """
+
 import logging
 import threading
 
@@ -46,18 +47,35 @@ def _send_sync(text: str, parse_mode: str = "HTML") -> bool:
         return False
 
 
-def send_telegram_async(text: str, parse_mode: str = "HTML") -> None:
-    """Fire-and-forget Telegram notification (background thread)."""
+def _send_with_keyboard(text: str, reply_markup: dict) -> None:
+    """Fire-and-forget Telegram send with an inline keyboard."""
     if not getattr(settings, "TELEGRAM_BOT_TOKEN", "") or not getattr(
         settings, "TELEGRAM_ADMIN_CHAT_ID", ""
     ):
         return
 
-    threading.Thread(
-        target=_send_sync,
-        args=(text, parse_mode),
-        daemon=True,
-    ).start()
+    def _send():
+        token = settings.TELEGRAM_BOT_TOKEN
+        chat_id = settings.TELEGRAM_ADMIN_CHAT_ID
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+            "reply_markup": reply_markup,
+        }
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(url, json=payload)
+                if not (resp.status_code == 200 and resp.json().get("ok")):
+                    logger.warning(
+                        f"Telegram keyboard send failed: {resp.text[:200]}"
+                    )
+        except Exception as e:
+            logger.warning(f"Telegram keyboard send exception: {e}")
+
+    threading.Thread(target=_send, daemon=True).start()
 
 
 def notify_new_manual_payment(
@@ -68,11 +86,16 @@ def notify_new_manual_payment(
     currency: str,
     bank: str,
     reference: str,
+    payment_id: str,
     sender_name: str | None = None,
     sender_phone: str | None = None,
     note: str | None = None,
 ) -> None:
-    """Admin notification when a student submits a manual bank payment."""
+    """Admin notification when a student submits a manual bank payment.
+
+    Includes an inline Approve button. The button carries the payment_id
+    so the webhook knows which payment to approve.
+    """
     bank_display = {
         "cbe": "CBE",
         "telebirr": "Telebirr",
@@ -100,8 +123,18 @@ def notify_new_manual_payment(
     lines.append("")
     lines.append("👉 Review at: /admin/manual-payments")
 
-    send_telegram_async("\n".join(lines))
+    reply_markup = {
+        "inline_keyboard": [
+            [
+                {
+                    "text": f"✅ Approve · {reference}",
+                    "callback_data": f"approve:{payment_id}",
+                }
+            ]
+        ]
+    }
 
+    _send_with_keyboard("\n".join(lines), reply_markup)
 
 
 def notify_new_support_ticket(
