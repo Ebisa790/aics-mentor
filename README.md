@@ -1,4 +1,3 @@
-@'
 # AI-CS Mentor
 
 A web-based preparation platform for the Ethiopian BSc Computer Science Exit
@@ -30,8 +29,6 @@ This platform pulls all of that into one place:
 - **Progress tracking** - per-course mastery, attempt history, and weak-area
   identification.
 
-'@ | Set-Content -Path C:\cs_exit_exam\README.md -Encoding UTF8
-@'
 ---
 
 ## Tech Stack
@@ -47,8 +44,6 @@ This platform pulls all of that into one place:
 
 ## Getting Started
 
-'@ | Add-Content -Path C:\cs_exit_exam\README.md -Encoding UTF8
-@'
 ### Backend
 
 ```bash
@@ -65,16 +60,10 @@ python -m scripts.seed_cs_exit_exam
 python -m scripts.seed_sample_questions   # optional demo content
 
 uvicorn app.main:app --reload
+```
 
+API docs at `http://localhost:8000/docs`.
 
-Expected: **~72 lines**
-
----
-
-### Chunk 4 — Frontend + First admin
-
-```powershell
-@'
 ### Frontend
 
 ```bash
@@ -82,15 +71,21 @@ cd frontend
 npm install
 cp .env.example .env   # VITE_API_URL should point at the backend
 npm run dev
+```
 
-Expected: **~98 lines**
+App at `http://localhost:5173`.
 
----
+### First admin user
 
-### Chunk 5 — How it works (Curriculum + AI QA)
+Registration always creates a `student`. Promote your first admin directly in the DB:
 
-```powershell
-@'
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+```
+
+Then visit `/admin` in the app (or use `/docs`) to create courses, topics, questions,
+and quizzes.
+
 ---
 
 ## How it works
@@ -118,10 +113,6 @@ quizzes and exams actually read from. The path from one to the other:
   them to `UNDER_REVIEW`. `PATCH /api/admin/questions/{id}/review` with
   `{"action": "approve"}` promotes them to `Question`. Rejection requires a
   `rejection_reason`.
-
-'@ | Add-Content -Path C:\cs_exit_exam\README.md -Encoding UTF8
-
-@'
 - **Approved** questions can't be edited or deleted through normal endpoints -
   archive and re-draft instead, so exam content a student may already have answered
   never changes underneath them.
@@ -151,9 +142,6 @@ a successful reset, not just the one used.
 Feeds the dashboard. Writes (`POST`/`PUT`/`DELETE` under `/api/admin/announcements`)
 are admin-only, managed from the `/admin` panel.
 
-'@ | Add-Content -Path C:\cs_exit_exam\README.md -Encoding UTF8
-
-@'
 ---
 
 ## Security
@@ -171,10 +159,6 @@ are admin-only, managed from the `/admin` panel.
   `X-Content-Type-Options: nosniff`, HSTS, `Referrer-Policy`, restrictive
   `Permissions-Policy`. TLS termination is expected at a reverse proxy in front of
   the app.
-
-'@ | Add-Content -Path C:\cs_exit_exam\README.md -Encoding UTF8
-
-@'
 - **File upload validation** by content signature, not extension. PDF magic bytes,
   ZIP header for DOCX, null-byte/UTF-8 check for TXT - a renamed `.exe` claiming to
   be `.pdf` is rejected. This is content-type validation, not malware scanning.
@@ -215,5 +199,3 @@ What's deliberately deferred to later phases:
 
 Add a license here - MIT and Apache 2.0 are the common choices for portfolio
 projects. If unsure, MIT.
-
-'@ | Add-Content -Path C:\cs_exit_exam\README.md -Encoding UTF8
